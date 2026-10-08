@@ -1,0 +1,30 @@
+# Rác tạm & môi trường — không bao giờ commit
+node_modules/
+.laya-venv/
+
+# Log và file tạm của công cụ
+*.log
+.dsh-vision-router/
+
+# File probe/thử nghiệm của harness
+.bai-*.json
+.bai-probe.log
+
+# Sản phẩm sinh tự động từ demo (giữ lại sv_demo.py là mã nguồn)
+sv_demo_annotated.png
+sv_demo.pdf
+
+# Phân tích video: media nặng không đưa vào Git (giữ lại file văn bản nhỏ)
+video_analysis/audio.wav
+video_analysis/frames/
+video_analysis/slides/
+video_analysis/sheet_*.png
+video_analysis/asrvenv/
+
+# Hệ điều hành / editor
+.DS_Store
+*.swp
+
+# Repo lồng riêng của bạn (có remote GitHub: dzerok2020/dsh-decide)
+# Muốn đưa vào repo này thì dùng: git submodule add <url> dsh-decide
+/dsh-decide/
