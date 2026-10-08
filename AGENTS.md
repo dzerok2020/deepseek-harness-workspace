@@ -53,7 +53,8 @@ Không được nhảy vào sửa khi chưa tái hiện được lỗi.
 ## 5. Quy ước workspace
 
 - Repo này là sân chơi chính, nhưng **mỗi dự án mới nên có thư mục riêng** + `git init` riêng
-  + `AGENTS.md` riêng cho dự án đó.
+  + `AGENTS.md` riêng cho dự án đó. Làm tự động bằng:
+  `bash tools/new-project.sh ~/Documents/du-an-moi` (tạo Git + `.gitignore` + `AGENTS.md` + commit đầu tiên).
 - Plugin cục bộ do người dùng tự viết sống ngay trong repo:
   `dsh-loop-guard/` và `dsh-vibe-guard/`. Sửa xong phải chạy `node --test test/` trong thư mục
   plugin đó và báo số test pass.

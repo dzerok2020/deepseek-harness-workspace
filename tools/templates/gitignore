@@ -1,0 +1,40 @@
+# === Hệ điều hành / rác ===
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+
+# === Thư viện & môi trường ảo (không bao giờ commit) ===
+node_modules/
+.pnpm-store/
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+target/
+
+# === Bí mật (tuyệt đối không commit) ===
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# === IDE / công cụ ===
+.idea/
+.vscode/
+*.swp
+
+# === Dữ liệu nặng / sinh tự động ===
+coverage/
+.coverage
+*.sqlite
+*.db
+output/
+results/
