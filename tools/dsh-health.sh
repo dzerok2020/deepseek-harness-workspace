@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# Kiểm tra sức khoẻ DeepSeek Harness + workspace này.
+# CHỈ ĐỌC — không sửa gì. Chạy: bash tools/dsh-health.sh
+#
+# Mục đích: sau mỗi lần restart DSH hoặc cài plugin, chạy 1 lệnh này để biết
+# hệ thống còn lành hay không, thay vì đoán.
+
+PROFILE="${DSH_HOME:-$HOME/.dsh}/profiles/web"
+WS="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PASS=0; FAIL=0
+
+ok()   { printf '  \033[32mĐẠT\033[0m  %s\n' "$1"; PASS=$((PASS+1)); }
+bad()  { printf '  \033[31mLỖI\033[0m  %s\n' "$1"; FAIL=$((FAIL+1)); }
+note() { printf '       %s\n' "$1"; }
+head_() { printf '\n\033[1m%s\033[0m\n' "$1"; }
+
+head_ "1. DSH cài đặt được"
+if command -v dsh >/dev/null 2>&1; then ok "dsh có trong PATH ($(dsh --version 2>/dev/null | head -1))"
+else bad "không tìm thấy lệnh dsh trong PATH"; fi
+
+head_ "2. Profile nạp được toàn bộ bundle (không lỗi cấu hình)"
+DUMP_ERR="$(mktemp)"; DUMP_OUT="$(mktemp)"
+if dsh --profile web --dump-config >"$DUMP_OUT" 2>"$DUMP_ERR"; then
+  ok "dsh --dump-config chạy thành công ($(wc -l <"$DUMP_OUT") dòng)"
+else
+  bad "dsh --dump-config THẤT BẠI — đọc lỗi bên dưới"
+  head -20 "$DUMP_ERR" | sed 's/^/       /'
+fi
+if [ -s "$DUMP_ERR" ]; then bad "có cảnh báo/lỗi ở stderr khi nạp profile:"; head -10 "$DUMP_ERR" | sed 's/^/       /'
+else ok "stderr rỗng (không có cảnh báo khi nạp)"; fi
+
+head_ "3. Plugin chống lặp đã được cài"
+N="$(node -p "try{require('$PROFILE/package.json').dsh.profile.bundles.length}catch(e){-1}" 2>/dev/null)"
+[ "$N" != "-1" ] && ok "số bundle: $N" || bad "không đọc được package.json của profile"
+grep -qE "dsh-loop-guard" "$PROFILE/package.json" 2>/dev/null \
+  && ok "dsh-loop-guard có trong danh sách bundle" \
+  || bad "dsh-loop-guard CHƯA được cài (chạy: dsh plugin --profile web add file:$WS/dsh-loop-guard)"
+if [ -f "${DSH_HOME:-$HOME/.dsh}/loop-guard-status.json" ]; then
+  ok "loop-guard đã chạy ít nhất 1 lần (có loop-guard-status.json)"
+  note "$(node -p "const s=require('${DSH_HOME:-$HOME/.dsh}/loop-guard-status.json');'enabled='+s.enabled+'  assemblies='+s.counters.assemblies+'  freezes='+s.counters.freezes+'  reinserts='+s.counters.reinserts+'  sessions đang giữ='+s.activeSessions" 2>/dev/null)"
+else
+  note "loop-guard-status.json chưa có — bình thường nếu chưa restart DSH kể từ lúc cài."
+  note "Sau khi restart, gửi 1 prompt bất kỳ rồi kiểm tra lại mục này."
+fi
+
+head_ "4. Không còn bản gói host cũ lồng nhau (nguồn gây disable hàng loạt)"
+# Chỉ đường dẫn có >=2 đoạn /node_modules/ mới là bản lồng thật.
+# (Thư mục lib/ hay src/ BÊN TRONG một gói top-level không phải bản lồng.)
+NESTED="$(find "$PROFILE/node_modules" -maxdepth 5 -type d -path '*/node_modules/@deepseek-ai/*' 2>/dev/null | awk -F'/node_modules/' 'NF>=3')"
+if [ -z "$NESTED" ]; then ok "không có bản @deepseek-ai/* lồng trong node_modules"
+else bad "còn bản lồng (dễ làm runtime tắt cả row dùng gói đó):"; echo "$NESTED" | sed 's/^/       /'; fi
+VER_SF="$(node -p "try{require('$PROFILE/node_modules/@deepseek-ai/dsh-skill-filesystem/package.json').version}catch(e){'THIẾU'}" 2>/dev/null)"
+[ "$VER_SF" = "0.2.0-rc.2" ] && ok "@deepseek-ai/dsh-skill-filesystem = $VER_SF (khớp runtime)" \
+  || bad "@deepseek-ai/dsh-skill-filesystem = $VER_SF (nên là 0.2.0-rc.2)"
+VER_OV="$(node -p "try{require('$PROFILE/node_modules/@openviking/dsh-memory-plugin/package.json').version}catch(e){'THIẾU'}" 2>/dev/null)"
+case "$VER_OV" in 0.5.1[7-9]|0.5.[2-9]*) ok "@openviking/dsh-memory-plugin = $VER_OV (peer cho phép 0.2.x)";;
+  *) bad "@openviking/dsh-memory-plugin = $VER_OV (0.5.16 trở xuống chặn 0.2.x — hãy nâng lên >=0.5.19)";; esac
+
+head_ "5. Skill của bạn được nhận đủ"
+NSKILL="$(find "${DSH_HOME:-$HOME/.dsh}/skills" -name SKILL.md 2>/dev/null | wc -l | tr -d ' ')"
+[ "$NSKILL" -ge 70 ] && ok "tìm thấy $NSKILL skill trong ~/.dsh/skills" \
+  || bad "chỉ thấy $NSKILL skill — kiểm tra lại mục 4 (bản lồng từng làm mất skill)"
+
+head_ "6. Hai plugin cục bộ vẫn qua test"
+for p in dsh-loop-guard dsh-vibe-guard; do
+  if [ -d "$WS/$p/test" ]; then
+    if (cd "$WS/$p" && node --test test/ >/dev/null 2>&1); then ok "$p: test xanh"
+    else bad "$p: test ĐỎ — chạy 'node --test test/' trong $WS/$p để xem chi tiết"; fi
+  else note "$p: chưa có thư mục test (bỏ qua)"; fi
+done
+
+head_ "7. Kỷ luật Git của workspace"
+if git -C "$WS" rev-parse --git-dir >/dev/null 2>&1; then
+  C="$(git -C "$WS" rev-list --count HEAD 2>/dev/null || echo 0)"
+  [ "$C" -ge 1 ] && ok "đã có $C commit" || bad "repo chưa có commit nào (kỷ luật Git chưa bắt đầu)"
+  GL="$(git -C "$WS" ls-files -s | awk '$1=="160000"{print $4}')"
+  [ -z "$GL" ] && ok "không có gitlink hỏng trong index" || bad "còn gitlink: $GL"
+  if [ -z "$(git -C "$WS" status --porcelain)" ]; then ok "worktree sạch (không có thay đổi chưa commit)"
+  else note "có thay đổi chưa commit:"; git -C "$WS" status --short | sed 's/^/       /'; fi
+  for f in AGENTS.md .gitignore; do
+    [ -f "$WS/$f" ] && ok "có $f" || bad "THIẾU $f"
+  done
+else bad "workspace chưa được git init"; fi
+
+printf '\n\033[1mKẾT QUẢ:\033[0m %d đạt, %d lỗi\n' "$PASS" "$FAIL"
+[ "$FAIL" -eq 0 ] && echo "Hệ thống lành." || echo "Có mục cần xử lý — xem các dòng LỖI ở trên."
+rm -f "$DUMP_ERR" "$DUMP_OUT"
+exit $([ "$FAIL" -eq 0 ] && echo 0 || echo 1)

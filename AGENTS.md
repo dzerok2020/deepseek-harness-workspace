@@ -69,6 +69,9 @@ Không được nhảy vào sửa khi chưa tái hiện được lỗi.
 
 ## 7. Khi thấy dấu hiệu bất thường của hệ thống
 
+- **Kiểm tra sức khoẻ toàn hệ bằng một lệnh:** `bash tools/dsh-health.sh`
+  (chỉ đọc, in ra ĐẠT/LỖI cho: cấu hình profile, plugin chống lặp, xung đột gói, skill,
+  test hai plugin, kỷ luật Git). Chạy sau mỗi lần cài plugin hoặc restart DSH.
 - Nếu AI lặp lại câu "Chưa có yêu cầu mới" / "Chờ bạn nhé" nhiều lần trong một turn:
   đây là lỗi đã biết (xem `dsh-loop-guard/README.md`).
   Kiểm tra nhanh: `cat ~/.dsh/loop-guard-status.json`; tắt tạm bằng biến môi trường
