@@ -132,3 +132,42 @@ dsh plugin --profile web add file:/home/dzerok/Documents/deepseek-harness/defaul
 
 Cài xong **phải khởi động lại DSH** thì plugin mới được nạp. Sau khi restart, mở
 `~/.dsh/loop-guard-status.json` để xác nhận.
+
+### Bẫy quan trọng: pnpm copy chứ không symlink
+
+Với dep dạng `file:`, pnpm **copy nội dung thư mục** vào
+`~/.dsh/profiles/web/node_modules/dsh-loop-guard` và cache bản copy đó. Hệ quả:
+
+- Bạn sửa `lib/policy.js` trong workspace rồi cài lại (`dsh plugin --profile web add
+  file:...`) hoặc `dsh plugin --profile web install --force` — **bản DSH nạp vẫn là
+  code cũ**. Không có cảnh báo nào. Việc này đã xảy ra thật với cả `dsh-loop-guard`
+  và `dsh-vibe-guard`.
+- Cách chữa: thay thư mục copy bằng **symlink** trỏ về workspace.
+
+```bash
+bash tools/sync-local-plugins.sh          # kiểm tra, không sửa gì
+bash tools/sync-local-plugins.sh --fix    # tạo lại symlink nếu lệch
+```
+
+Chạy lại lệnh kiểm tra **sau mỗi lần `pnpm install` / cài plugin**, vì pnpm có thể
+ghi đè symlink bằng bản copy cũ. `tools/dsh-health.sh` cũng kiểm tra mục này (mục 7).
+
+Xác nhận code mới đã có hiệu lực:
+
+```bash
+grep -c 'isInjectedMessage' ~/.dsh/profiles/web/node_modules/dsh-loop-guard/lib/policy.js   # phải > 0
+```
+
+### Kiểm chứng end-to-end (giới hạn đã biết)
+
+Không thể kiểm chứng trọn vẹn trước khi restart: `headless` là **profile riêng**
+(`dsh --profile headless "task"`), nó không nạp các plugin của profile `web` và
+cũng không có các khối `lingshu:*` để mà đóng băng. Vì vậy bằng chứng mạnh nhất
+trước restart là:
+
+- hook đã chạy thật: `assemblies`/`stores` trong status file > 0 (tên khối khớp
+  thực tế: `lingshu:session-window`, `lingshu:auto-recall`);
+- test tái hiện lỗi gốc dùng **payload thật** của host (xem §5).
+
+Sau khi restart, `freezes` trong `~/.dsh/loop-guard-status.json` phải **> 0** và
+tăng dần trong một turn — đó là dấu hiệu guard đang chặn vòng lặp.

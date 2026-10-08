@@ -69,7 +69,24 @@ for p in dsh-loop-guard dsh-vibe-guard; do
   else note "$p: chưa có thư mục test (bỏ qua)"; fi
 done
 
-head_ "7. Kỷ luật Git của workspace"
+head_ "7. Ba plugin cục bộ: bản DSH nạp có khớp code trong workspace không"
+# pnpm COPY (không symlink) các dep file:, và giữ bản copy trong cache của nó.
+# Nếu mục này báo BẢN SAO CŨ thì mọi thay đổi bạn sửa trong workspace đều KHÔNG
+# được DSH chạy — không có cảnh báo nào khác. Sửa: bash tools/sync-local-plugins.sh --fix
+for p in dsh-decide dsh-vibe-guard dsh-loop-guard; do
+  src="$WS/$p"; dst="$PROFILE/node_modules/$p"
+  if [ -L "$dst" ] && [ "$(readlink "$dst")" = "$src" ]; then
+    ok "$p: symlink trỏ về workspace"
+  elif [ ! -e "$dst" ] && [ ! -L "$dst" ]; then
+    bad "$p: CHƯA CÀI (dsh plugin --profile web add file:$src)"
+  elif diff -rq --exclude=node_modules --exclude=.git "$dst" "$src" >/dev/null 2>&1; then
+    note "$p: bản sao (nội dung còn khớp, nhưng lần sau sửa code sẽ không có tác dụng → nên --fix)"
+  else
+    bad "$p: BẢN SAO CŨ — code sửa trong workspace KHÔNG được DSH chạy (bash tools/sync-local-plugins.sh --fix)"
+  fi
+done
+
+head_ "8. Kỷ luật Git của workspace"
 if git -C "$WS" rev-parse --git-dir >/dev/null 2>&1; then
   C="$(git -C "$WS" rev-list --count HEAD 2>/dev/null || echo 0)"
   [ "$C" -ge 1 ] && ok "đã có $C commit" || bad "repo chưa có commit nào (kỷ luật Git chưa bắt đầu)"
