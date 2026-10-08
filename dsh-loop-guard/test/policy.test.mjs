@@ -14,6 +14,7 @@ import {
   DEFAULT_MAX_SESSIONS,
   compileConfig,
   createFreezeGuard,
+  isInjectedMessage,
   sessionIdOf,
   shouldRefresh,
   targetsSection,
@@ -369,4 +370,95 @@ test('chế độ đóng băng toàn bộ: sections ["*"] chặn mọi nguồn b
   });
   assert.equal(result.closedAt, 2);
   assert.equal(guard.summarize().counters.freezes, 2);
+});
+
+// ---------------------------------------------------------------------------
+// Payload THẬT lấy từ session JSONL (record `user/message`, seq 33).
+//
+// Mỗi bước DSH append MỘT message `user/message` là snapshot runtime context, và text của section
+// `lingshu:session-window` trong đó đổi mỗi bước (thêm một dòng `[assistant] …`). Nếu coi nó là tin
+// nhắn người dùng thật thì guard tự xoá cache mỗi bước => `freezes` luôn 0 => guard vô hiệu hoá
+// ĐÚNG trong ca lỗi mà nó sinh ra để chữa. Đây là lỗi thiết kế bản đầu, các test dưới khoá lại.
+// ---------------------------------------------------------------------------
+
+const RUNTIME_CONTEXT_EVENT = {
+  type: 'user/message',
+  data: {
+    role: 'user',
+    surfaceOp: 'append',
+    source: {
+      kind: 'runtime-context',
+      form: 'snapshot',
+      sections: [
+        { name: 'sandbox:policy', text: 'Current DSH file policy: danger-full-access.' },
+        { name: 'lingshu:session-window', text: '【本会话近期对话】\n[assistant] bước 1' },
+      ],
+    },
+  },
+};
+
+test('tin tiêm (runtime-context snapshot) KHÔNG được refresh cache', () => {
+  const cfg = compileConfig({});
+  assert.equal(isInjectedMessage(RUNTIME_CONTEXT_EVENT.data), true);
+  assert.equal(shouldRefresh(cfg, 'user/message', RUNTIME_CONTEXT_EVENT), false);
+});
+
+test('tin nhắn THẬT của người dùng vẫn refresh cache', () => {
+  const cfg = compileConfig({});
+  const realUser = {
+    type: 'user/message',
+    data: {
+      role: 'user',
+      source: { kind: 'user', rpcId: 'd4370f68-0000-0000-0000-000000000000', clientTimeZone: 'Asia/Saigon' },
+    },
+  };
+  assert.equal(isInjectedMessage(realUser.data), false);
+  assert.equal(shouldRefresh(cfg, 'user/message', realUser), true);
+});
+
+test('mọi nguồn tiêm khác đều không refresh: plugin:aegis, time-context, system-reminder', () => {
+  const cfg = compileConfig({});
+  for (const kind of ['plugin:aegis', 'plugin:stratagate-memory', 'time-context', 'system-reminder']) {
+    assert.equal(
+      shouldRefresh(cfg, 'user/message', { type: 'user/message', data: { source: { kind } } }),
+      false,
+      kind,
+    );
+  }
+});
+
+test('turn/start luôn refresh; message không có source giữ hành vi cũ (refresh)', () => {
+  const cfg = compileConfig({});
+  assert.equal(shouldRefresh(cfg, 'turn/start', { type: 'turn/start', data: { turn: 2 } }), true);
+  assert.equal(isInjectedMessage({}), false);
+  assert.equal(isInjectedMessage(undefined), false);
+  assert.equal(isInjectedMessage({ source: {} }), false);
+  assert.equal(shouldRefresh(cfg, 'user/message', { type: 'user/message', data: { role: 'user' } }), true);
+});
+
+test('sự kiện không nằm trong refreshEvents thì không bao giờ refresh', () => {
+  const cfg = compileConfig({ refreshEvents: ['turn/start'] });
+  assert.equal(shouldRefresh(cfg, 'user/message', RUNTIME_CONTEXT_EVENT), false);
+  assert.equal(shouldRefresh(cfg, 'step/start', { type: 'step/start' }), false);
+  assert.equal(shouldRefresh(cfg, 'turn/start', { type: 'turn/start' }), true);
+});
+
+test('tái hiện lỗi gốc: refresh theo MỌI user/message => freezes=0; lọc tin tiêm => đóng băng được', () => {
+  const session = { id: 's-1' };
+  const step = (text) => ({ contexts: [{ name: 'lingshu:session-window', text }] });
+
+  // Hành vi CŨ: mỗi bước có `user/message` (kể cả tin tiêm) là xoá cache => không bao giờ đóng băng.
+  const old = createFreezeGuard({});
+  old.apply(step('bước 1'), session);
+  old.refresh(session);
+  assert.deepEqual(old.apply(step('bước 2'), session).frozen, []);
+
+  // Hành vi MỚI: tin tiêm không xoá cache => bước 2 bị giữ nguyên text của bước 1.
+  const fixed = createFreezeGuard({});
+  fixed.apply(step('bước 1'), session);
+  const report = fixed.apply(step('bước 2'), session);
+  assert.equal(report.changed, true);
+  assert.equal(report.frozen.length, 1);
+  assert.equal(report.frozen[0].section, 'lingshu:session-window');
+  assert.equal(report.frozen[0].kept, 'bước 1'.length);
 });

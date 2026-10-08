@@ -40,8 +40,14 @@ biến động theo từng turn**:
 - Các bước **sau trong cùng turn**: ghi đè text bằng bản đã ghi nhận ⇒ text runtime context
   **không đổi trong turn** ⇒ `project()` trả `undefined` ⇒ `decision.messages.length === 0`
   ⇒ turn đóng bình thường.
-- Khi có `turn/start` hoặc `user/message` mới: **xoá cache** ⇒ turn mới lại được bơm bản mới nhất.
-  Kết quả: tối đa **một** snapshot runtime context cho mỗi turn.
+- Khi có `turn/start` **thật** hoặc tin nhắn **thật** của người dùng: **xoá cache** ⇒ turn mới lại được
+  bơm bản mới nhất. Kết quả: tối đa **một** snapshot runtime context cho mỗi turn.
+- **Chỉ tin THẬT mới xoá cache.** Snapshot runtime context do host tiêm cũng đi qua sự kiện
+  `user/message` (source `kind:"runtime-context"`). Nếu tính nó là "turn mới" thì cache bị xoá ngay
+  mỗi bước và plugin thành vô dụng (`freezes: 0`) — đúng ca lỗi cần chữa. Vì vậy `shouldRefresh` kiểm
+  tra thêm `source.kind`: thiếu `source` ⇒ tin thật; `kind === 'user'` ⇒ tin thật; mọi kind khác
+  (`runtime-context`, `plugin:aegis`, `plugin:stratagate-memory`, `time-context`, `system-reminder`…)
+  ⇒ tin tiêm, **không** xoá cache.
 
 Nếu một khối đã có trong cache mà bước này lại **vắng mặt** (ví dụ plugin kia tạm bỏ khối), plugin
 sẽ **chèn lại** bản cũ (`reinsert`) để chặn kiểu lặp flip-flop *có → không → có* (vẫn làm snapshot đổi).
@@ -58,7 +64,7 @@ sections:        # khối bị đóng băng theo turn
   - "lingshu:session-window"
   - "lingshu:auto-recall"
   # "*" = đóng băng mọi khối context (dùng khi nghi plugin lạ khác gây loop)
-refreshEvents:   # sự kiện mở turn mới => xoá cache
+refreshEvents:   # sự kiện mở turn mới => xoá cache (chỉ tin THẬT; tin tiêm bị lọc)
   - "turn/start"
   - "user/message"
 reinsert: true   # chèn lại khối đã cache nhưng vắng ở bước này
@@ -102,10 +108,13 @@ Log cũng được ghi qua logger của DSH ở 5 lần freeze đầu, sau đó 
 node --test test/
 ```
 
-15 test, trong đó có **mô phỏng vòng turn thật của host**:
+21 test, trong đó có **mô phỏng vòng turn thật của host**:
 
 - `TÁI HIỆN LỖI`: không có guard ⇒ snapshot đổi mỗi bước ⇒ turn **không bao giờ** đóng (lặp vô hạn).
 - `ĐÃ SỬA`: có guard ⇒ turn đóng ngay bước thứ 2.
+- `tái hiện lỗi gốc`: refresh theo **mọi** `user/message` ⇒ `freezes: 0`; lọc tin tiêm ⇒ đóng băng được.
+- Tin tiêm (`runtime-context` snapshot, `plugin:aegis`, `time-context`, `system-reminder`) **không** xoá cache.
+- Tin nhắn **thật** của người dùng (có `source.kind === 'user'`) và `turn/start` vẫn xoá cache.
 - Mỗi turn mới vẫn được bơm lại đúng một snapshot.
 - Khối biến mất giữa turn không làm turn mở lại.
 - Cô lập theo session, trần LRU, dữ liệu méo không làm throw.

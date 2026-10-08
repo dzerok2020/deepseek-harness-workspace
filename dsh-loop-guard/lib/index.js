@@ -123,15 +123,17 @@ export function apply(ctx, rawConfig) {
     }
   }
 
-  // Đầu turn mới (hoặc có yêu cầu mới của người dùng) => cho phép bơm bản mới nhất.
+  // Chỉ turn mới thật hoặc tin nhắn THẬT của người dùng mới được xoá cache (cho phép bơm bản mới nhất).
+  // Tin nhắn do plugin/host tiêm — điển hình là snapshot runtime context append ở mỗi bước — KHÔNG xoá
+  // cache, nếu không guard sẽ tự vô hiệu hoá đúng trong ca lỗi cần chữa.
   ctx.on('session/event', (session, event) => {
     try {
       if (sessionIdOf(session) === '' && session === undefined) return;
       const type = event?.type;
-      if (shouldRefresh(cfg, type)) {
+      if (shouldRefresh(cfg, type, event)) {
         guard.refresh(session);
         statusDirty = true;
-        if (type === 'turn/start' || type === 'user/message') flushStatus(true);
+        flushStatus(true);
       } else if (type === 'turn/end') {
         flushStatus(true);
       }

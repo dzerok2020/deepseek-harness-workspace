@@ -99,11 +99,37 @@ export function targetsSection(patterns, sectionName) {
   return false;
 }
 
-/** Sự kiện session này có làm cache được tính lại không. */
-export function shouldRefresh(cfg, eventType) {
+/**
+ * Tin nhắn này có phải do hệ thống/plugin TIÊM vào (không phải người dùng gõ)?
+ *
+ * DSH ghi CẢ tin nhắn tiêm lẫn tin nhắn thật dưới cùng một loại sự kiện `user/message`.
+ * Bản snapshot runtime context (host dựng từ `assembly.contexts`) là ví dụ điển hình: nó có
+ * `source = { kind: 'runtime-context', form: 'snapshot', sections: [...] }` và được append ở
+ * MỖI bước. Tin nhắn thật của người dùng có `source = { kind: 'user', rpcId, clientTimeZone }`.
+ *
+ * Không có `source` (hoặc `kind` không phải chuỗi khác rỗng) thì coi như tin thật — giữ nguyên
+ * hành vi cũ để host khác vẫn refresh được.
+ */
+export function isInjectedMessage(message) {
+  const kind = message?.source?.kind;
+  if (typeof kind !== 'string' || kind === '') return false;
+  return kind !== 'user';
+}
+
+/**
+ * Sự kiện session này có làm cache được tính lại không.
+ *
+ * `event` là payload `{ type, data }` của hook `session/event`. Với `user/message`, tin TIÊM thì
+ * KHÔNG được refresh: snapshot runtime context đổi text mỗi bước, refresh theo nó sẽ xoá cache mỗi
+ * bước và guard không bao giờ đóng băng được — đúng ca lỗi mà guard sinh ra để chữa. `turn/start`
+ * luôn refresh vì đó là turn mới thật.
+ */
+export function shouldRefresh(cfg, eventType, event) {
   if (!cfg || cfg.enabled === false) return false;
   if (typeof eventType !== 'string' || eventType === '') return false;
-  return Array.isArray(cfg.refreshEvents) && cfg.refreshEvents.includes(eventType);
+  if (!Array.isArray(cfg.refreshEvents) || !cfg.refreshEvents.includes(eventType)) return false;
+  if (eventType === 'user/message' && isInjectedMessage(event?.data ?? event)) return false;
+  return true;
 }
 
 /**
