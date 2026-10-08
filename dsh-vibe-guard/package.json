@@ -1,0 +1,11 @@
+{
+  "name": "dsh-vibe-guard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Verification gate + irreversible-action guard for DeepSeek Harness. Forces evidence of verification before a turn that changed files is allowed to stop, and blocks non-revertible shell actions deterministically.",
+  "main": "lib/index.js",
+  "files": ["lib", "cordis.patch.yml", "README.md"],
+  "scripts": { "test": "node --test test/" },
+  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }
+}

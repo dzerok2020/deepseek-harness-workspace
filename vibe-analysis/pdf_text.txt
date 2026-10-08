@@ -1,0 +1,199 @@
+ CẨM NANG THỰC CHIẾN • AI CODING METHODOLOGY
+
+
+
+Quy Trình Vibe Coding Chuẩn 5 Bước
+Phương pháp phối hợp cùng Coding Agent để biến ý tưởng thô thành sản phẩm hoàn chỉnh, kiểm soát tối đa lỗi và độ
+chính xác.
+
+
+
+
+   Cạm bẫy lớn nhất của người mới học Vibe Coding
+   Phần lớn người mới thường chỉ nhập một câu lệnh duy nhất (One-shot Prompting): "Hãy làm cho tôi app đọc
+   sách" hoặc "Làm app ghi chú". Kết quả: AI tạo ra sản phẩm lệch xa kỳ vọng, logic rối loạn, đầy lỗi và không thể
+   bảo trì. Vibe Coding thực thụ đòi hỏi một quy trình lặp có rào chắn bảo vệ.
+
+
+
+
+             1                        2                           3                         4                       5
+
+     Dựng Môi Trường          Thiết Kế Sản Phẩm          Thiết Kế Kỹ Thuật        Hiện Thực & Tự Test      Kiểm Chứng Thủ Công
+      Git & AGENTS.md         MVP & Cân nhắc Demo       Tech Stack & Kiên trúc     AI Code & Tự sửa lỗi      Human Acceptance
+
+
+
+
+  Bước 1: Dựng Môi Trường & Thiết Lập Luật Agent
+Trước khi bắt đầu gõ bất kỳ dòng lệnh nào, bạn cần chuẩn bị công cụ Coding Agent (Codex, Claude Code,
+Cursor, OpenCode...) và khởi tạo thư mục chuyên dụng chứa toàn bộ mã nguồn của dự án.
+
+   Khởi tạo Git quản lý phiên bản: Yêu cầu AI thực thi lệnh git init và tạo commit đầu tiên. Git là "phao
+   cứu sinh" quan trọng nhất: khi AI sửa phát sinh lỗi nghiêm trọng, bạn có thể hoàn tác (rollback) về trạng
+   thái chạy tốt trước đó chỉ bằng một lệnh đơn giản.
+   Tạo rào chắn hành vi với file AGENTS.md: Đây là bản hướng dẫn dự án tối cao đặt tại thư mục gốc. Mỗi
+   khi mở phiên làm việc mới, Agent sẽ ưu tiên đọc file này để tuân thủ kỷ luật phát triển.
+
+
+
+  Nội dung bắt buộc trong file AGENTS.md
+
+
+           # QUY TẮC PHÁT TRIỂN DỰ ÁN (AGENTS.MD) 1. MỖI LẦN THAY ĐỔI XONG: Bắt buộc phải
+    tạo 1 Git commit tương ứng với thông điệp rõ ràng, phục vụ việc truy vết và rollback khi
+    cần. 2. NGUYÊN TẮC KIỂM THỬ: Sau mỗi lần sửa đổi mã nguồn, Agent bắt buộc phải viết hoặc
+    cập nhật bài test liên quan. Phải tự chạy và đảm bảo 100% test vượt qua trước khi bàn
+    giao cho người dùng.
+
+
+  Mục đích: Buộc AI tự chịu trách nhiệm kiểm tra sản phẩm, ngăn chặn tình trạng "giao code hỏng" làm tốn thời gian người
+  dùng.
+
+
+
+
+Cẩm Nang Vibe Coding Thực Chiến                                                                                         Trang 1 / 4
+  Bước 2: Thiết Kế Giải Pháp Sản Phẩm (Product Design & MVP)
+Sai lầm cốt tử là cố gắng nhồi nhét tất cả tính năng vào phiên bản đầu tiên. Người dùng vibe code thông
+minh sẽ cùng AI đối thoại hai chiều để định nghĩa một phiên bản MVP (Minimum Viable Product - Sản
+phẩm khả dụng tối thiểu) gọn gàng nhất.
+
+
+
+   Nguyên Tắc Định Nghĩa MVP Tinh Gọn
+   Chỉ tập trung chạy thông suốt luồng người dùng cốt lõi nhất với chi phí thấp nhất. Các tính năng mở rộng sẽ
+   được bổ sung dần qua các vòng lặp sau. Ví dụ khi làm App Đọc Sách:
+
+       Bảo lưu ở MVP: Đọc file .txt đơn giản, bảng mã UTF-8, chế độ cuộn dọc, tự lưu vị trí đọc.
+       Tạm hoãn ở bản sau: Định dạng EPUB/PDF, dark mode/chế độ bảo vệ mắt, mục lục/chia chương,
+       bookmark.
+
+
+
+Chiến Lược Prototype / Demo Giao Diện: Khi Nào Cần Làm?
+Sau khi chốt ranh giới MVP, ta có thể yêu cầu AI tạo một file Demo (HTML tĩnh) mô phỏng tương tác phía
+Frontend trước khi viết logic thực tế. Việc có làm Demo hay không phụ thuộc vào chi phí hiện thực hóa
+Backend:
+
+
+ Trường hợp dự án                  Đặc điểm kỹ thuật                                       Quyết định quy trình
+
+
+ Chi phí Backend cao               Cần tích hợp nhiều API, xử lý tài liệu phức tạp, truy
+                                                                                            Bắt buộc làm Demo
+ (Vd: Kho tri thức RAG, AI chat,   xuất dữ liệu tốn kém. Viết sai luồng phải đập đi làm
+                                                                                           Chốt tương tác trước, mock dữ liệu.
+ hệ thống vector)                  lại rất tốn công.
+
+
+ Chi phí Backend thấp              Logic đơn giản, chủ yếu thao tác file trên máy cục       Bỏ qua Demo
+ (Vd: Trình đọc sách TXT, Todo     bộ. Làm riêng demo sẽ bị trùng lặp thao tác lao         Triển khai thẳng sản phẩm hoàn
+ list cục bộ)                      động vô ích.                                            chỉnh.
+
+
+
+
+  Prompt Mẫu Tạo Tài Liệu Thiết Kế Sản Phẩm
+
+
+           "Tôi muốn làm một ứng dụng [Tên app], bắt đầu bằng phiên bản MVP tối thiểu. Hãy
+    đề xuất các chức năng cốt lõi nhất cần giữ lại và các tính năng nên hoãn lại sau. Sau
+    khi thống nhất, hãy tổng hợp thành file docs/product-design.md giúp tôi."
+
+
+  Tài liệu product-design.md sẽ là kim chỉ nam duy nhất để bạn và AI không bị chệch hướng khi viết code.
+
+
+
+
+Cẩm Nang Vibe Coding Thực Chiến                                                                                       Trang 2 / 4
+  Bước 3: Thiết Kế Phương Án Kỹ Thuật (Technical Design)
+Sau khi hoàn tất tài liệu sản phẩm, bước tiếp theo là xác định kiến trúc phần mềm và ngăn xếp công nghệ
+(Tech Stack). Khuyến khích mở một phiên làm việc mới (New Session) để làm mới ngữ cảnh và yêu cầu AI
+đọc file docs/product-design.md.
+
+   Thảo luận công nghệ 2 chiều: Cùng AI cân nhắc ưu - nhược điểm của các giải pháp (ví dụ: so sánh
+   Electron tiện lợi với Tauri gọn nhẹ; chọn React + Vite + TypeScript).
+   Xuất file docs/technical-design.md: Yêu cầu AI quy định rõ kiến trúc 3 tầng, cấu trúc lưu trữ dữ
+   liệu cục bộ (JSON/SQLite), giao tiếp tiến trình an toàn và kế hoạch kiểm thử.
+
+
+  Bước 4: Hiện Thực Mã Nguồn & AI Tự Kiểm Thử (Self-Testing)
+Đây là điểm phân biệt giữa người vibe code nghiệp dư và chuyên nghiệp. Nếu chỉ để AI viết code mà không
+cấp công cụ tự kiểm chứng, bạn sẽ tự biến mình thành "máy test dạo", liên tục thử nghiệm và báo lỗi cho
+AI trong bất lực.
+
+
+
+
+       1. Đọc Tài Liệu            2. Viết Mã Nguồn                                     3. Tự Chạy Test         4. Git Commit & Bàn Giao
+        PRD & Tech Spec            Code + Unit Tests                                  Plugin/Runner kiểm tra       Chỉ khi 100% Passed
+
+
+                                                       Có lỗi: Tự sửa mã & chạy lại
+
+
+
+
+  Kích Hoạt Công Cụ Kiểm Thử Cho Agent
+  Để AI có thể tự xác minh chất lượng, hãy cài đặt các plugin và năng lực thực thi trực tiếp:
+
+      Computer Use Plugin: Cho phép Agent trực tiếp tương tác hệ điều hành, khởi động ứng dụng và
+      bắt lỗi log runtime.
+
+      Chrome Plugin / Headless Browser: Giúp AI tự mở trang web, kiểm tra layout, chụp màn hình và
+      xác minh sự kiện bấm chuột.
+      Terminal Runner: AI tự thực thi npm test hoặc pytest, phân tích stack-trace và vá lỗi trước khi
+      thông báo hoàn thành.
+
+
+
+
+Cẩm Nang Vibe Coding Thực Chiến                                                                                                           Trang 3 / 4
+  Bước 5: Kiểm Chứng Thủ Công (Human-in-the-Loop)
+Dù AI có vượt qua toàn bộ bài test tự động, bạn vẫn bắt buộc phải tự tay trải nghiệm sản phẩm. Các kiểm
+thử tự động chỉ xác nhận logic cú pháp; chỉ có con người mới đánh giá được trải nghiệm thao tác (UX), độ
+mượt mà của giao diện và các tình huống biên (edge-cases) bất thường.
+Khi gặp lỗi, hãy gửi nguyên văn thông báo lỗi và hành vi sai lệch cho AI. Nhờ đã có Git commit ở Bước 1, AI có thể sửa
+lỗi mà không làm phá hỏng các tính năng cũ.
+
+
+  3 Nguyên Tắc "Sống Còn" Tuyệt Đối Không Thể Lược Bỏ
+1. Bắt buộc dùng công cụ quản lý phiên bản (Git): Mỗi khi làm xong một tính năng, phải commit ngay. AI
+   viết code luôn tiềm ẩn rủi ro phá hỏng chức năng cũ; Git là chìa khóa duy nhất để phục hồi an toàn.
+2. Bắt buộc trao cho AI khả năng tự Test: Tuyệt đối không nhận bàn giao code thô khi chưa chạy kiểm
+   thử. Hãy biến AI thành lập trình viên kiêm tester của chính nó.
+3. Bắt buộc kiểm chứng thủ công: Không bao giờ tin tưởng hoàn toàn 100% vào AI. Quyền nghiệm thu
+   cuối cùng luôn thuộc về con người.
+
+
+Ma Trận Điều Chỉnh Quy Trình Theo Độ Phức Tạp
+
+ Loại yêu cầu                       Các bước áp dụng                           Đánh đổi (Trade-off)
+
+
+ Đơn giản & Ít quan trọng           Dựng Git   → Gửi lệnh làm trực tiếp → AI    Tốc độ cực nhanh
+
+ (Thêm nút bấm, sửa css,            tự test   → Kiểm chứng thủ công.           Ít tốn công, nhưng giao nhiều quyền quyết định cho
+ script nhỏ)                        (Lược bỏ Bước 2 & 3)                       AI.
+
+
+ Phức tạp & Trọng yếu               Đi trọn vẹn 5 bước:                         Kiểm soát tối đa
+ (Tạo app mới, tính năng core,      Git & AGENTS → Product Design →            Tốn thời gian chuẩn bị hơn, nhưng sản phẩm đúng
+ bảo mật)                           Tech Design → AI Test → Nghiệm thu.        100% kỳ vọng.
+
+
+
+
+   Lời Khuyên Dành Cho Người Mới Bắt Đầu
+   Quy trình Vibe Coding không phải là một công thức cứng nhắc mà là sự cân bằng giữa hiệu suất và mức độ kiểm
+   soát. Bạn càng tham gia sâu vào khâu định hướng thiết kế (Bước 2 & 3), sản phẩm cuối cùng càng tiệm cận với mong
+   muốn trong đầu bạn. Hãy bắt đầu từ những dự án nhỏ, kiên trì giữ kỷ luật Git và file AGENTS.md để xây dựng tư duy
+   cộng tác hiệu quả nhất với AI!
+
+
+
+
+Cẩm Nang Vibe Coding Thực Chiến                                                                                         Trang 4 / 4
+
