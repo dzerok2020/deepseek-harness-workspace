@@ -118,6 +118,37 @@ CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:800
 [ "$CODE" = "200" ] && ok "GET /health = 200 (Laya sẵn sàng ở 127.0.0.1:8000; nạp model lần đầu ~16s)" \
   || bad "GET /health = ${CODE:-000} — Laya chưa sẵn sàng"
 
+head_ "10. Dịch vụ Hindsight (bộ nhớ dài hạn của DSH)"
+# Hindsight chết im lặng: DSH vẫn chạy bình thường, chỉ là không có ký ức nào được
+# ghi vào hay nạp ra (đã từng có 1038 lần retain thất bại mà không hiện lỗi ở đâu).
+# Mục này để nhìn ra, gồm cả trang quản trị ở http://localhost:9999.
+systemctl --user is-active --quiet hindsight-daemon.service \
+  && ok "hindsight-daemon.service đang chạy" \
+  || bad "hindsight-daemon.service KHÔNG chạy — DSH sẽ chạy mà không có ký ức: systemctl --user start hindsight-daemon.service"
+CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:9077/health 2>/dev/null)"
+[ "$CODE" = "200" ] && ok "GET 127.0.0.1:9077/health = 200 (daemon sẵn sàng)" \
+  || bad "GET 127.0.0.1:9077/health = ${CODE:-000} — daemon chưa sẵn sàng"
+
+UNIT="$HOME/.config/systemd/user/hindsight-control-plane.service"
+SRC="$WS/systemd/hindsight-control-plane.service"
+if [ -L "$UNIT" ] && [ "$(readlink "$UNIT")" = "$SRC" ]; then ok "unit control plane là symlink trỏ về workspace"
+elif [ -L "$UNIT" ]; then bad "unit control plane trỏ sai chỗ: $(readlink "$UNIT") (muốn: $SRC)"
+elif [ -f "$UNIT" ]; then bad "unit control plane là bản sao, không phải symlink (sửa trong repo sẽ không có tác dụng)"
+else bad "THIẾU $UNIT — bật: ln -sfn $SRC $UNIT && systemctl --user daemon-reload && systemctl --user enable --now hindsight-control-plane.service"; fi
+[ "$(systemctl --user is-enabled hindsight-control-plane.service 2>/dev/null)" = "enabled" ] \
+  && ok "đã enable (tự chạy khi đăng nhập — linger đang bật)" \
+  || bad "CHƯA enable: systemctl --user enable hindsight-control-plane.service"
+systemctl --user is-active --quiet hindsight-control-plane.service \
+  && ok "hindsight-control-plane.service đang chạy" \
+  || bad "hindsight-control-plane.service KHÔNG chạy — http://localhost:9999 không mở được: systemctl --user start hindsight-control-plane.service"
+CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:9999/api/health 2>/dev/null)"
+[ "$CODE" = "200" ] && ok "GET 127.0.0.1:9999/api/health = 200 (trang quản trị: http://localhost:9999)" \
+  || bad "GET 127.0.0.1:9999/api/health = ${CODE:-000} — trang quản trị chưa sẵn sàng"
+# Trang quản trị KHÔNG có xác thực: chỉ được nghe ở loopback.
+if ss -ltn 2>/dev/null | grep -q '0\.0\.0\.0:9999'; then
+  bad "control plane nghe trên 0.0.0.0:9999 mà KHÔNG có xác thực — cả LAN đọc được bộ nhớ (đặt HOSTNAME=127.0.0.1 trong unit)"
+else ok "control plane chỉ nghe trên loopback (không lộ bộ nhớ ra LAN)"; fi
+
 printf '\n\033[1mKẾT QUẢ:\033[0m %d đạt, %d lỗi\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ] && echo "Hệ thống lành." || echo "Có mục cần xử lý — xem các dòng LỖI ở trên."
 rm -f "$DUMP_ERR" "$DUMP_OUT"
