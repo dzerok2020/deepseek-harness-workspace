@@ -99,6 +99,25 @@ if git -C "$WS" rev-parse --git-dir >/dev/null 2>&1; then
   done
 else bad "workspace chưa được git init"; fi
 
+head_ "9. Dịch vụ Laya (System-1 — backend của tool decide)"
+# Laya chết im lặng: tool decide KHÔNG báo lỗi rõ, nó chỉ rơi xuống Jev rồi trả số
+# kém tin cậy (checkpoint còn cảnh báo confidence chưa hiệu chuẩn). Mục này để nhìn ra.
+UNIT="$HOME/.config/systemd/user/laya-serve.service"
+SRC="$WS/systemd/laya-serve.service"
+if [ -L "$UNIT" ] && [ "$(readlink "$UNIT")" = "$SRC" ]; then ok "unit là symlink trỏ về workspace"
+elif [ -L "$UNIT" ]; then bad "unit trỏ sai chỗ: $(readlink "$UNIT") (muốn: $SRC)"
+elif [ -f "$UNIT" ]; then bad "unit là bản sao, không phải symlink (sửa trong repo sẽ không có tác dụng)"
+else bad "THIẾU $UNIT — bật: ln -sfn $SRC $UNIT && systemctl --user daemon-reload && systemctl --user enable --now laya-serve.service"; fi
+[ "$(systemctl --user is-enabled laya-serve.service 2>/dev/null)" = "enabled" ] \
+  && ok "đã enable (tự chạy khi đăng nhập — linger đang bật)" \
+  || bad "CHƯA enable: systemctl --user enable laya-serve.service"
+systemctl --user is-active --quiet laya-serve.service \
+  && ok "laya-serve.service đang chạy" \
+  || bad "laya-serve.service KHÔNG chạy — decide sẽ rơi xuống Jev: systemctl --user start laya-serve.service"
+CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:8000/health 2>/dev/null)"
+[ "$CODE" = "200" ] && ok "GET /health = 200 (Laya sẵn sàng ở 127.0.0.1:8000; nạp model lần đầu ~16s)" \
+  || bad "GET /health = ${CODE:-000} — Laya chưa sẵn sàng"
+
 printf '\n\033[1mKẾT QUẢ:\033[0m %d đạt, %d lỗi\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ] && echo "Hệ thống lành." || echo "Có mục cần xử lý — xem các dòng LỖI ở trên."
 rm -f "$DUMP_ERR" "$DUMP_OUT"
