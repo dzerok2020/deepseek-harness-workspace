@@ -1,0 +1,37 @@
+# Hindsight Control Plane UI — the web browser for this workspace's memory
+# (knowledge pages, documents, mental models, operations).
+#
+# Source of truth lives here; ~/.config/systemd/user/hindsight-control-plane.service
+# is a symlink to this file (same symlink convention as laya-serve.service). Edit it here.
+#
+# Serves http://localhost:9999 and talks to the local daemon at http://127.0.0.1:9077
+# (daemon unit: hindsight-daemon.service; profile: ~/.hindsight/cli-profiles/coding-agent.toml).
+#
+# `hindsight ui` is only a launcher: it downloads/executes
+# @vectorize-io/hindsight-control-plane (Next.js standalone, port 9999) and forwards
+# its environment. The child reads PORT and HOSTNAME (bin/cli.js), so both are pinned
+# here — HOSTNAME=127.0.0.1 on purpose:
+#   the control plane has NO authentication ("No API key configured — public access"),
+#   so binding loopback keeps the whole memory database off the LAN. Do not set
+#   HOSTNAME=0.0.0.0 unless you add an auth layer in front of it.
+#
+# Run by systemd in the foreground so it starts at login (linger is enabled for this
+# user) and restarts after a crash, instead of an ad-hoc `hindsight ... ui`.
+[Unit]
+Description=Hindsight Control Plane UI (DSH memory browser, port 9999)
+After=network-online.target hindsight-daemon.service
+Wants=network-online.target hindsight-daemon.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/dzerok/.hindsight
+ExecStart=/home/dzerok/.local/bin/hindsight -p coding-agent ui
+Environment=HOSTNAME=127.0.0.1
+Environment=PORT=9999
+Restart=always
+RestartSec=5
+TimeoutStartSec=300
+TimeoutStopSec=30
+
+[Install]
+WantedBy=default.target
