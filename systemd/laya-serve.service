@@ -1,0 +1,35 @@
+# Laya System-1 server for DeepSeek Harness — the backend of the `decide` tool.
+#
+# Source of truth lives here; ~/.config/systemd/user/laya-serve.service is a symlink
+# to this file (same symlink convention as the local plugins). Edit it here.
+#
+# Listens on 127.0.0.1:8000, which is exactly what ~/.dsh/decide.json points DSH at
+# ({"layaUrl": "http://127.0.0.1:8000"}). Binding loopback only keeps it off the LAN.
+#
+# Model: convaiinnovations/laya, already in the HuggingFace cache, preloaded at
+# startup (LAYA_PRELOAD defaults to true) so the first `decide` call is fast.
+# Endpoints: GET /health, POST /v1/systemone, POST /v1/systemone/batch.
+#
+# Run by systemd in the foreground so it survives crashes and starts at login
+# (linger is enabled for this user), instead of the old ad-hoc `systemd-run`.
+[Unit]
+Description=Laya System-1 server (DeepSeek Harness decide backend)
+Documentation=https://huggingface.co/convaiinnovations/laya
+After=network.target
+
+[Service]
+Type=exec
+WorkingDirectory=/home/dzerok/Documents/deepseek-harness/default-workspace
+Environment=LAYA_HOST=127.0.0.1
+Environment=LAYA_PORT=8000
+Environment=LAYA_LOG_LEVEL=info
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/dzerok/Documents/deepseek-harness/default-workspace/.laya-venv/bin/laya-serve
+Restart=always
+RestartSec=5
+TimeoutStartSec=900
+TimeoutStopSec=30
+KillMode=mixed
+
+[Install]
+WantedBy=default.target
