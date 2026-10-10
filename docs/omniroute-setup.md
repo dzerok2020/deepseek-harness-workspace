@@ -18,7 +18,7 @@ dsh web ──(provider "or", api anthropic-messages)──▶ headroom proxy 12
 
 ## 2. systemd — nguồn gốc uy tín của tiến trình
 
-- Unit: `~/.config/systemd/user/omniroute.service`
+- Unit: `systemd/omniroute.service` trong workspace (canonical), symlink ở `~/.config/systemd/user/omniroute.service`. Sửa unit → sửa file trong repo, rồi `systemctl --user daemon-reload`.
   - `ExecStart=~/.local/share/mise/installs/node/26.8.2/bin/omniroute serve --no-open --no-recovery`
   - `Restart=always`, `RestartSec=3`; supervisor tích hợp của OmniRoute đã TẮT (`--no-recovery`) để systemd là chủ duy nhất.
   - `PATH` được khai báo tường minh (mise không có trong PATH mặc định của user unit).
