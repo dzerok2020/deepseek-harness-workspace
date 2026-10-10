@@ -149,6 +149,38 @@ if ss -ltn 2>/dev/null | grep -q '0\.0\.0\.0:9999'; then
   bad "control plane nghe trên 0.0.0.0:9999 mà KHÔNG có xác thực — cả LAN đọc được bộ nhớ (đặt HOSTNAME=127.0.0.1 trong unit)"
 else ok "control plane chỉ nghe trên loopback (không lộ bộ nhớ ra LAN)"; fi
 
+head_ "11. Dịch vụ OmniRoute + Headroom (chuỗi model của provider \`or\`)"
+# OmniRoute = gateway model chính (127.0.0.1:20128); Headroom = proxy anthropic (8787)
+# mà DSH provider `or` gọi vào: dsh -> headroom:8787 -> omniroute:20128 -> upstream.
+# Chuỗi này chết = mọi hội thoại qua `or` chết (kể cả session đang chạy).
+# Chi tiết vận hành: docs/omniroute-setup.md
+UNIT="$HOME/.config/systemd/user/omniroute.service"
+SRC="$WS/systemd/omniroute.service"
+if [ -L "$UNIT" ] && [ "$(readlink "$UNIT")" = "$SRC" ]; then ok "unit là symlink trỏ về workspace"
+elif [ -L "$UNIT" ]; then bad "unit trỏ sai chỗ: $(readlink "$UNIT") (muốn: $SRC)"
+elif [ -f "$UNIT" ]; then bad "unit là bản sao, không phải symlink (sửa trong repo sẽ không có tác dụng) — bật: ln -sfn $SRC $UNIT && systemctl --user daemon-reload"
+else bad "THIẾU $UNIT — bật: ln -sfn $SRC $UNIT && systemctl --user daemon-reload && systemctl --user enable --now omniroute.service"; fi
+[ "$(systemctl --user is-enabled omniroute.service 2>/dev/null)" = "enabled" ] \
+  && ok "omniroute đã enable (tự chạy khi đăng nhập — linger đang bật)" \
+  || bad "omniroute CHƯA enable: systemctl --user enable omniroute.service"
+systemctl --user is-active --quiet omniroute.service \
+  && ok "omniroute.service đang chạy" \
+  || bad "omniroute.service KHÔNG chạy — DSH không gọi được model nào: systemctl --user start omniroute.service (KHÔNG dùng 'omniroute stop' khi unit chạy)"
+CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:20128/api/health 2>/dev/null)"
+[ "$CODE" = "200" ] && ok "GET 127.0.0.1:20128/api/health = 200 (dashboard: http://localhost:20128)" \
+  || bad "GET 127.0.0.1:20128/api/health = ${CODE:-000} — OmniRoute chưa sẵn sàng (khởi động ~10s)"
+if ss -ltn 2>/dev/null | grep -q '0\.0\.0\.0:20128'; then
+  bad "OmniRoute nghe trên 0.0.0.0:20128 trong khi REQUIRE_API_KEY=false — cả LAN xài nhờ được (sửa OMNIROUTE_SERVER_HOST=127.0.0.1 trong ~/.omniroute/.env rồi systemctl --user restart omniroute.service)"
+else ok "OmniRoute chỉ nghe trên loopback (không lộ gateway ra LAN)"; fi
+systemctl --user is-active --quiet headroom-proxy.service \
+  && ok "headroom-proxy.service đang chạy" \
+  || bad "headroom-proxy.service KHÔNG chạy — provider or của DSH chết theo: systemctl --user start headroom-proxy.service"
+CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:8787/v1/models 2>/dev/null)"
+case "$CODE" in
+  401|403|200) ok "headroom 127.0.0.1:8787 đáp HTTP $CODE (401/403 là đúng — proxy giữ nguyên xác thực tới OmniRoute)" ;;
+  *) bad "headroom 127.0.0.1:8787 = ${CODE:-000} — chuỗi dsh→or có thể đang chết" ;;
+esac
+
 printf '\n\033[1mKẾT QUẢ:\033[0m %d đạt, %d lỗi\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ] && echo "Hệ thống lành." || echo "Có mục cần xử lý — xem các dòng LỖI ở trên."
 rm -f "$DUMP_ERR" "$DUMP_OUT"
