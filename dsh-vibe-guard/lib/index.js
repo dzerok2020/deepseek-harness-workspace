@@ -62,11 +62,9 @@ export function apply(ctx, rawConfig) {
     const verdict = classifyCall(exec, cfg);
     const blocked = downstream !== null && typeof downstream === 'object' && downstream.kind === 'block';
     const ok = !failed(result) && !blocked;
-    if (verdict.kind === 'verify' && !ok) {
-      noteFailedVerify(state, verdict);
-    } else {
-      noteCall(state, verdict, ok);
-    }
+    // A downstream block means nothing ran, unlike a shell command that ran then failed.
+    noteCall(state, blocked ? { ...verdict, mayEditOnFailure: false } : verdict, ok);
+    if (verdict.kind === 'verify' && !ok) noteFailedVerify(state, verdict);
     return downstream;
   });
 

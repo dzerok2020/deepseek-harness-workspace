@@ -82,6 +82,37 @@ test('a failed verification re-opens the gate', async () => {
   assert.equal(steers.length, 1);
 });
 
+test('a shell write followed by failure still leaves verification debt', async () => {
+  const { ctx, handlers } = makeCtx();
+  apply(ctx, {});
+  const { agent, steers } = makeAgent();
+  await feed(handlers, { name: 'bash', arguments: { command: 'echo changed > report.txt && false' }, agent }, { isError: true });
+  await handlers.get('agent/turn-stopping')({ agent, turn: 1 });
+  assert.equal(steers.length, 1);
+});
+
+test('a failed verification after a write cannot close the debt', async () => {
+  const { ctx, handlers } = makeCtx();
+  apply(ctx, {});
+  const { agent, steers } = makeAgent();
+  await feed(handlers, { name: 'bash', arguments: { command: 'echo changed > report.txt; node --test missing.test.js' }, agent }, { isError: true });
+  await handlers.get('agent/turn-stopping')({ agent, turn: 1 });
+  assert.equal(steers.length, 1);
+});
+
+test('a blocked shell write cannot create verification debt', async () => {
+  const { ctx, handlers } = makeCtx();
+  apply(ctx, {});
+  const { agent, steers } = makeAgent();
+  await handlers.get('tools/post-execute')(
+    { name: 'bash', arguments: { command: 'echo changed > report.txt && false' }, agent },
+    { isError: true },
+    async () => ({ kind: 'block' })
+  );
+  await handlers.get('agent/turn-stopping')({ agent, turn: 1 });
+  assert.equal(steers.length, 0);
+});
+
 test('DSH_VIBE_GUARD=off disables everything', () => {
   const { ctx, guards, handlers } = makeCtx();
   process.env.DSH_VIBE_GUARD = 'off';

@@ -119,6 +119,14 @@ test("a failed verification does NOT count as done", () => {
   assert.match(buildGateMessage(info, cfg), /FAILED/);
 });
 
+test("failed shell commands distinguish a possible earlier write from a skipped write", () => {
+  const classify = (command) => classifyCall({ name: "bash", arguments: { command } }, cfg);
+  assert.equal(classify("echo changed > report.txt && false").mayEditOnFailure, true);
+  assert.equal(classify("echo changed > report.txt; node --test missing.test.js").mayEditOnFailure, true);
+  assert.equal(classify("false && echo changed > report.txt").mayEditOnFailure, false);
+  assert.equal(classify("node --test missing.test.js").mayEditOnFailure, false);
+});
+
 test("a failed edit creates no debt", () => {
   const s = createState();
   noteCall(s, { kind: "edit" }, false);

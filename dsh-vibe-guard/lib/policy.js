@@ -228,8 +228,17 @@ export function classifyCall(call, cfg) {
   if (cfg.shellTools.includes(name)) {
     const command = extractCommand(args);
     if (command.length === 0) return { kind: "neutral", via: "none", detail: "" };
-    if (cfg.re.verify.some((re) => re.test(command))) return { kind: "verify", via: "shell", detail: firstLine(command) };
-    if (cfg.re.editShell.some((re) => re.test(command))) return { kind: "edit", via: "shell", detail: firstLine(command) };
+    // The last matching action determines whether the invocation ends with a check or a write.
+    // A failed shell may still have performed an earlier write; only a literal `false &&`
+    // prefix proves the write could not have been reached.
+    const lastMatchAt = (rules) => Math.max(-1, ...rules.flatMap((re) =>
+      [...command.matchAll(new RegExp(re.source, re.flags.includes("g") ? re.flags : `${re.flags}g`))]
+        .map((match) => match.index)));
+    const lastVerifyAt = lastMatchAt(cfg.re.verify);
+    const lastEditAt = lastMatchAt(cfg.re.editShell);
+    const mayEditOnFailure = lastEditAt >= 0 && !/^\s*false\s*&&/.test(command);
+    if (lastEditAt >= 0 && lastEditAt >= lastVerifyAt) return { kind: "edit", via: "shell", detail: firstLine(command), mayEditOnFailure };
+    if (lastVerifyAt >= 0) return { kind: "verify", via: "shell", detail: firstLine(command), mayEditOnFailure };
     return { kind: "neutral", via: "shell", detail: firstLine(command) };
   }
   return { kind: "neutral", via: "none", detail: "" };
@@ -266,13 +275,13 @@ export function createState() {
 }
 
 /**
- * Record the outcome of a tool call. `ok` must be false for failed calls: a failed write is not
- * a change, and a failed check is not evidence - both are the whole point of the gate.
+ * Record the outcome of a tool call. A failed standalone write is not a change, but a shell
+ * invocation can write before returning failure. A failed check is never passing evidence.
  */
 export function noteCall(state, verdict, ok) {
   state.seq += 1;
-  if (!ok) return state;
-  if (verdict?.kind === "edit") {
+  if (!ok && !verdict?.mayEditOnFailure) return state;
+  if (verdict?.kind === "edit" || (!ok && verdict?.mayEditOnFailure)) {
     state.edits += 1;
     state.lastEditAt = state.seq;
     state.lastEditDetail = verdict.detail ?? "";
