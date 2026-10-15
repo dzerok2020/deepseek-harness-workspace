@@ -82,6 +82,15 @@ omniroute cost / usage                          # báo cáo chi phí/quota
 3. `b-ai/jev-latest` vẫn nằm trong model list DSH — chọn trong UI sẽ fail; cân nhắc xóa.
 4. Nâng context window 1M theo mục 4 khi có nhu cầu session dài.
 
+## GPT-6.1 Sol Fast — cấu hình ngày 16/10/2026
+
+- Giữ `CODEX_CLIENT_VERSION=0.160.0` trong unit để vượt kiểm tra phiên bản client của upstream.
+- Model mới: `cx/gpt-6.1-sol-fast`; alias ngắn: `gpt-6.1-sol-fast`.
+- Fast không phải model upstream riêng: payload rule chỉ khớp `gpt-6.1-sol-fast` trên protocol `codex`, đổi `model` thành `gpt-6.1-sol` và đặt `service_tier=priority` trước khi gửi upstream.
+- Không bật Fast toàn cục; `cx/gpt-6.1-sol` không khớp rule này.
+- Cấu hình tái lập: [omniroute-fast-model.json](../systemd/omniroute-fast-model.json). Đây là bản ghi cấu hình, không tự được OmniRoute nạp. Khi khôi phục, POST `providerModel` tới `/api/provider-models`, PUT `alias` tới `/api/models/alias`, rồi thêm `payloadRule` vào mảng `override` hiện có qua PUT `/api/settings/payload-rules`. Phải giữ lại các rule khác và dùng API key có scope `manage`; không ghi key vào repo.
+- Kiểm thử live: hai tên Fast và model thường đều HTTP 200, output `OK`. Response không công bố `service_tier`, vì vậy kiểm thử này chưa chứng minh upstream thực sự phân bổ tài nguyên priority hoặc nhanh hơn. Priority có thể ảnh hưởng quota/chi phí theo tài khoản.
+
 ## 8. Kiểm tra nhanh sau máy chạy lại
 
 ```bash

@@ -1,0 +1,17 @@
+{
+  "providerModel": {
+    "provider": "codex",
+    "modelId": "gpt-6.1-sol-fast",
+    "modelName": "GPT-6.1 Sol Fast",
+    "apiFormat": "responses",
+    "supportedEndpoints": ["chat"]
+  },
+  "alias": {
+    "alias": "gpt-6.1-sol-fast",
+    "model": "cx/gpt-6.1-sol-fast"
+  },
+  "payloadRule": {
+    "models": [{"name": "gpt-6.1-sol-fast", "protocol": "codex"}],
+    "params": {"model": "gpt-6.1-sol", "service_tier": "priority"}
+  }
+}
