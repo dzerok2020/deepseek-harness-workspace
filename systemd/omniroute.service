@@ -7,6 +7,8 @@ Wants=network-online.target
 Type=simple
 # CLI tu dong doc ~/.omniroute/.env (PORT, HOST, keys...). Systemd la owner cua restart.
 Environment=PATH=/home/dzerok/.local/share/mise/installs/node/26.8.2/bin:/usr/local/bin:/usr/bin:/bin
+# Match the installed Codex CLI to pass upstream model-version gating.
+Environment=CODEX_CLIENT_VERSION=0.160.0
 ExecStart=/home/dzerok/.local/share/mise/installs/node/26.8.2/bin/omniroute serve --no-open --no-recovery
 Restart=always
 RestartSec=3
