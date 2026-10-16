@@ -184,6 +184,28 @@ function sendJson(res, status, payload) {
   res.end(text);
 }
 
+/**
+ * The launcher's Chromium tab wedges occasionally, and Playwright then fails with
+ * a bare "locator.click: Timeout 3000ms exceeded" (or the bridge reports "ChatGPT
+ * stopped responding after the task started"). Neither names the remedy, so append
+ * it to the streamed error text. ASCII only on purpose: this lands inside a JSON
+ * string in an SSE frame, so a quote or backslash would corrupt the frame.
+ */
+const WEDGE_SIGNATURES = [
+  /locator\.click: Timeout \d+ms exceeded/g,
+  /ChatGPT stopped responding after the task started/g,
+];
+const WEDGE_REMEDY =
+  " [dsh-chatgpt-shim: the launcher browser tab is wedged - bring its Chromium window to the front or reload that ChatGPT tab, then retry]";
+
+export function annotateWedgeError(text) {
+  let annotated = text;
+  for (const signature of WEDGE_SIGNATURES) {
+    annotated = annotated.replace(signature, (match) => match + WEDGE_REMEDY);
+  }
+  return annotated;
+}
+
 export function createServer({ bridgeUrl, cwd, models }) {
   const base = bridgeUrl.replace(/\/+$/, "");
   return http.createServer(async (req, res) => {
@@ -216,7 +238,21 @@ export function createServer({ bridgeUrl, cwd, models }) {
     const headers = { "content-type": upstream.headers.get("content-type") ?? "text/event-stream", "cache-control": "no-cache" };
     res.writeHead(upstream.status, headers);
     if (!upstream.body) return res.end();
-    Readable.fromWeb(upstream.body).pipe(res);
+    const decoder = new TextDecoder();
+    const encoder = new TextEncoder();
+    Readable.fromWeb(
+      upstream.body.pipeThrough(
+        new TransformStream({
+          transform(chunk, controller) {
+            controller.enqueue(encoder.encode(annotateWedgeError(decoder.decode(chunk, { stream: true }))));
+          },
+          flush(controller) {
+            const tail = decoder.decode();
+            if (tail) controller.enqueue(encoder.encode(annotateWedgeError(tail)));
+          },
+        }),
+      ),
+    ).pipe(res);
   });
 }
 

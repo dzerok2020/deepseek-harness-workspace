@@ -8,6 +8,7 @@ import { once } from "node:events";
 import {
   DEFAULT_MODELS,
   adaptRequestBody,
+  annotateWedgeError,
   buildEnvironmentContext,
   buildModelsPayload,
   buildTurnMetadata,
@@ -124,6 +125,23 @@ test("adaptRequestBody lifts DSH's system message into instructions", () => {
   assert.equal(out.input.some((i) => i.role === "system"), false, "no system item survives in input");
   assert.equal(out.input[0].role, "user");
   assert.ok(out.input[0].content[0].text.includes("<environment_context>"));
+});
+
+test("annotateWedgeError appends the remedy to a wedged-tab failure", () => {
+  const raw =
+    'data: {"type":"response.failed","response":{"error":{"message":"locator.click: Timeout 3000ms exceeded."}}}';
+  const out = annotateWedgeError(raw);
+  assert.match(
+    out,
+    /locator\.click: Timeout 3000ms exceeded \[dsh-chatgpt-shim: the launcher browser tab is wedged/,
+  );
+  // the annotation must not corrupt the SSE frame's JSON
+  assert.equal(JSON.parse(out.replace(/^data: /, "")).type, "response.failed");
+});
+
+test("annotateWedgeError leaves healthy traffic byte-identical", () => {
+  const healthy = 'data: {"type":"response.output_text.delta","delta":"DSH-CHATGPT-OK"}';
+  assert.equal(annotateWedgeError(healthy), healthy);
 });
 
 test("adaptRequestBody rejects models the bridge does not publish", () => {

@@ -101,7 +101,9 @@ bridge drives the system Chromium, whose CDP endpoint is `127.0.0.1:44557`
 (`/json/list` is useful for diagnosis) — do not reload or close the user's tabs
 yourself. Never substitute a browser process, cookie scraping, or an alternate
 automation path; per `browser-skill` those require the injected `bsk_*` tools, and
-if they are absent, say so instead.
+if they are absent, say so instead. The adapter appends that remedy to the streamed
+error text, so a wedged turn now names the fix instead of surfacing a bare
+Playwright timeout.
 
 ## Cost, quota, and honesty
 
