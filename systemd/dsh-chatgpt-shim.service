@@ -1,0 +1,21 @@
+[Unit]
+Description=DSH adapter shim for the codex-chatgpt-web bridge (provider "cgw")
+Documentation=file:/home/dzerok/Documents/deepseek-harness/default-workspace/dsh-with-chatgpt/SKILL.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# The shim only speaks HTTP; the ChatGPT Web turn work happens in the bridge
+# (launcher) that must already be running on CGW_BRIDGE_URL.
+Environment=PATH=/home/dzerok/.local/share/mise/installs/node/26.8.2/bin:/usr/local/bin:/usr/bin:/bin
+Environment=CGW_CWD=/home/dzerok/Documents/deepseek-harness/default-workspace
+Environment=CGW_BRIDGE_URL=http://127.0.0.1:17841
+Environment=CGW_SHIM_PORT=17842
+ExecStart=/home/dzerok/.local/share/mise/installs/node/26.8.2/bin/node /home/dzerok/Documents/deepseek-harness/default-workspace/tools/dsh-chatgpt-shim.mjs
+Restart=always
+RestartSec=3
+TimeoutStopSec=10
+
+[Install]
+WantedBy=default.target
