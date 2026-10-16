@@ -8,7 +8,6 @@ import { once } from "node:events";
 import {
   DEFAULT_MODELS,
   adaptRequestBody,
-  annotateWedgeError,
   buildEnvironmentContext,
   buildModelsPayload,
   buildTurnMetadata,
@@ -132,21 +131,25 @@ test("adaptRequestBody lifts DSH's system message into instructions", () => {
   assert.ok(out.input[0].content[0].text.includes("<environment_context>"));
 });
 
-test("annotateWedgeError appends the remedy to a wedged-tab failure", () => {
-  const raw =
-    'data: {"type":"response.failed","response":{"error":{"message":"locator.click: Timeout 3000ms exceeded."}}}';
-  const out = annotateWedgeError(raw);
-  assert.match(
-    out,
-    /locator\.click: Timeout 3000ms exceeded \[dsh-chatgpt-shim: the launcher browser tab is wedged/,
-  );
-  // the annotation must not corrupt the SSE frame's JSON
-  assert.equal(JSON.parse(out.replace(/^data: /, "")).type, "response.failed");
-});
-
-test("annotateWedgeError leaves healthy traffic byte-identical", () => {
-  const healthy = 'data: {"type":"response.output_text.delta","delta":"DSH-CHATGPT-OK"}';
-  assert.equal(annotateWedgeError(healthy), healthy);
+test("server preserves upstream failures without inventing a diagnosis", async (t) => {
+  const raw = 'event: response.failed\ndata: {"type":"response.failed","response":{"error":{"message":"ChatGPT stopped responding after the task started. locator.click: Timeout 3000ms exceeded."}}}\n\n';
+  const bridge = http.createServer((_req, res) => {
+    res.writeHead(200, { "content-type": "text/event-stream" });
+    // Split inside a former annotation signature: chunking must not affect output.
+    res.write(raw.slice(0, 110));
+    res.end(raw.slice(110));
+  });
+  bridge.listen(0, "127.0.0.1");
+  await once(bridge, "listening");
+  const shim = createServer({ bridgeUrl: `http://127.0.0.1:${bridge.address().port}`, cwd: CWD, models: [...DEFAULT_MODELS] });
+  shim.listen(0, "127.0.0.1");
+  await once(shim, "listening");
+  t.after(() => { shim.close(); bridge.close(); });
+  const reply = await fetch(`http://127.0.0.1:${shim.address().port}/v1/responses`, {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(dshRequest()),
+  });
+  assert.equal(reply.status, 200);
+  assert.equal(await reply.text(), raw);
 });
 
 test("adaptRequestBody rejects models the bridge does not publish", () => {

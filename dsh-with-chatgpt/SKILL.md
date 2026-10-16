@@ -74,17 +74,26 @@ assertion has now been removed. Revalidate the full flow without it.
 `node --test test/` — 53 pass, 0 fail after that correction.
 `dsh --profile web --dump-config` accepts the `cgw` route.
 
-Earlier DSH requests reached the browser stage, but that does not prove the
-complete envelope contract. The current synthetic check (cwd `/tmp`, 60s timeout)
-passes only 2/4 stages: text fails with `locator.click: Timeout 3000ms exceeded`;
-tool generation fails with `ChatGPT browser DOM observation did not respond within
-3ms`. DSH text, tool execution, and tool-result continuation are **not yet verified**.
-Random per-request thread/turn ids also require retry/continuation validation before
-activation. Re-run an isolated headless DSH test only after browser transport works.
+The isolated headless DSH probe subsequently emitted `tool_call` for `read` and
+`tool_result` with status `completed`, reading a disposable nonsecret proof file.
+Evidence: `/tmp/dsh-cgw-proof-events.jsonl`, lines 4–5. This proves DSH tool
+execution, not receipt-to-final-answer: the same run ends in
+`chatgpt_submitted_turn_failed`. Temporary evidence may disappear after reboot.
 
-A returned `function_call` proves only tool-call generation, not execution or
-successful continuation. DSH tool execution and receipt-to-final-answer remain
-**not yet verified**. The adapter must describe the real execution environment;
+Five recent browser diagnostics record the original error:
+`ChatGPT opened another user turn while the bound assistant response was detached`.
+Latest inspected trace: `c9f580377e8e`, captured 2026-10-16T21:24:22.282Z, under
+`~/.codex-chatgpt-web/diagnostics/browser-turns/c9f580377e8e-cb44c7e9/21-turn-failed.json`.
+The bridge's response ownership guard throws it when the bound assistant vanishes
+and the replacement DOM identities do not pass reconciliation. Whether this is DOM
+reshaping or a genuinely competing turn remains unknown. Plain string tool results
+are explicitly supported upstream; do not JSON-wrap them as a speculative fix.
+Stable-envelope synthetic continuation also failed, so ids alone are not a proven
+repair. The live adapter still generates per-request thread/turn ids; preserving
+identity across DSH continuations remains an unverified contract requirement.
+
+A returned `function_call` alone proves only tool-call generation. Full DSH
+receipt-to-final-answer remains **not yet verified**. The adapter must describe the real execution environment;
 never add DEV simulation assertions or fabricated Codex trust markers to pass a
 gate. Never read cookies/tokens or reuse another browser profile.
 
@@ -100,20 +109,22 @@ node --test test/dsh-chatgpt-shim.test.mjs             # adapter unit tests
 Start order: bridge (launcher) → adapter. The adapter stays up even if the bridge
 is down; turns then fail with `bridge unreachable` instead of hanging.
 
-Two wedged-tab symptoms, both browser-state and neither an envelope problem:
-*"ChatGPT stopped responding after the task started"*, and `locator.click: Timeout
-3000ms exceeded` on the model-switcher button (the element resolves but never
-becomes clickable). Ask the human to revive the ChatGPT tab in the launcher. The
-bridge uses embedded Electron WebContentsView surfaces, not the user's ordinary
-Chromium. Source inspection shows persistent partition
-`persist:codex-web-gpt-chatgpt` under the launcher user-data directory (default
-`~/.config/Codex Web GPT`). Active turn views already disable background throttling;
-adding Chromium launch flags is not a proven repair. Do not reload or close the
-user's tabs yourself. Never substitute a browser process, cookie scraping, or an alternate
-automation path; per `browser-skill` those require the injected `bsk_*` tools, and
-if they are absent, say so instead. The adapter appends that remedy to the streamed
-error text, so a wedged turn now names the fix instead of surfacing a bare
-Playwright timeout.
+Do not diagnose a wedged tab from a generic submission failure or locator timeout.
+Earlier guidance did so incorrectly: upstream `U_` wraps multiple original errors
+as `ChatGPT stopped responding after the task started`, and the inspected timeout
+log shows the click completed before navigation waiting timed out. The adapter
+now forwards upstream response bytes unchanged instead of appending that diagnosis.
+
+For a failure, correlate trace/time with existing `*-turn-failed.json` diagnostics
+under `~/.codex-chatgpt-web/diagnostics/browser-turns`. JSON captures the original
+browser error without enabling screenshots. `CODEX_CHATGPT_WEB_BROWSER_DIAGNOSTICS=1`
+adds PNG captures, which can expose private UI; do not enable it just to read errors.
+The bridge uses embedded Electron WebContentsView surfaces, not the user's ordinary
+Chromium, with persistent partition `persist:codex-web-gpt-chatgpt` under the
+launcher user-data directory (default `~/.config/Codex Web GPT`). Do not reload or
+close the user's tabs yourself. Never substitute a browser process, cookie scraping,
+or an alternate automation path; use injected `bsk_*` tools per `browser-skill`.
+Adding Chromium launch flags or asking for reload is not a proven continuation fix.
 
 ## Cost, quota, and honesty
 
