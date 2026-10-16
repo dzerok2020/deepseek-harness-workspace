@@ -20,6 +20,8 @@ export class Checkpoint {
    try { await handle.writeFile(JSON.stringify(next) + '\n'); await handle.sync(); }
    finally { await handle.close(); }
    await rename(temp, this.file);
+   const directory = await open(path.dirname(this.file), 'r');
+   try { await directory.sync(); } finally { await directory.close(); }
    return next;
   } finally {
    await unlink(temp).catch(error => { if (error.code !== 'ENOENT') throw error; });
@@ -37,6 +39,15 @@ export class Checkpoint {
    return { version: 1, workspace, taskId, delivery: 'idle', pending: null, reply: null };
   });
  }
+ async bindChat(url) {
+  const parsed = new URL(url);
+  if (parsed.origin !== 'https://chatgpt.com' || !/^\/c\/[A-Za-z0-9_-]+$/.test(parsed.pathname) || parsed.search || parsed.hash) throw new Error('Use a stable ChatGPT conversation URL');
+  return this.change(current => {
+   if (!current) throw new Error('Begin task first');
+   if (current.chatUrl && current.chatUrl !== url) throw new Error('Task bound to another chat');
+   return { ...current, chatUrl: url };
+  });
+ }
  async prepare(text) {
   const message = parseMessage(text);
   return this.change(current => {
@@ -49,6 +60,12 @@ export class Checkpoint {
     throw new Error('Send must execute the current PLAN');
    }
    return { ...current, pending: message, reply: null, delivery: 'uncertain' };
+  });
+ }
+ async rollbackUnsubmitted(text, previous) {
+  return this.change(current => {
+   if (current?.delivery !== 'uncertain' || current.pending?.text !== text || previous.taskId !== current.taskId) throw new Error('Cannot roll back ambiguous checkpoint');
+   return previous;
   });
  }
  async confirmSent(observedText) {

@@ -1,0 +1,18 @@
+{
+  "name": "dsh-c2c-control",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "puppeteer-core": "25.12.0"
+  },
+  "main": "index.mjs",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}
