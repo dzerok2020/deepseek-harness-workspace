@@ -11,19 +11,18 @@ for (const command of ['setup', 'sandbox-allow', 'update', 'unknown']) {
     assert.match(result.stderr, /Usage: dsh-c2c/);
   });
 }
-test('skill retains explicit consent and unverified remote boundary', () => {
+test('retired wrapper rejects starting or pairing old integration', () => {
+  for (const command of ['start', 'pair', 'record', 'session']) {
+    const result = spawnSync('bash', [wrapper, command], { encoding: 'utf8' });
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /retired/);
+  }
+});
+test('skill retires C2C and does not claim new bridge compatibility', () => {
   const skill = readFileSync(new URL('../dsh-with-chatgpt/SKILL.md', import.meta.url), 'utf8');
   assert.match(skill, /^---\nname: dsh-with-chatgpt\n/);
-  assert.match(skill, /consent to share/);
-  assert.match(skill, /Missing stages remain unverified/);
-  assert.match(skill, /DSH execution still uses its API model/);
-});
-test('skill respects upstream browser requirement and forbids substituted C2C automation', () => {
-  const skill = readFileSync(new URL('../dsh-with-chatgpt/SKILL.md', import.meta.url), 'utf8');
-  assert.match(skill, /## Upstream compatibility boundary/);
-  assert.match(skill, /control-in-app-browser/);
-  assert.match(skill, /Do not use BrowserSkill for C2C/);
-  assert.match(skill, /Never paste file contents, diffs or logs/);
-  assert.match(skill, /automatic loop remains blocked/);
-  assert.doesNotMatch(skill, /noClear: true|bsk_interact|inline-only/);
+  assert.match(skill, /C2C is retired/);
+  assert.match(skill, /miuuyy\/codex-chatgpt-web/);
+  assert.match(skill, /not yet verified/);
+  assert.doesNotMatch(skill, /INIT → PLAN|c2c_control.*begin|start -w/);
 });
