@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# DSH entry point: deliberately exclude Codex configuration and self-update commands.
+set -euo pipefail
+case "${1:-}" in
+  start|stop|status|pair|record|session|--help|--version|-v) ;;
+  *) printf '%s\n' 'Usage: dsh-c2c {start|stop|status|pair|record|session} [options]' 'Use start -w PATH --tunnel only after approving workspace sharing.' >&2; exit 2 ;;
+esac
+exec node /home/dzerok/.local/opt/codex-with-chatgpt/bin/c2c.js "$@"
