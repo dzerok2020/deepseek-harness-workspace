@@ -69,6 +69,13 @@ for p in dsh-loop-guard dsh-vibe-guard; do
   else note "$p: chưa có thư mục test (bỏ qua)"; fi
 done
 
+head_ "6b. Regression của bộ kiểm chứng và tài liệu workspace"
+if python3 "$WS/test/hindsight-health.test.py" && (cd "$WS" && node --test test/); then
+  ok "test bộ kiểm chứng bộ nhớ và tài liệu workspace xanh"
+else
+  bad "regression bộ kiểm chứng hoặc tài liệu workspace ĐỎ"
+fi
+
 head_ "7. Ba plugin cục bộ: bản DSH nạp có khớp code trong workspace không"
 # pnpm COPY (không symlink) các dep file:, và giữ bản copy trong cache của nó.
 # Nếu mục này báo BẢN SAO CŨ thì mọi thay đổi bạn sửa trong workspace đều KHÔNG
@@ -149,6 +156,13 @@ if ss -ltn 2>/dev/null | grep -q '0\.0\.0\.0:9999'; then
   bad "control plane nghe trên 0.0.0.0:9999 mà KHÔNG có xác thực — cả LAN đọc được bộ nhớ (đặt HOSTNAME=127.0.0.1 trong unit)"
 else ok "control plane chỉ nghe trên loopback (không lộ bộ nhớ ra LAN)"; fi
 
+head_ "10b. Kiểm chứng chức năng bộ nhớ (gọi LLM thật, không lưu dữ liệu)"
+if python3 "$WS/tools/hindsight-health.py"; then
+  ok "Hindsight qua kiểm chứng chức năng và bảo vệ truy cập"
+else
+  bad "Hindsight chưa qua kiểm chứng chức năng — /health=200 không đủ"
+fi
+
 head_ "11. Dịch vụ OmniRoute + Headroom (chuỗi model của provider \`or\`)"
 # OmniRoute = gateway model chính (127.0.0.1:20128); Headroom = proxy anthropic (8787)
 # mà DSH provider `or` gọi vào: dsh -> headroom:8787 -> omniroute:20128 -> upstream.
@@ -182,6 +196,6 @@ case "$CODE" in
 esac
 
 printf '\n\033[1mKẾT QUẢ:\033[0m %d đạt, %d lỗi\n' "$PASS" "$FAIL"
-[ "$FAIL" -eq 0 ] && echo "Hệ thống lành." || echo "Có mục cần xử lý — xem các dòng LỖI ở trên."
+[ "$FAIL" -eq 0 ] && echo "Các kiểm tra trong script đều đạt; không thay thế kiểm thử tải, UI hoặc nghiệm thu dự án thật." || echo "Có mục cần xử lý — xem các dòng LỖI ở trên."
 rm -f "$DUMP_ERR" "$DUMP_OUT"
 exit $([ "$FAIL" -eq 0 ] && echo 0 || echo 1)
