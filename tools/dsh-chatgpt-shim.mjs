@@ -47,7 +47,6 @@ export function buildEnvironmentContext(cwd) {
   return `<environment_context>
   <cwd>${cwd}</cwd>
   <filesystem><workspace_roots><root>${cwd}</root></workspace_roots><permission_profile type="disabled"><file_system type="unrestricted" /></permission_profile></filesystem>
-  <codex_dev_mode>All outer tool effects are explicitly simulated.</codex_dev_mode>
 </environment_context>`;
 }
 

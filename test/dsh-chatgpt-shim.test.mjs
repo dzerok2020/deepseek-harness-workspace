@@ -42,6 +42,11 @@ test("environment context carries the cwd as both cwd and workspace root", () =>
   assert.ok(ctx.endsWith("</environment_context>"));
 });
 
+test("real DSH requests never declare tool effects to be simulated", () => {
+  const out = adaptRequestBody(dshRequest(), { cwd: CWD, ...IDS });
+  assert.doesNotMatch(JSON.stringify(out), /codex_dev_mode|All outer tool effects are explicitly simulated/);
+});
+
 test("turn metadata declares a turn bound to the workspace root", () => {
   const meta = buildTurnMetadata({ threadId: "t", turnId: "u", cwd: CWD });
   assert.equal(meta.request_kind, "turn");

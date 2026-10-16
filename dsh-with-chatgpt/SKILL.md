@@ -67,19 +67,26 @@ Either store any placeholder on the web **Models** page for *ChatGPT Web
 4/4 stage(s) passed
 ```
 
-`node --test test/` — 50 pass, 0 fail (15 of them `test/dsh-chatgpt-shim.test.mjs`).
+Historical transport smoke above is not current acceptance evidence. Its adapter
+also included a DEV-only assertion that tool effects were simulated; that false
+assertion has now been removed. Revalidate the full flow without it.
+
+`node --test test/` — 53 pass, 0 fail after that correction.
 `dsh --profile web --dump-config` accepts the `cgw` route.
 
-A real DSH request now clears the cwd gate (the failure moves on to the browser
-stage). The last mile is **not yet verified** — a DSH turn returning content over
-the subscription is blocked by the wedged-tab problem below, not by the envelope.
-Re-run `dsh --profile headless --patch <overlay>` after reviving the tab to close
-that gap.
+Earlier DSH requests reached the browser stage, but that does not prove the
+complete envelope contract. The current synthetic check (cwd `/tmp`, 60s timeout)
+passes only 2/4 stages: text fails with `locator.click: Timeout 3000ms exceeded`;
+tool generation fails with `ChatGPT browser DOM observation did not respond within
+3ms`. DSH text, tool execution, and tool-result continuation are **not yet verified**.
+Random per-request thread/turn ids also require retry/continuation validation before
+activation. Re-run an isolated headless DSH test only after browser transport works.
 
-Tool calls really work: ChatGPT emits the `function_call`, and **DSH executes it
-under DSH's own sandbox**. The envelope describes the local environment; it grants
-ChatGPT nothing. Never widen it into fabricated Codex trust markers, and never
-read cookies/tokens or reuse another browser profile to get a turn accepted.
+A returned `function_call` proves only tool-call generation, not execution or
+successful continuation. DSH tool execution and receipt-to-final-answer remain
+**not yet verified**. The adapter must describe the real execution environment;
+never add DEV simulation assertions or fabricated Codex trust markers to pass a
+gate. Never read cookies/tokens or reuse another browser profile.
 
 ## Operating it
 
@@ -97,9 +104,12 @@ Two wedged-tab symptoms, both browser-state and neither an envelope problem:
 *"ChatGPT stopped responding after the task started"*, and `locator.click: Timeout
 3000ms exceeded` on the model-switcher button (the element resolves but never
 becomes clickable). Ask the human to revive the ChatGPT tab in the launcher. The
-bridge drives the system Chromium, whose CDP endpoint is `127.0.0.1:44557`
-(`/json/list` is useful for diagnosis) — do not reload or close the user's tabs
-yourself. Never substitute a browser process, cookie scraping, or an alternate
+bridge uses embedded Electron WebContentsView surfaces, not the user's ordinary
+Chromium. Source inspection shows persistent partition
+`persist:codex-web-gpt-chatgpt` under the launcher user-data directory (default
+`~/.config/Codex Web GPT`). Active turn views already disable background throttling;
+adding Chromium launch flags is not a proven repair. Do not reload or close the
+user's tabs yourself. Never substitute a browser process, cookie scraping, or an alternate
 automation path; per `browser-skill` those require the injected `bsk_*` tools, and
 if they are absent, say so instead. The adapter appends that remedy to the streamed
 error text, so a wedged turn now names the fix instead of surfacing a bare
@@ -129,5 +139,5 @@ C2C is retired at the user's request; do not open its browser, start its tunnel,
 pair its connector, or resume its PLAN/REVIEW loop. The native control plugin has
 been removed from the web profile (a running DSH process may retain the old tool
 until restart). Browser login data and checkpoints are preserved.
-`tools/dsh-c2c` permits only `start|stop|status|pair|record|session` for
+`tools/dsh-c2c` permits only `stop` and `status` for
 shutdown/inspection. Do not return to the old workflow as a fallback.
