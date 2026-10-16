@@ -4,6 +4,26 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { allowedUrl, OwnedBrowser } from '../src/browser.mjs';
+import puppeteer from 'puppeteer-core';
+
+test('recognizes current homepage composer without sending or exposing its draft', async () => {
+ const chromium = await puppeteer.launch({executablePath:'/usr/bin/chromium',headless:true});
+ try {
+  const page = await chromium.newPage();
+  await page.setContent('<textarea id="pending-home-input" placeholder="Ask ChatGPT">private draft</textarea>');
+  const browser = new OwnedBrowser({profileDir:'/tmp/example-dsh-profile',executablePath:'/usr/bin/chromium'});
+  browser.browser = chromium;
+  browser.page = page;
+  browser.assertPage = () => {}; // Offline DOM fixture; production origin check remains unchanged.
+  const result = await browser.inspect();
+  assert.equal(result.editorReady, true);
+  assert.equal(JSON.stringify(result).includes('private draft'), false);
+  await page.setContent('<textarea id="pending-home-input" hidden></textarea>');
+  assert.equal((await browser.inspect()).editorReady, false);
+  await page.setContent('<textarea id="prompt-textarea"></textarea>');
+  assert.equal((await browser.inspect()).editorReady, true);
+ } finally { await chromium.close(); }
+});
 
 test('only explicit ChatGPT and OpenAI login origins are allowed', () => {
  for (const url of ['https://chatgpt.com/', 'https://chatgpt.com/c/demo', 'https://auth.openai.com/log-in']) assert.equal(allowedUrl(url), true);

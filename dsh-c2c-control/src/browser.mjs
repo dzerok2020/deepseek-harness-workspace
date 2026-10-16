@@ -7,7 +7,7 @@ export function allowedUrl(value) {
  try { const url = new URL(value); return !url.username && !url.password && origins.has(url.origin); }
  catch { return false; }
 }
-const editorSelector = '#prompt-textarea[contenteditable="true"], textarea#prompt-textarea';
+const editorSelector = '#prompt-textarea[contenteditable="true"], textarea#prompt-textarea, textarea#pending-home-input';
 /** Owns one Chromium process. Does not attach to user browsers or export credentials. */
 export class OwnedBrowser {
  constructor({ profileDir, executablePath }) {
