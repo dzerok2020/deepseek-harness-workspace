@@ -19,25 +19,17 @@ Use explicit `-w /absolute/project` on workspace commands. Inspect subcommand `-
 4. In ChatGPT Settings, enable Developer Mode if available and create an app/connector with that MCP URL and OAuth authentication. Let the user log in and approve access. If the feature is absent or admin-blocked, stop here; do not claim it connected.
 5. Ask ChatGPT to call `workspace_info` and read a harmless project file, then confirm correct project and actual file contents. Only this proves the end-to-end connection.
 
-Use registered browser-skill tools after loading that skill. If its `bsk_*` tools are unavailable, ask the human to perform the ChatGPT steps; do not substitute cookie extraction, browser-profile scraping, or an unrelated browser backend.
+The user requires the upstream codex-with-chatgpt workflow without BrowserSkill. Upstream's automatic control plane requires Codex's built-in `control-in-app-browser` runtime (`setupBrowserRuntime()` and `agent.browsers.get("iab")`). That runtime is not available among this DSH session's tools. Do not substitute BrowserSkill, an external browser, cookie extraction or browser-profile scraping. Report automatic operation as blocked on that missing host capability. Human connector setup can establish the MCP data plane but cannot prove the automatic control plane works.
 
 Avoid upstream `setup`, `sandbox-allow`, self-update, and Codex skill installation: those own Codex configuration, not DSH. Keep DSH's current provider unchanged. This local skill does not register a model or MCP server in DSH; ChatGPT is the MCP client.
 
-## Automatic browser handoff
+## Upstream compatibility boundary
 
-Run the PLAN → DSH tests → REVIEW loop without asking the human to copy prompts when browser tools and an authorized login are available. This is an agent-driven workflow, not an unattended background service. Login, OAuth, CAPTCHA, quota and new project-sharing consent remain human/platform boundaries.
+The previous BrowserSkill/inline demo was a DSH-specific adaptation, not the upstream workflow. It is retired for this integration at the user's request. Do not use BrowserSkill for C2C.
 
-Choose the data channel explicitly: use an already verified connector for permitted project files, or `inline-only` for sanitized snippets the user authorized sharing. Inline mode needs no tunnel and does not prove MCP connectivity. Never silently send a real project because a synthetic demo was authorized. A stopped bridge or changed Quick Tunnel URL requires reconnection and another remote file-read check; do not repeatedly recreate connectors automatically.
+Upstream uses short structured state messages (`INIT → PLAN → EXECUTED → REVIEW → DONE`) in the built-in browser. Never paste file contents, diffs or logs into ChatGPT: it must retrieve actual workspace data and execution receipts through the read-only MCP connector. Independent review requires those retrieved records, not a pasted claim that tests passed.
 
-For ChatGPT's ProseMirror composer on BrowserSkill 0.3.3:
-
-1. Observe the editor root textbox and wait until the previous response has completed. Inspect its current text; never clear an existing human draft. Use a new task-owned chat if necessary.
-2. In an empty composer, send the prompt's first ASCII character with `bsk_interact` action `press` on the textbox (for example `C` for `C2C INIT`). Read back that character. This ordinary keyboard input initializes the editor without destructive DOM clearing.
-3. Append the remaining prompt using `fill` with `noClear: true` on the same editor root. Do not target its child paragraph. Inspect the full text and verify it matches the intended prompt before sending. This sequence succeeded on fresh, planning and review messages in the 2026-10-16 live check; it is not a universal editor guarantee.
-4. Click the freshly observed Send button or press Enter only after verifying the text. Observe the submitted user message and the completed assistant response for the matching task/iteration. If delivery is uncertain, inspect before any retry to avoid duplicate prompts.
-5. On an input error, inspect what actually remains: fill errors may occur after mutation. Do not retry destructive default fill, remove safety guards, or automatically erase a draft. If the non-destructive sequence fails twice, stop that handoff and report the exact error; use human help only under browser-skill rules.
-
-Use at most two repair iterations per task unless the user explicitly requests more. Stop on PASS backed by actual local tests; otherwise report remaining findings. A ChatGPT PASS alone never proves local execution or permits destructive changes.
+The installed bridge and DSH executor wrapper are adaptations; they do not supply Codex's built-in browser runtime. Do not claim full upstream compatibility or unattended operation from bridge unit tests, a manual file read, or a browser-free local smoke test. Keep the provider unchanged. Until a supported host control plane exists, the automatic loop remains blocked rather than silently falling back.
 
 ## Work loop
 

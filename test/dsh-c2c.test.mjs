@@ -18,13 +18,12 @@ test('skill retains explicit consent and unverified remote boundary', () => {
   assert.match(skill, /Missing stages remain unverified/);
   assert.match(skill, /DSH execution still uses its API model/);
 });
-test('skill defines verified composer input without destructive fill or unattended claims', () => {
+test('skill respects upstream browser requirement and forbids substituted C2C automation', () => {
   const skill = readFileSync(new URL('../dsh-with-chatgpt/SKILL.md', import.meta.url), 'utf8');
-  assert.match(skill, /## Automatic browser handoff/);
-  assert.match(skill, /first ASCII character/);
-  assert.match(skill, /noClear: true/);
-  assert.match(skill, /never clear an existing human draft/);
-  assert.match(skill, /at most two repair iterations/);
-  assert.match(skill, /not an unattended background service/);
-  assert.match(skill, /inline-only/);
+  assert.match(skill, /## Upstream compatibility boundary/);
+  assert.match(skill, /control-in-app-browser/);
+  assert.match(skill, /Do not use BrowserSkill for C2C/);
+  assert.match(skill, /Never paste file contents, diffs or logs/);
+  assert.match(skill, /automatic loop remains blocked/);
+  assert.doesNotMatch(skill, /noClear: true|bsk_interact|inline-only/);
 });
