@@ -52,7 +52,7 @@ Hệ quả với model DSH đang dùng (kiểm chứng 10/10/2026):
 |---|---|---|
 | `b-ai/qwen3.8-flash` (mặc định) | không DB row, không hint | **128000** |
 | `b-ai/deepseek-v4.1-flash`, `b-ai/glm-5.3-flash` | như trên | **128000** |
-| `cx/gpt-6-astra|sol|luna` | hint `gpt` → codex | 400000 (không phải giá trị thật!) |
+| `cx/gpt-6-astra`, `cx/gpt-6-sol`, `cx/gpt-6-luna` | hint `gpt` → codex | 400000 (không phải giá trị thật!) |
 | `antigravity/gemini-3.8-flash-tiered` | hint `gemini` | 1000000 |
 
 - Vì vậy DSH **giữ `defaultContextWindow: 128000`** trên route `or` (auto-compaction của dsh trigger ở min(W·0.8, W−maxTokens−65536) ≈ 46080 với W=128000, comfortably dưới tường).
