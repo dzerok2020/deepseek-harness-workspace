@@ -34,6 +34,13 @@
 
 import http from "node:http";
 import { randomUUID } from "node:crypto";
+
+// The bridge validates turn metadata with an all-or-nothing rule: if thread_id
+// or turn_id looks like a native Codex identifier (a bare RFC-4122 UUID,
+// cli.js regex ff), BOTH must. DSH's prompt_cache_key can itself be a bare
+// UUID, so prefix every id we generate with a marker the UUID regex can never
+// match. Both-non-native is the documented skip path in the bridge.
+const NON_NATIVE = (value) => `dsh-${value}`;
 import { Readable } from "node:stream";
 
 /** Bridge v6.1.9 verified model catalog. */
@@ -155,6 +162,30 @@ export function stampCurrentTurnId(input, turnId) {
 }
 
 /**
+ * Native Codex turn shape for full mode: the `<environment_context>` fragment
+ * sits IMMEDIATELY BEFORE the current (last) user message, not at the head of
+ * the history. A journal-activated serve scans backwards from the last user
+ * item and rejects with "missing cwd" when the fragment precedes older turns
+ * (verified 2026-10-17: stage 5 history replay failed head-placed, single-user
+ * stages passed either way).
+ */
+export function withEnvironmentContext(input, cwd, turnId) {
+  const environment = {
+    type: "message",
+    id: `msg_environment_${hex()}`,
+    role: "user",
+    content: [{ type: "input_text", text: buildEnvironmentContext(cwd) }],
+    internal_chat_message_metadata_passthrough: { turn_id: turnId },
+  };
+  let last = -1;
+  input.forEach((item, i) => {
+    if (item?.type === "message" && item.role === "user") last = i;
+  });
+  if (last === -1) return [environment, ...input];
+  return [...input.slice(0, last), environment, ...input.slice(last)];
+}
+
+/**
  * Rewrite a DSH Responses request into one the bridge accepts.
  * Pure apart from the generated ids. No I/O.
  */
@@ -170,16 +201,7 @@ export function adaptRequestBody(dshBody, { cwd, models = DEFAULT_MODELS, thread
     .join("\n\n");
   const finalInput =
     mode === "full"
-      ? [
-          {
-            type: "message",
-            id: `msg_environment_${hex()}`,
-            role: "user",
-            content: [{ type: "input_text", text: buildEnvironmentContext(cwd) }],
-            internal_chat_message_metadata_passthrough: { turn_id: turnId },
-          },
-          ...input,
-        ]
+      ? withEnvironmentContext(input, cwd, turnId)
       : stampCurrentTurnId(input, turnId);
   return {
     ...dshBody,
@@ -235,8 +257,9 @@ export function createServer({ bridgeUrl, cwd, models, mode = "browser-only" }) 
       const dshBody = JSON.parse(await readBody(req));
       // DSH keeps prompt_cache_key stable per session; reuse it so the bridge's
       // retry budget and thread mapping see one thread across turns.
-      const threadId = typeof dshBody.prompt_cache_key === "string" && dshBody.prompt_cache_key ? dshBody.prompt_cache_key : randomUUID();
-      body = adaptRequestBody(dshBody, { cwd, models, threadId, turnId: randomUUID(), mode });
+      const rawThread = typeof dshBody.prompt_cache_key === "string" && dshBody.prompt_cache_key ? dshBody.prompt_cache_key : randomUUID();
+      const threadId = NON_NATIVE(rawThread);
+      body = adaptRequestBody(dshBody, { cwd, models, threadId, turnId: NON_NATIVE(randomUUID()), mode });
     } catch (err) {
       return sendJson(res, 400, { error: { message: String(err.message ?? err), type: "invalid_request_error" } });
     }

@@ -26,6 +26,20 @@ The adapter runs in the mode set by `CGW_BRIDGE_MODE` (default
 `~/.codex-chatgpt-web/config.json` `mode` plus a bridge restart (`/admin/drain`
 then relaunch `serve`).
 
+**WARNING (2026-10-17):** opening the Codex Web GPT app and walking its onboarding
+wizard flips `config.json` to `mode: "full"`, app name `Codex Native2` and writes
+`~/.codex-chatgpt-web/codex/integration-journal.json` (redirects the real Codex CLI
+at the bridge). A journal-active serve then enforces two extra gates on EVERY turn:
+trusted `<environment_context>` with a cwd, and native-UUID id validation. Symptom
+for DSH traffic: turns fail with `missing cwd in trusted Codex environment context`
+or the full-mode connector-mention DOM path reintroduces the detached-guard flake
+(`ChatGPT opened another user turn while the bound assistant response was
+detached`). Recovery: set `mode` back to `"browser-only"` in config.json (back the
+file up first), `kill` the `bun … cli.js serve` pid — the Electron launcher
+respawns it within ~2s reading the new config — and keep the shim unit on
+`browser-only`. `tools/dsh-chatgpt-check.mjs` now auto-adapts the shim's mode to
+whatever bridge `/healthz` reports, so it passes under either profile.
+
 **browser-only (current, verified):** ChatGPT answers plain text; DSH keeps
 executing its own tools natively. The adapter does not forge Codex trust; it only
 normalizes what the bridge needs from any client:
@@ -40,8 +54,12 @@ normalizes what the bridge needs from any client:
 
 **full (retired as default, kept as an option):** required Codex's own envelope —
 `client_metadata["x-codex-turn-metadata"]` JSON with `{thread_id, turn_id,
-request_kind:"turn", sandbox:"none", workspaces:{[cwd]:{}}}` plus a first user
-message prefixed with `<environment_context>` (cwd + workspace root). The adapter
+request_kind:"turn", sandbox:"none", workspaces:{[cwd]:{}}}` plus a separate
+`msg_environment_*` user message carrying `<environment_context>` (cwd + workspace
+root) inserted IMMEDIATELY BEFORE the current (last) user message — a head-placed
+fragment fails history-replay turns with `missing cwd` on a journal-active serve
+(the serve scans backwards from the last user item; verified 2026-10-17, see
+`withEnvironmentContext` in the shim). The adapter
 can still emit it (`CGW_BRIDGE_MODE=full`). Two hard-won findings:
 
 - **`input` must contain no `role: "system"` item.** With it present the bridge
@@ -83,10 +101,12 @@ costs output tokens on each turn.
 
 Real-DSH proof (provider `cgw` via the pi-ai transport, not raw fetch):
 `dsh --profile headless --patch <overlay-pointing-cgw-at-17842> --json "<prompt>"`
-with `CGW_API_KEY=local-placeholder` → **exit 0**, final assistant text exactly
-`DSH-REAL-CGW-OK` (`/tmp/dsh-cgw-text-events.jsonl`, temporary).
+→ **exit 0**, final assistant text contains `DSH-CRED-ZERO-OK`. Re-verified
+2026-10-17 (06:34) with `CGW_API_KEY` **unset** and the shim unit carrying a
+placeholder env line — `/tmp/dsh-cgw-zerocred4.jsonl`.
 
-`node --test test/` — 55 pass, 0 fail.
+`node --test test/` — 57 pass, 0 fail (incl. the environment-envelope position
+regression for replayed history).
 `dsh --profile web --dump-config` accepts the `cgw` route.
 
 Multi-turn continuation through the shim with full history replay (codeword

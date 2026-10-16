@@ -79,7 +79,7 @@ test("browser-only default stamps the turn id on the last user message, no env e
   assert.equal(meta.thread_id, IDS.threadId);
 });
 
-test("full mode prepends the trusted environment envelope", () => {
+test("full mode places the trusted environment envelope before the current user message", () => {
   const body = dshRequest();
   const original = structuredClone(body);
   const out = adaptRequestBody(body, { cwd: CWD, ...IDS, mode: "full" });
@@ -92,6 +92,21 @@ test("full mode prepends the trusted environment envelope", () => {
   assert.ok(env.content[0].text.startsWith("<environment_context>"));
   assert.equal(env.internal_chat_message_metadata_passthrough.turn_id, IDS.turnId);
   assert.deepEqual(rest, original.input, "original input must pass through unchanged");
+});
+
+test("full mode puts the environment envelope before the LAST user, not the head", () => {
+  // Journal-activated serve scans backwards from the current turn's user
+  // message; a head-placed envelope leaves replayed history "missing cwd".
+  const history = [
+    { type: "message", id: "msg_11111111111111111111111111111111", role: "user", content: [{ type: "input_text", text: "first" }] },
+    { type: "message", id: "msg_22222222222222222222222222222222", role: "assistant", content: [{ type: "output_text", text: "noted" }] },
+    { type: "message", id: USER_MSG_ID, role: "user", content: [{ type: "input_text", text: "second" }] },
+  ];
+  const out = adaptRequestBody(dshRequest({ input: structuredClone(history) }), { cwd: CWD, ...IDS, mode: "full" });
+  const envIndex = out.input.findIndex((item) => item.id?.startsWith("msg_environment_"));
+  assert.ok(envIndex > 0, "envelope must not sit at the head of replayed history");
+  assert.equal(out.input[envIndex + 1].content[0].text, "second", "envelope must immediately precede the current user message");
+  assert.deepEqual(out.input.filter((item) => !item.id?.startsWith("msg_environment_")), history, "replayed history passes through unchanged");
 });
 
 test("adaptRequestBody keeps caller metadata and tool declarations", () => {
@@ -239,8 +254,41 @@ test("server reuses prompt_cache_key as the bridge thread id", async (t) => {
   await post();
   const threads = seen.map((b) => JSON.parse(b.client_metadata["x-codex-turn-metadata"]).thread_id);
   const turns = seen.map((b) => JSON.parse(b.client_metadata["x-codex-turn-metadata"]).turn_id);
-  assert.deepEqual(threads, ["pcache-session-1", "pcache-session-1"], "one thread per session");
+  assert.deepEqual(threads, ["dsh-pcache-session-1", "dsh-pcache-session-1"], "one thread per session");
   assert.notEqual(turns[0], turns[1], "each HTTP turn gets its own turn id");
+});
+
+// Regression: the bridge rejects metadata where exactly one of thread_id /
+// turn_id looks like a native Codex id (a bare RFC-4122 UUID). DSH's
+// prompt_cache_key IS such a UUID on real sessions — this failed live on
+// 2026-10-17 with "Codex thread metadata contains an invalid native identifier".
+test("server keeps UUID-shaped prompt_cache_key ids non-native for the bridge", async (t) => {
+  const seen = [];
+  const bridge = http.createServer(async (req, res) => {
+    const chunks = [];
+    for await (const c of req) chunks.push(c);
+    seen.push(JSON.parse(Buffer.concat(chunks).toString()));
+    res.writeHead(200, { "content-type": "text/event-stream" });
+    res.end("data: [DONE]\n\n");
+  });
+  bridge.listen(0, "127.0.0.1");
+  await once(bridge, "listening");
+  const shim = createServer({ bridgeUrl: `http://127.0.0.1:${bridge.address().port}`, cwd: CWD, models: [...DEFAULT_MODELS] });
+  shim.listen(0, "127.0.0.1");
+  await once(shim, "listening");
+  t.after(() => { shim.close(); bridge.close(); });
+
+  const uuidKey = "2bcf950d-42ff-4db6-93be-9d1ec8b5c972";
+  const res = await fetch(`http://127.0.0.1:${shim.address().port}/v1/responses`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify(dshRequest({ prompt_cache_key: uuidKey })),
+  });
+  await res.text();
+  const meta = JSON.parse(seen[0].client_metadata["x-codex-turn-metadata"]);
+  const native = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  assert.equal(native.test(meta.thread_id), false, "thread_id must not look native");
+  assert.equal(native.test(meta.turn_id), false, "turn_id must not look native");
+  assert.equal(meta.thread_id, `dsh-${uuidKey}`, "session key still maps to one stable thread");
 });
 
 test("server forwards an adapted turn to the bridge and streams the reply back", async (t) => {

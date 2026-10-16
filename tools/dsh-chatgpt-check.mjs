@@ -76,10 +76,15 @@ const userTurn = (text, extra = {}) => ({
 const main = async () => {
   console.log(`bridge ${BRIDGE}\ncwd    ${CWD}\nmodel  ${MODEL}\n`);
 
-  // 1. Bridge reachable and accepting turns.
+  // 1. Bridge reachable and accepting turns. The check runs the shim in the
+  // SAME mode as the bridge: a journal-activated serve demands the full-mode
+  // environment context on every turn, and browser-only requests would fail
+  // with "missing cwd in trusted Codex environment context".
+  let bridgeMode = "browser-only";
   try {
     const { status, body } = await getJson(`${BRIDGE}/healthz`);
     const ok = status === 200 && body?.status === "ok" && body?.accepting_turns === true;
+    if (typeof body?.mode === "string") bridgeMode = body.mode;
     record("bridge /healthz reachable and accepting turns", ok, `HTTP ${status} mode=${body?.mode} v${body?.version} accepting_turns=${body?.accepting_turns}`);
   } catch (err) {
     record("bridge /healthz reachable and accepting turns", false, String(err.message ?? err));
@@ -89,7 +94,7 @@ const main = async () => {
 
   // 2. The shim serves the catalog without touching the bridge.
   const cwd = resolveWorkspaceCwd(null, [CWD], CWD);
-  const shim = createServer({ bridgeUrl: BRIDGE, cwd, models: [...DEFAULT_MODELS] });
+  const shim = createServer({ bridgeUrl: BRIDGE, cwd, models: [...DEFAULT_MODELS], mode: bridgeMode });
   shim.listen(0, "127.0.0.1");
   await once(shim, "listening");
   const base = `http://127.0.0.1:${shim.address().port}`;
