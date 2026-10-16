@@ -31,7 +31,7 @@ export function apply(ctx) {
    message: {type:'string',description:'C2C state wire message below 1024 UTF-8 bytes; send only.'},
   },
   output: {
-   schema: {type:'object',additionalProperties:false,properties:{result:{type:'string',required:true}}},
+   schema: {type:'object',additionalProperties:false,required:['result'],properties:{result:{type:'string'}}},
    render: (_args, value) => [{type:'text',text:value.result}],
   },
   async execute(args, exec) {

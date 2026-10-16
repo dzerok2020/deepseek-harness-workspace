@@ -30,6 +30,8 @@ test('native tool registers canonical output and requires owning session', async
  apply(ctx);
  assert.equal(tool.name,'c2c_control');
  assert.equal(tool.output.schema.type,'object');
+ assert.deepEqual(tool.output.schema.required,['result']);
+ assert.deepEqual(tool.output.schema.properties.result,{type:'string'});
  await assert.rejects(tool.execute({action:'status'}, {signal:new AbortController().signal}), /owning agent/);
  await dispose();
  await assert.rejects(tool.execute({action:'status'}, {agent:{session:'test'},signal:new AbortController().signal}), /disposed/);
