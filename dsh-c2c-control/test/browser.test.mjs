@@ -17,6 +17,7 @@ test('recognizes current homepage composer without sending or exposing its draft
   browser.assertPage = () => {}; // Offline DOM fixture; production origin check remains unchanged.
   const result = await browser.inspect();
   assert.equal(result.editorReady, true);
+  assert.deepEqual(result.composerDiagnostics, {revision:1, readyState:'complete', matched:1, visible:1, homepage:1, legacy:0});
   assert.equal(JSON.stringify(result).includes('private draft'), false);
   await page.setContent('<textarea id="pending-home-input" hidden></textarea>');
   assert.equal((await browser.inspect()).editorReady, false);

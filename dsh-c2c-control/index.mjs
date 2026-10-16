@@ -63,7 +63,7 @@ export function apply(ctx) {
       result = await controller.status(exec.signal);
       if (browser.status().running) {
        const view = await browser.inspect(exec.signal);
-       result.readiness = {editorReady:view.editorReady,generating:view.generating};
+       result.readiness = {editorReady:view.editorReady,generating:view.generating,composerDiagnostics:view.composerDiagnostics};
       }
       break;
      case 'stop': await controller.close(); controller.checkpoint = null; owner = null; result = {status:'stopped'}; break;

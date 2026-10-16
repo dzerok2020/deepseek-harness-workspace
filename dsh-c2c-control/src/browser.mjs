@@ -56,8 +56,10 @@ export class OwnedBrowser {
   const result = await this.page.evaluate((selector) => {
    const visible = element => !!(element && element.getClientRects().length);
    const editor = document.querySelector(selector);
+   const editors = [...document.querySelectorAll(selector)];
+   const composerDiagnostics = {revision:1, readyState:document.readyState, matched:editors.length, visible:editors.filter(visible).length, homepage:editors.filter(el => el.id === 'pending-home-input').length, legacy:editors.filter(el => el.id === 'prompt-textarea').length};
    const messages = [...document.querySelectorAll('[data-message-author-role]')].slice(-30).map(el => ({ role: el.getAttribute('data-message-author-role'), text: (el.innerText ?? '').slice(0, 12000) }));
-   return { editorReady: visible(editor), generating: visible(document.querySelector('[data-testid="stop-button"]')), messages };
+   return { editorReady: visible(editor), generating: visible(document.querySelector('[data-testid="stop-button"]')), messages, composerDiagnostics };
   }, editorSelector);
   signal?.throwIfAborted();
   return { ...this.status(), ...result };
