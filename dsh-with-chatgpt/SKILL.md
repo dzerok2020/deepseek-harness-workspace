@@ -23,6 +23,22 @@ Use registered browser-skill tools after loading that skill. If its `bsk_*` tool
 
 Avoid upstream `setup`, `sandbox-allow`, self-update, and Codex skill installation: those own Codex configuration, not DSH. Keep DSH's current provider unchanged. This local skill does not register a model or MCP server in DSH; ChatGPT is the MCP client.
 
+## Automatic browser handoff
+
+Run the PLAN → DSH tests → REVIEW loop without asking the human to copy prompts when browser tools and an authorized login are available. This is an agent-driven workflow, not an unattended background service. Login, OAuth, CAPTCHA, quota and new project-sharing consent remain human/platform boundaries.
+
+Choose the data channel explicitly: use an already verified connector for permitted project files, or `inline-only` for sanitized snippets the user authorized sharing. Inline mode needs no tunnel and does not prove MCP connectivity. Never silently send a real project because a synthetic demo was authorized. A stopped bridge or changed Quick Tunnel URL requires reconnection and another remote file-read check; do not repeatedly recreate connectors automatically.
+
+For ChatGPT's ProseMirror composer on BrowserSkill 0.3.3:
+
+1. Observe the editor root textbox and wait until the previous response has completed. Inspect its current text; never clear an existing human draft. Use a new task-owned chat if necessary.
+2. In an empty composer, send the prompt's first ASCII character with `bsk_interact` action `press` on the textbox (for example `C` for `C2C INIT`). Read back that character. This ordinary keyboard input initializes the editor without destructive DOM clearing.
+3. Append the remaining prompt using `fill` with `noClear: true` on the same editor root. Do not target its child paragraph. Inspect the full text and verify it matches the intended prompt before sending. This sequence succeeded on fresh, planning and review messages in the 2026-10-16 live check; it is not a universal editor guarantee.
+4. Click the freshly observed Send button or press Enter only after verifying the text. Observe the submitted user message and the completed assistant response for the matching task/iteration. If delivery is uncertain, inspect before any retry to avoid duplicate prompts.
+5. On an input error, inspect what actually remains: fill errors may occur after mutation. Do not retry destructive default fill, remove safety guards, or automatically erase a draft. If the non-destructive sequence fails twice, stop that handoff and report the exact error; use human help only under browser-skill rules.
+
+Use at most two repair iterations per task unless the user explicitly requests more. Stop on PASS backed by actual local tests; otherwise report remaining findings. A ChatGPT PASS alone never proves local execution or permits destructive changes.
+
 ## Work loop
 
 1. Send ChatGPT a compact `[C2C] INIT` with the task goal, constraints and permitted project. Have it inspect the project through its connector and return a bounded PLAN with acceptance commands.

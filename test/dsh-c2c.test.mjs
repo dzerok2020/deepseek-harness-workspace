@@ -18,3 +18,13 @@ test('skill retains explicit consent and unverified remote boundary', () => {
   assert.match(skill, /Missing stages remain unverified/);
   assert.match(skill, /DSH execution still uses its API model/);
 });
+test('skill defines verified composer input without destructive fill or unattended claims', () => {
+  const skill = readFileSync(new URL('../dsh-with-chatgpt/SKILL.md', import.meta.url), 'utf8');
+  assert.match(skill, /## Automatic browser handoff/);
+  assert.match(skill, /first ASCII character/);
+  assert.match(skill, /noClear: true/);
+  assert.match(skill, /never clear an existing human draft/);
+  assert.match(skill, /at most two repair iterations/);
+  assert.match(skill, /not an unattended background service/);
+  assert.match(skill, /inline-only/);
+});
