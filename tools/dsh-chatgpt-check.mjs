@@ -65,12 +65,12 @@ const outputText = (response) =>
     .map((c) => c.text ?? "")
     .join("");
 
-const userTurn = (text, tools) => ({
+const userTurn = (text, extra = {}) => ({
   model: MODEL,
   stream: true,
   store: false,
-  ...(tools ? { tools, tool_choice: "auto", parallel_tool_calls: false } : {}),
   input: [{ type: "message", role: "user", content: [{ type: "input_text", text }] }],
+  ...extra,
 });
 
 const main = async () => {
@@ -108,24 +108,49 @@ const main = async () => {
       text.failure ? `failed: ${text.failure}` : `HTTP ${text.status} reply=${JSON.stringify(answer.slice(0, 80))} tokens=${text.completed?.usage?.total_tokens ?? "?"}`,
     );
 
-    // 4. Tool-bearing turn — the reason this adapter exists.
+    // 4. Tool-declaring turn (DSH always sends its native tool catalog): the
+    //    browser-only bridge must still answer as text and never fake a call.
+    const tool = {
+      type: "function",
+      name: "dsh_read_file",
+      description: "Read a UTF-8 text file from the DSH workspace.",
+      parameters: { type: "object", properties: { path: { type: "string" } }, required: ["path"], additionalProperties: false },
+    };
     if (TEXT_ONLY) {
-      record("tool-bearing turn", true, "skipped by --text-only");
+      record("tool-declaring + continuation turns", true, "skipped by --text-only");
     } else {
-      const tool = {
-        type: "function",
-        name: "dsh_read_file",
-        description: "Read a UTF-8 text file from the DSH workspace.",
-        parameters: { type: "object", properties: { path: { type: "string" } }, required: ["path"], additionalProperties: false },
-      };
-      const tooled = await runTurn(base, userTurn('Call the tool dsh_read_file exactly once with path "NOTES.md". Do not answer in prose; emit the tool call.', [tool]));
-      const calls = (tooled.completed?.output ?? []).filter((i) => i.type === "function_call");
+      const tooled = await runTurn(base, userTurn("Reply with exactly: DSH-TOOLS-OK. Do not call any tool.", { tools: [tool], tool_choice: "auto", parallel_tool_calls: false }));
+      const tooledText = outputText(tooled.completed).trim();
+      const fakeCall = (tooled.completed?.output ?? []).some((i) => i.type === "function_call");
       record(
-        "tool-bearing turn returns a real function_call",
-        tooled.status === 200 && !tooled.failure && calls.length === 1 && calls[0].name === "dsh_read_file",
+        "DSH declares tools; bridge answers text without faking a call",
+        tooled.status === 200 && !tooled.failure && /DSH-TOOLS-OK/.test(tooledText) && !fakeCall,
         tooled.failure
           ? `failed: ${tooled.failure}`
-          : `HTTP ${tooled.status} calls=${JSON.stringify(calls.map((c) => ({ name: c.name, arguments: c.arguments })))}`,
+          : `HTTP ${tooled.status} reply=${JSON.stringify(tooledText.slice(0, 60))} fakeCall=${fakeCall}`,
+      );
+
+      // 5. Multi-turn continuation in DSH shape: full history replayed under one
+      //    stable prompt_cache_key; turn 2 must use turn 1's context.
+      const pc = `pcache-check-${Date.now()}`;
+      const first = "Remember the codeword: GREEN-HERON-7. Reply with exactly: NOTED.";
+      const t1 = await runTurn(base, userTurn(first, { prompt_cache_key: pc }));
+      const t2 = await runTurn(base, {
+        model: MODEL,
+        stream: true,
+        store: false,
+        prompt_cache_key: pc,
+        input: [
+          { type: "message", role: "user", content: [{ type: "input_text", text: first }] },
+          { type: "message", role: "assistant", content: [{ type: "output_text", text: "NOTED" }] },
+          { type: "message", role: "user", content: [{ type: "input_text", text: "What was the codeword? Reply with exactly the codeword." }] },
+        ],
+      });
+      const recall = outputText(t2.completed).trim();
+      record(
+        "continuation: model recalls the previous turn's context",
+        Boolean(t1.completed && !t1.failure && t2.completed && !t2.failure && /GREEN-HERON-7/.test(recall)),
+        t1.failure || t2.failure || `turn2=${JSON.stringify(recall.slice(0, 60))}`,
       );
     }
   } finally {

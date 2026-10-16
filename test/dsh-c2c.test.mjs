@@ -23,6 +23,7 @@ test('skill retires C2C and does not claim new bridge compatibility', () => {
   assert.match(skill, /^---\nname: dsh-with-chatgpt\n/);
   assert.match(skill, /C2C is retired/);
   assert.match(skill, /miuuyy\/codex-chatgpt-web/);
-  assert.match(skill, /not yet verified/);
+  assert.match(skill, /mode `browser-only`/);
+  assert.match(skill, /ChatGPT cannot drive DSH tool calls at all \(by design\)/);
   assert.doesNotMatch(skill, /INIT → PLAN|c2c_control.*begin|start -w/);
 });

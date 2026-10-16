@@ -11,7 +11,7 @@ the API, so those turns are covered by the ChatGPT subscription. Two pieces:
 | Piece | What it is | Where |
 |---|---|---|
 | bridge | upstream `codex-chatgpt-web` launcher; owns the browser + login | `127.0.0.1:17841` |
-| adapter | `tools/dsh-chatgpt-shim.mjs`; adds the envelope the bridge requires | `127.0.0.1:17842` |
+| adapter | `tools/dsh-chatgpt-shim.mjs`; normalizes DSH turns for the bridge | `127.0.0.1:17842` |
 
 DSH reaches them through provider `cgw` in `~/.dsh/profiles/web/cordis.patch.yml`
 (api `openai-responses`, baseURL `http://127.0.0.1:17842/v1`). The route is
@@ -19,33 +19,41 @@ additive: provider `or` and the default model are untouched, and nothing routes
 to it until a session explicitly picks a `chatgpt-web/*` model. A config change
 only takes effect after DSH restarts.
 
-## Why the adapter exists
+## Modes and why the adapter exists
 
-The bridge is written for Codex as its client. On a **tool-bearing** turn it
-demands Codex's own transport envelope and otherwise fails with:
+The adapter runs in the mode set by `CGW_BRIDGE_MODE` (default
+**`browser-only`**; the other value is `full`). The bridge's own mode must match:
+`~/.codex-chatgpt-web/config.json` `mode` plus a bridge restart (`/admin/drain`
+then relaunch `serve`).
 
-```
-ChatGPT web turn is missing cwd in trusted Codex environment context
-```
+**browser-only (current, verified):** ChatGPT answers plain text; DSH keeps
+executing its own tools natively. The adapter does not forge Codex trust; it only
+normalizes what the bridge needs from any client:
 
-DSH does not produce it. Verified requirements against bridge v6.1.9
-(`cli.js`, function `zT` / `Bg`):
+1. Every input item gets a `type` and a stable `id` (DSH sends bare
+   `{role, content}` — bridge v6.1.9 rejects items without an id).
+2. The last user message is stamped with
+   `internal_chat_message_metadata_passthrough.turn_id`.
+3. `prompt_cache_key` is reused as the bridge `thread_id`, so all DSH sessions of
+   one conversation share one ChatGPT thread; each request gets a fresh `turn_id`.
+4. Any `role:"system"` item is lifted into `instructions` (see A/B note below).
 
-1. `client_metadata["x-codex-turn-metadata"]` = JSON
-   `{thread_id, turn_id, request_kind:"turn", sandbox:"none", workspaces:{[cwd]:{}}}`.
-2. A user message whose content starts with the `<environment_context>` block
-   (cwd + workspace root) and carries
-   `internal_chat_message_metadata_passthrough.turn_id` equal to the metadata's.
-3. **Every message item needs an `id`.** Without one the turn is rejected at the
-   cwd gate even though the context is present. DSH sends items as bare
-   `{role, content}` with no `type` and no `id` (captured 2026-10-16: 1 system +
-   4 user, 24 tools); the adapter adds both.
-4. **`input` must contain no `role: "system"` item.** DSH puts its agent prompt
-   there. With it present the bridge still answers *"missing cwd in trusted Codex
-   environment context"*, even though the envelope and ids are correct. Moving it
-   to `instructions` fixes it. Isolated by A/B against the real bridge:
-   system+env fails, env alone passes, and the env message's `turn_id` is not the
-   deciding factor.
+**full (retired as default, kept as an option):** required Codex's own envelope —
+`client_metadata["x-codex-turn-metadata"]` JSON with `{thread_id, turn_id,
+request_kind:"turn", sandbox:"none", workspaces:{[cwd]:{}}}` plus a first user
+message prefixed with `<environment_context>` (cwd + workspace root). The adapter
+can still emit it (`CGW_BRIDGE_MODE=full`). Two hard-won findings:
+
+- **`input` must contain no `role: "system"` item.** With it present the bridge
+  answers *"ChatGPT web turn is missing cwd in trusted Codex environment
+  context"* even when the envelope and ids are correct. Isolated by A/B against
+  the real bridge: system+env fails, env alone passes.
+- Full mode drove the ChatGPT DOM through a connector-mention/attachment broker
+  whose continuation guard repeatedly threw
+  `ChatGPT opened another user turn while the bound assistant response was
+  detached` — five traces, assistant fully rendered at failure. Upstream is
+  minified; do not patch `cli.js`. That brittleness is why tool-bearing ChatGPT
+  turns were retired in favor of browser-only + native DSH execution.
 
 ## Credential
 
@@ -55,54 +63,55 @@ fails with `MISSING_CREDENTIAL: llm-pi-ai: no credential for provider route "cgw
 Either store any placeholder on the web **Models** page for *ChatGPT Web
 (codex-chatgpt-web)*, or export `CGW_API_KEY` before starting DSH.
 
-## Verified state (2026-10-16, bridge v6.1.9, mode `full`)
+## Verified state (2026-10-17, bridge v6.1.9, mode `browser-only`)
 
-`node tools/dsh-chatgpt-check.mjs` — real bridge, real ChatGPT Web turns:
+`node tools/dsh-chatgpt-check.mjs` — real adapter, real bridge, real ChatGPT Web
+turns (five browser turns; `--text-only` runs only the cheap ones):
 
 ```
-ĐẠT bridge /healthz reachable and accepting turns — HTTP 200 mode=full accepting_turns=true
-ĐẠT shim serves the model catalog — HTTP 200 models=7
-ĐẠT text turn through shim -> bridge -> ChatGPT Web — HTTP 200 reply="DSH-CHATGPT-OK" tokens=9322
-ĐẠT tool-bearing turn returns a real function_call — calls=[{"name":"dsh_read_file","arguments":"{\"path\":\"NOTES.md\"}"}]
-4/4 stage(s) passed
+ĐẠT  bridge /healthz — HTTP 200 mode=browser-only v6.1.9 accepting_turns=true
+ĐẠT  shim serves the model catalog — HTTP 200 models=7
+ĐẠT  text turn — reply contains "DSH-CHATGPT-OK", tokens=8878
+ĐẠT  DSH declares tools; bridge answers text without faking a call — fakeCall=false
+ĐẠT  continuation: model recalls the previous turn's context — "GREEN-HERON-7"
+5/5 stage(s) passed
 ```
 
-Historical transport smoke above is not current acceptance evidence. Its adapter
-also included a DEV-only assertion that tool effects were simulated; that false
-assertion has now been removed. Revalidate the full flow without it.
+Note: the bridge prefixes **every** browser-only reply with an advisory block
+("> **Local tools unavailable** …") as its first text event. Harmless, but it
+costs output tokens on each turn.
 
-`node --test test/` — 53 pass, 0 fail after that correction.
+Real-DSH proof (provider `cgw` via the pi-ai transport, not raw fetch):
+`dsh --profile headless --patch <overlay-pointing-cgw-at-17842> --json "<prompt>"`
+with `CGW_API_KEY=local-placeholder` → **exit 0**, final assistant text exactly
+`DSH-REAL-CGW-OK` (`/tmp/dsh-cgw-text-events.jsonl`, temporary).
+
+`node --test test/` — 55 pass, 0 fail.
 `dsh --profile web --dump-config` accepts the `cgw` route.
 
-The isolated headless DSH probe subsequently emitted `tool_call` for `read` and
-`tool_result` with status `completed`, reading a disposable nonsecret proof file.
-Evidence: `/tmp/dsh-cgw-proof-events.jsonl`, lines 4–5. This proves DSH tool
-execution, not receipt-to-final-answer: the same run ends in
-`chatgpt_submitted_turn_failed`. Temporary evidence may disappear after reboot.
+Multi-turn continuation through the shim with full history replay (codeword
+recall) also passed live (15s).
 
-Five recent browser diagnostics record the original error:
-`ChatGPT opened another user turn while the bound assistant response was detached`.
-Latest inspected trace: `c9f580377e8e`, captured 2026-10-16T21:24:22.282Z, under
-`~/.codex-chatgpt-web/diagnostics/browser-turns/c9f580377e8e-cb44c7e9/21-turn-failed.json`.
-The bridge's response ownership guard throws it when the bound assistant vanishes
-and the replacement DOM identities do not pass reconciliation. Whether this is DOM
-reshaping or a genuinely competing turn remains unknown. Plain string tool results
-are explicitly supported upstream; do not JSON-wrap them as a speculative fix.
-Stable-envelope synthetic continuation also failed, so ids alone are not a proven
-repair. The live adapter still generates per-request thread/turn ids; preserving
-identity across DSH continuations remains an unverified contract requirement.
+### Historical: full mode (do not re-litigate without cause)
 
-A returned `function_call` alone proves only tool-call generation. Full DSH
-receipt-to-final-answer remains **not yet verified**. The adapter must describe the real execution environment;
-never add DEV simulation assertions or fabricated Codex trust markers to pass a
-gate. Never read cookies/tokens or reuse another browser profile.
+- Full-mode headless run proved DSH actually executed a `read` tool call mid-turn
+  (`/tmp/dsh-cgw-proof-events.jsonl` lines 4–5, temporary), but the same run
+  ended in `chatgpt_submitted_turn_failed`: the continuation/ownership guard above.
+  Diagnostics under `~/.codex-chatgpt-web/diagnostics/browser-turns/` (latest
+  trace inspected: `c9f580377e8e`); whether DOM reshaping or a competing turn was
+  never resolved. Plain string tool results are supported upstream — do not
+  JSON-wrap them as a speculative fix.
+- In browser-only, ChatGPT cannot drive DSH tool calls at all (by design): DSH
+  declares its tools, the bridge ignores them, ChatGPT plans, DSH executes.
+- The adapter must never claim tool effects are simulated, add fabricated Codex
+  trust markers, or read cookies/tokens to pass a gate.
 
 ## Operating it
 
 ```bash
 systemctl --user status dsh-chatgpt-shim.service       # adapter
 curl -s localhost:17841/healthz                        # bridge (launcher)
-node tools/dsh-chatgpt-check.mjs                       # 4-stage proof
+node tools/dsh-chatgpt-check.mjs                       # 5-stage proof
 node --test test/dsh-chatgpt-shim.test.mjs             # adapter unit tests
 ```
 
@@ -125,6 +134,15 @@ launcher user-data directory (default `~/.config/Codex Web GPT`). Do not reload 
 close the user's tabs yourself. Never substitute a browser process, cookie scraping,
 or an alternate automation path; use injected `bsk_*` tools per `browser-skill`.
 Adding Chromium launch flags or asking for reload is not a proven continuation fix.
+
+## Recommended workflow
+
+ChatGPT plans and reviews as plain text; DSH executes tools natively and feeds
+results back as history. To use it: restart DSH so the `cgw` provider loads, then
+pick a `ChatGPT Web/*` model in the session's model selector. Every model turn is
+then served by the ChatGPT subscription instead of the API, while `read`/`edit`/
+`bash` etc. still run in DSH. Caveats: browser turns take ~10–20 s each, and
+ChatGPT only sees the conversation text — it has no direct view of the workspace.
 
 ## Cost, quota, and honesty
 

@@ -3,11 +3,19 @@
 //
 // WHY THIS EXISTS
 // The bridge (miuuyy/codex-chatgpt-web) is written for Codex as its client and
-// requires Codex's own transport envelope on tool-bearing turns. DeepSeek Harness
-// does not produce it, so the bridge fails those turns with:
-//   "ChatGPT web turn is missing cwd in trusted Codex environment context"
-// This adapter adds that envelope (verified against bridge v6.1.9) and forwards
-// the turn unchanged, so DSH can use the bridge as an ordinary Responses provider.
+// requires Codex's own transport envelope. DeepSeek Harness does not produce it,
+// so this adapter adds the minimum the bridge actually demands, per mode:
+//   browser-only (verified 2026-10-17): stable turn metadata plus a typed user
+//     message carrying that turn_id. ChatGPT answers text only; DSH keeps
+//     executing its own tools. No environment_context is injected — the bridge
+//     accepts the turn without it, and the envelope would be an untrue claim
+//     about a local Codex workspace.
+//   full (kept for fallback; NOT reliable with DSH): the bridge additionally
+//     requires a trusted `<environment_context>` block naming a cwd, or it fails
+//     with "ChatGPT web turn is missing cwd in trusted Codex environment
+//     context". Full-mode tool continuations were observed to fail upstream with
+//     "ChatGPT opened another user turn while the bound assistant response was
+//     detached" even after the answer completed, so browser-only is the default.
 //
 // WHAT IT IS NOT
 // It grants no capability. The envelope describes the local execution environment;
@@ -20,6 +28,9 @@
 //   CGW_SHIM_PORT   default 17842
 //   CGW_CWD         default $DSH_WORKSPACE or process.cwd()
 //   CGW_MODELS      comma-separated model ids; default = verified catalog
+//   CGW_BRIDGE_MODE "browser-only" (default) or "full"; must match the bridge's
+//                   own mode in ~/.codex-chatgpt-web/config.json or the envelope
+//                   shape will be wrong for it.
 
 import http from "node:http";
 import { randomUUID } from "node:crypto";
@@ -127,31 +138,54 @@ export function liftSystemMessages(input) {
 }
 
 /**
+ * Mark the current-turn user message with the native turn id the metadata names.
+ * The bridge scans input backwards for it; without it the turn is rejected with
+ * "ChatGPT web requires a current-turn user message for browser-session replay"
+ * (verified 2026-10-17 against bridge v6.1.9 browser-only mode).
+ */
+export function stampCurrentTurnId(input, turnId) {
+  let last = -1;
+  input.forEach((item, i) => {
+    if (item?.type === "message" && item.role === "user") last = i;
+  });
+  if (last === -1) throw new Error("no user message to stamp turn_id on");
+  return input.map((item, i) =>
+    i === last ? { ...item, internal_chat_message_metadata_passthrough: { turn_id: turnId } } : item,
+  );
+}
+
+/**
  * Rewrite a DSH Responses request into one the bridge accepts.
  * Pure apart from the generated ids. No I/O.
  */
-export function adaptRequestBody(dshBody, { cwd, models = DEFAULT_MODELS, threadId, turnId }) {
+export function adaptRequestBody(dshBody, { cwd, models = DEFAULT_MODELS, threadId, turnId, mode = "browser-only" }) {
   const model = dshBody?.model;
   if (!isKnownModel(model, models)) {
     throw new Error(`unknown model ${JSON.stringify(model)}; known: ${models.join(", ")}`);
   }
   const normalized = normalizeInput(Array.isArray(dshBody.input) ? dshBody.input : []);
   const { input, systemText } = liftSystemMessages(normalized);
-  const envelope = {
-    type: "message",
-    id: `msg_dev_environment_${hex()}`,
-    role: "user",
-    content: [{ type: "input_text", text: buildEnvironmentContext(cwd) }],
-    internal_chat_message_metadata_passthrough: { turn_id: turnId },
-  };
   const instructions = [dshBody.instructions, systemText]
     .filter((t) => typeof t === "string" && t.trim())
     .join("\n\n");
+  const finalInput =
+    mode === "full"
+      ? [
+          {
+            type: "message",
+            id: `msg_environment_${hex()}`,
+            role: "user",
+            content: [{ type: "input_text", text: buildEnvironmentContext(cwd) }],
+            internal_chat_message_metadata_passthrough: { turn_id: turnId },
+          },
+          ...input,
+        ]
+      : stampCurrentTurnId(input, turnId);
   return {
     ...dshBody,
     model,
     ...(instructions ? { instructions } : {}),
-    input: [envelope, ...input],
+    input: finalInput,
     client_metadata: {
       ...(dshBody.client_metadata ?? {}),
       "x-codex-turn-metadata": JSON.stringify(buildTurnMetadata({ threadId, turnId, cwd })),
@@ -183,12 +217,12 @@ function sendJson(res, status, payload) {
   res.end(text);
 }
 
-export function createServer({ bridgeUrl, cwd, models }) {
+export function createServer({ bridgeUrl, cwd, models, mode = "browser-only" }) {
   const base = bridgeUrl.replace(/\/+$/, "");
   return http.createServer(async (req, res) => {
     const url = new URL(req.url, "http://localhost");
     if (req.method === "GET" && url.pathname === "/healthz") {
-      return sendJson(res, 200, { status: "ok", service: "dsh-chatgpt-shim", bridge: base, cwd, models });
+      return sendJson(res, 200, { status: "ok", service: "dsh-chatgpt-shim", bridge: base, cwd, models, mode });
     }
     if (req.method === "GET" && url.pathname === "/v1/models") {
       return sendJson(res, 200, buildModelsPayload(models));
@@ -198,7 +232,11 @@ export function createServer({ bridgeUrl, cwd, models }) {
     }
     let body;
     try {
-      body = adaptRequestBody(JSON.parse(await readBody(req)), { cwd, models, threadId: randomUUID(), turnId: randomUUID() });
+      const dshBody = JSON.parse(await readBody(req));
+      // DSH keeps prompt_cache_key stable per session; reuse it so the bridge's
+      // retry budget and thread mapping see one thread across turns.
+      const threadId = typeof dshBody.prompt_cache_key === "string" && dshBody.prompt_cache_key ? dshBody.prompt_cache_key : randomUUID();
+      body = adaptRequestBody(dshBody, { cwd, models, threadId, turnId: randomUUID(), mode });
     } catch (err) {
       return sendJson(res, 400, { error: { message: String(err.message ?? err), type: "invalid_request_error" } });
     }
@@ -224,19 +262,22 @@ export function createServer({ bridgeUrl, cwd, models }) {
 export function loadConfig(env = process.env) {
   const cwd = env.CGW_CWD || env.DSH_WORKSPACE || process.cwd();
   const models = env.CGW_MODELS ? env.CGW_MODELS.split(",").map((m) => m.trim()).filter(Boolean) : [...DEFAULT_MODELS];
+  const mode = env.CGW_BRIDGE_MODE || "browser-only";
+  if (mode !== "browser-only" && mode !== "full") throw new Error(`invalid CGW_BRIDGE_MODE ${JSON.stringify(mode)}; use "browser-only" or "full"`);
   return {
     bridgeUrl: env.CGW_BRIDGE_URL || "http://127.0.0.1:17841",
     port: Number(env.CGW_SHIM_PORT || 17842),
     cwd,
     allowedRoots: (env.CGW_ALLOWED_ROOTS || cwd).split(":").filter(Boolean),
     models,
+    mode,
   };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const cfg = loadConfig();
   const cwd = resolveWorkspaceCwd(null, cfg.allowedRoots, cfg.cwd);
-  createServer({ bridgeUrl: cfg.bridgeUrl, cwd, models: cfg.models }).listen(cfg.port, "127.0.0.1", () => {
-    console.log(`dsh-chatgpt-shim on http://127.0.0.1:${cfg.port} -> ${cfg.bridgeUrl} (cwd ${cwd})`);
+  createServer({ bridgeUrl: cfg.bridgeUrl, cwd, models: cfg.models, mode: cfg.mode }).listen(cfg.port, "127.0.0.1", () => {
+    console.log(`dsh-chatgpt-shim on http://127.0.0.1:${cfg.port} -> ${cfg.bridgeUrl} (cwd ${cwd}, mode ${cfg.mode})`);
   });
 }

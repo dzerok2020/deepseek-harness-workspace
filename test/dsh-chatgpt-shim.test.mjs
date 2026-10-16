@@ -42,8 +42,10 @@ test("environment context carries the cwd as both cwd and workspace root", () =>
 });
 
 test("real DSH requests never declare tool effects to be simulated", () => {
-  const out = adaptRequestBody(dshRequest(), { cwd: CWD, ...IDS });
-  assert.doesNotMatch(JSON.stringify(out), /codex_dev_mode|All outer tool effects are explicitly simulated/);
+  for (const mode of ["browser-only", "full"]) {
+    const out = adaptRequestBody(dshRequest(), { cwd: CWD, ...IDS, mode });
+    assert.doesNotMatch(JSON.stringify(out), /codex_dev_mode|All outer tool effects are explicitly simulated/);
+  }
 });
 
 test("turn metadata declares a turn bound to the workspace root", () => {
@@ -55,25 +57,41 @@ test("turn metadata declares a turn bound to the workspace root", () => {
   assert.deepEqual(Object.keys(meta.workspaces), [CWD]);
 });
 
-test("adaptRequestBody prepends the envelope and preserves the original input", () => {
+test("browser-only default stamps the turn id on the last user message, no env envelope", () => {
+  const body = dshRequest({
+    input: [
+      { type: "message", id: "msg_old", role: "user", content: [{ type: "input_text", text: "earlier" }] },
+      { type: "message", id: "msg_a1", role: "assistant", content: [{ type: "output_text", text: "answer" }] },
+      { type: "message", id: USER_MSG_ID, role: "user", content: [{ type: "input_text", text: "hello" }] },
+    ],
+  });
+  const out = adaptRequestBody(body, { cwd: CWD, ...IDS });
+
+  assert.equal(out.input.length, 3, "browser-only must not prepend anything");
+  assert.doesNotMatch(JSON.stringify(out.input), /environment_context/, "no environment envelope in browser-only");
+  assert.deepEqual(out.input.slice(0, 2), body.input.slice(0, 2), "history items pass through unchanged");
+  const last = out.input.at(-1);
+  assert.equal(last.id, USER_MSG_ID);
+  assert.equal(last.internal_chat_message_metadata_passthrough.turn_id, IDS.turnId);
+
+  const meta = JSON.parse(out.client_metadata["x-codex-turn-metadata"]);
+  assert.equal(meta.turn_id, IDS.turnId);
+  assert.equal(meta.thread_id, IDS.threadId);
+});
+
+test("full mode prepends the trusted environment envelope", () => {
   const body = dshRequest();
   const original = structuredClone(body);
-  const out = adaptRequestBody(body, { cwd: CWD, ...IDS });
+  const out = adaptRequestBody(body, { cwd: CWD, ...IDS, mode: "full" });
 
   assert.equal(out.input.length, original.input.length + 1);
   const [env, ...rest] = out.input;
   assert.equal(env.type, "message");
   assert.equal(env.role, "user");
-  assert.match(env.id, /^msg_dev_environment_[0-9a-f]{32}$/);
-  assert.equal(env.content[0].type, "input_text");
+  assert.match(env.id, /^msg_environment_[0-9a-f]{32}$/);
   assert.ok(env.content[0].text.startsWith("<environment_context>"));
   assert.equal(env.internal_chat_message_metadata_passthrough.turn_id, IDS.turnId);
   assert.deepEqual(rest, original.input, "original input must pass through unchanged");
-
-  const meta = JSON.parse(out.client_metadata["x-codex-turn-metadata"]);
-  assert.equal(meta.turn_id, IDS.turnId);
-  assert.equal(meta.thread_id, IDS.threadId);
-  assert.deepEqual(Object.keys(meta.workspaces), [CWD]);
 });
 
 test("adaptRequestBody keeps caller metadata and tool declarations", () => {
@@ -128,7 +146,8 @@ test("adaptRequestBody lifts DSH's system message into instructions", () => {
   assert.equal(out.instructions, "SYS");
   assert.equal(out.input.some((i) => i.role === "system"), false, "no system item survives in input");
   assert.equal(out.input[0].role, "user");
-  assert.ok(out.input[0].content[0].text.includes("<environment_context>"));
+  assert.doesNotMatch(JSON.stringify(out.input), /environment_context/);
+  assert.equal(out.input[0].internal_chat_message_metadata_passthrough.turn_id, IDS.turnId);
 });
 
 test("server preserves upstream failures without inventing a diagnosis", async (t) => {
@@ -184,10 +203,44 @@ test("loadConfig defaults to the local bridge and the process workspace", () => 
   assert.equal(cfg.port, 17842);
   assert.equal(cfg.cwd, "/w");
   assert.deepEqual(cfg.allowedRoots, ["/w"]);
+  assert.equal(cfg.mode, "browser-only", "the verified mode is the default");
   const custom = loadConfig({ CGW_BRIDGE_URL: "http://h:1/", CGW_SHIM_PORT: "9", CGW_CWD: "/a", CGW_ALLOWED_ROOTS: "/a:/b", CGW_MODELS: "chatgpt-web/x, chatgpt-web/y" });
   assert.equal(custom.port, 9);
   assert.deepEqual(custom.allowedRoots, ["/a", "/b"]);
   assert.deepEqual(custom.models, ["chatgpt-web/x", "chatgpt-web/y"]);
+  assert.equal(loadConfig({ CGW_BRIDGE_MODE: "full" }).mode, "full");
+});
+
+test("loadConfig rejects a mode the bridge cannot have", () => {
+  assert.throws(() => loadConfig({ CGW_BRIDGE_MODE: "half" }), /invalid CGW_BRIDGE_MODE/);
+});
+
+test("server reuses prompt_cache_key as the bridge thread id", async (t) => {
+  const seen = [];
+  const bridge = http.createServer(async (req, res) => {
+    const chunks = [];
+    for await (const c of req) chunks.push(c);
+    seen.push(JSON.parse(Buffer.concat(chunks).toString()));
+    res.writeHead(200, { "content-type": "text/event-stream" });
+    res.end("data: [DONE]\n\n");
+  });
+  bridge.listen(0, "127.0.0.1");
+  await once(bridge, "listening");
+  const shim = createServer({ bridgeUrl: `http://127.0.0.1:${bridge.address().port}`, cwd: CWD, models: [...DEFAULT_MODELS] });
+  shim.listen(0, "127.0.0.1");
+  await once(shim, "listening");
+  t.after(() => { shim.close(); bridge.close(); });
+
+  const post = () => fetch(`http://127.0.0.1:${shim.address().port}/v1/responses`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify(dshRequest({ prompt_cache_key: "pcache-session-1" })),
+  }).then((r) => r.text());
+  await post();
+  await post();
+  const threads = seen.map((b) => JSON.parse(b.client_metadata["x-codex-turn-metadata"]).thread_id);
+  const turns = seen.map((b) => JSON.parse(b.client_metadata["x-codex-turn-metadata"]).turn_id);
+  assert.deepEqual(threads, ["pcache-session-1", "pcache-session-1"], "one thread per session");
+  assert.notEqual(turns[0], turns[1], "each HTTP turn gets its own turn id");
 });
 
 test("server forwards an adapted turn to the bridge and streams the reply back", async (t) => {
@@ -220,8 +273,9 @@ test("server forwards an adapted turn to the bridge and streams the reply back",
   assert.ok(text.includes("response.output_item.done"));
   assert.ok(text.trimEnd().endsWith("data: [DONE]"));
 
-  assert.ok(captured.input[0].content[0].text.startsWith("<environment_context>"));
-  assert.equal(JSON.parse(captured.client_metadata["x-codex-turn-metadata"]).turn_id, captured.input[0].internal_chat_message_metadata_passthrough.turn_id);
+  assert.doesNotMatch(JSON.stringify(captured.input), /environment_context/, "browser-only default injects no envelope");
+  const metaTurn = JSON.parse(captured.client_metadata["x-codex-turn-metadata"]).turn_id;
+  assert.equal(captured.input.at(-1).internal_chat_message_metadata_passthrough.turn_id, metaTurn);
 
   const models = await fetch(`${base}/v1/models`).then((r) => r.json());
   assert.deepEqual(models.data.map((m) => m.id), [...DEFAULT_MODELS]);
