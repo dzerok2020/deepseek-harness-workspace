@@ -1,0 +1,12 @@
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -1386,2 +1386,9 @@
+ 	if (/\b5\d\d\b/.test(message)) return "SERVER";
++	try {
++		const payload = JSON.parse(message);
++		const error = payload?.type === "error" ? payload.error : void 0;
++		if (error?.type === "server_error" || error?.type === "overloaded_error") return "SERVER";
++	} catch {
++		// Non-JSON messages retain the existing text-based classification.
++	}
+ 	if (/\btime(?:d)?\s*out\b|timeout/i.test(message)) return "TIMEOUT";
