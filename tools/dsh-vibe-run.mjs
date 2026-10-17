@@ -65,7 +65,7 @@ function dshRun({ name, catalog, provider, model, tools, prompt, timeout }) {
     { cwd: run.dir, encoding: "utf8", timeout: timeout * 1000, maxBuffer: 64 * 1024 * 1024 },
   );
   if (res.error?.code === "ETIMEDOUT") return { ok: false, error: `${name}: timeout ${timeout}s` };
-  if (res.status !== 0 && !res.stdout) return { ok: false, error: `${name}: exit ${res.status} ${res.stderr?.slice(0, 300)}` };
+  if (res.status !== 0) return { ok: false, error: `${name}: exit ${res.status} ${res.stderr?.slice(0, 300)}` };
   const final = parseFinal(res.stdout || "");
   if (!final) return { ok: false, error: `${name}: no final event; exit ${res.status}; tail: ${(res.stdout || res.stderr || "").slice(-300)}` };
   return { ok: true, text: provider === "cgw" ? stripCgwAdvisory(final) : final };
@@ -122,7 +122,7 @@ function mockPhase(name, prompt) {
   const role = name.replace(/(-r\d+)?(-retry)?$/, "");
   if (role === "architect") return { ok: true, text: "# PLAN\n\n- thêm hàm fib trong fib.py\n- test pytest\ntool_note: prompt had " + (prompt.includes("git") ? "context" : "none") };
   if (role === "coder") return { ok: true, text: '{"status":"done","commits":["mock1"],"notes":"mock implement"}' };
-  if (role === "tester") return { ok: true, text: '{"pass":true,"summary":"mock: all tests green"}' };
+  if (role === "tester") return { ok: true, text: '{"pass":true,"summary":"mock: all tests green","failures":[]}' };
   if (role === "reviewer") {
     const wantRework = prompt.includes("MOCK_REWORK");
     return wantRework
@@ -203,6 +203,10 @@ const main = () => {
     }
     writeFileSync(join(run.out, "REVIEW.json"), JSON.stringify(verdict, null, 2));
     console.log(`\nREVIEW round ${round}: ${verdict.verdict}${verdict.blocking?.length ? " — " + verdict.blocking.join("; ") : ""}`);
+    if (verdict.verdict === "pass" && (!Array.isArray(verdict.blocking) || verdict.blocking.length)) {
+      verdict = { verdict: "rework", blocking: ["reviewer pass không hợp lệ: blocking phải là mảng rỗng"] };
+      writeFileSync(join(run.out, "REVIEW.json"), JSON.stringify(verdict, null, 2));
+    }
     if (verdict.verdict === "pass") break;
     if (round === MAX_REWORK) break;
     step(`coder-r${round + 1}`, codeBrain, reworkPrompt(verdict), 1200);
@@ -258,10 +262,18 @@ function step(name, brain, prompt, timeout, after) {
   if (!r.ok) fail(`${name} thất bại: ${r.error}`);
   const t = r.text.trim();
   if (name === "tester" || /^tester-/.test(name)) {
-    writeFileSync(join(run.out, "TEST.json"), JSON.stringify(parseJsonLoose(t) || { raw: t }, null, 2));
+    const result = parseJsonLoose(t);
+    writeFileSync(join(run.out, "TEST.json"), JSON.stringify(result || { raw: t }, null, 2));
+    if (result?.pass !== true || !Array.isArray(result.failures) || result.failures.length) {
+      fail(`${name}: test gate chưa đạt (cần pass=true và failures=[])`);
+    }
   }
   if (name === "coder" || /^coder-/.test(name)) {
-    writeFileSync(join(run.out, `CODE${name === "coder" ? "" : name.slice(5)}.json`), JSON.stringify(parseJsonLoose(t) || { raw: t }, null, 2));
+    const result = parseJsonLoose(t);
+    writeFileSync(join(run.out, `CODE${name === "coder" ? "" : name.slice(5)}.json`), JSON.stringify(result || { raw: t }, null, 2));
+    if (result?.status !== "done" || !Array.isArray(result.commits)) {
+      fail(`${name}: code gate chưa đạt (cần status=done và commits là mảng)`);
+    }
   }
   if (after) after(t);
   else console.log(`  ${t.slice(0, 120).replace(/\n/g, " ")}…`);
@@ -288,6 +300,9 @@ export function parseJsonLoose(text) {
 
 function fail(msg) {
   console.error(`\n✖ ${msg}`);
+  if (existsSync(run.out)) {
+    writeFileSync(join(run.out, "FINAL.md"), `# PIPELINE FAILED\n\n- Task: ${TASK}\n- Failure: ${msg}\n- Exit: 1\n`);
+  }
   process.exit(1);
 }
 
