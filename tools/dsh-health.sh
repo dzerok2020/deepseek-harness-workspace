@@ -70,8 +70,8 @@ for p in dsh-loop-guard dsh-vibe-guard; do
 done
 
 head_ "6b. Regression của bộ kiểm chứng và tài liệu workspace"
-if python3 "$WS/test/hindsight-health.test.py" && (cd "$WS" && node --test test/); then
-  ok "test bộ kiểm chứng bộ nhớ và tài liệu workspace xanh"
+if python3 "$WS/test/hindsight-health.test.py" && python3 "$WS/test/orchestration-health.test.py" && (cd "$WS" && node --test test/); then
+  ok "test bộ kiểm chứng bộ nhớ, chuỗi ChatGPT và tài liệu workspace xanh"
 else
   bad "regression bộ kiểm chứng hoặc tài liệu workspace ĐỎ"
 fi
@@ -194,6 +194,13 @@ case "$CODE" in
   401|403|200) ok "headroom 127.0.0.1:8787 đáp HTTP $CODE (401/403 là đúng — proxy giữ nguyên xác thực tới OmniRoute)" ;;
   *) bad "headroom 127.0.0.1:8787 = ${CODE:-000} — chuỗi dsh→or có thể đang chết" ;;
 esac
+
+head_ "12. Chuỗi ChatGPT Web — kiểm chứng CHỨC NĂNG (không chỉ HTTP 200)"
+# shim phải báo mode browser-only, bridge phải accepting_turns, catalog phải có
+# model pipeline thật dùng. Bridge chết = Architect/Reviewer rơi về native (fallback),
+# không hỏng hẳn — nhưng bạn cần biết để mở lại tab ChatGPT trong launcher.
+if python3 "$WS/tools/orchestration-health.py"; then ok "shim + bridge + catalog đạt (chức năng)"
+else bad "chuỗi ChatGPT Web chưa đạt — pipeline sẽ fallback native; xem dòng LỖI ở trên"; fi
 
 printf '\n\033[1mKẾT QUẢ:\033[0m %d đạt, %d lỗi\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ] && echo "Các kiểm tra trong script đều đạt; không thay thế kiểm thử tải, UI hoặc nghiệm thu dự án thật." || echo "Có mục cần xử lý — xem các dòng LỖI ở trên."
