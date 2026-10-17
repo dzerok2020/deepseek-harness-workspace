@@ -222,6 +222,7 @@ const codePrompt = () => [
 
 const testPrompt = () => [
   "Bạn là KIỂM THỬ VIÊN (Tester) độc lập. Chạy TOÀN BỘ test suite + build của repo; nếu thiếu test cho hành vi trong .vibe-run/PLAN.md thì BỔ SUNG test (chỉ file test, không sửa code production).",
+  "Mọi file test bạn bổ sung/sửa PHẢI được commit ngay (`git add <file test> && git commit -m \"test: ...\"`) — không để thay đổi dở dang trong working tree, vì Reviewer chỉ soi được diff đã commit.",
   "Báo cáo trung thực: không được 'đoán' kết quả.",
   "\nTrả lời bằng JSON duy nhất: {\"pass\":true|false,\"summary\":\"...\",\"failures\":[\"...\"]}",
 ].join("\n\n");
