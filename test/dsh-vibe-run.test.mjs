@@ -49,6 +49,13 @@ test("parseJsonLoose survives code fences and prose around the object", () => {
   assert.equal(parseJsonLoose("no object here"), null);
 });
 
+test("parseJsonLoose unescapes ChatGPT markdown brackets", () => {
+  const t = '{"verdict":"rework","blocking":\\["DIFF STAT trống","TEST thiếu log"\\],"nits":\\["x"\\]}';
+  const v = parseJsonLoose(t);
+  assert.equal(v.verdict, "rework");
+  assert.equal(v.blocking.length, 2);
+});
+
 // ---- integration: mock pipeline runs the full state machine offline ----
 const makeRepo = () => {
   const dir = mkdtempSync(join(tmpdir(), "vibe-pipe-"));

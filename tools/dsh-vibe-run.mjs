@@ -185,10 +185,10 @@ const main = () => {
   let verdict = null;
   for (let round = 0; round <= MAX_REWORK; round++) {
     const tag = "reviewer" + (round ? `-r${round}` : "");
-    let reviewText = step(tag, planBrain, reviewPrompt(round), 420);
+    let reviewText = step(tag, planBrain, reviewPrompt(round, baseCommit), 420);
     if (!parseJsonLoose(reviewText)) {
       console.log("  ⚠ reviewer output unparseable — retrying once");
-      reviewText = step(tag + "-retry", planBrain, reviewPrompt(round), 420);
+      reviewText = step(tag + "-retry", planBrain, reviewPrompt(round, baseCommit), 420);
     }
     writeFileSync(join(run.out, "REVIEW-raw.txt"), reviewText);
     verdict = parseJsonLoose(reviewText);
@@ -226,14 +226,17 @@ const testPrompt = () => [
   "\nTrả lời bằng JSON duy nhất: {\"pass\":true|false,\"summary\":\"...\",\"failures\":[\"...\"]}",
 ].join("\n\n");
 
-const reviewPrompt = (round) => {
-  const diff = sh("git", ["diff", "--stat", process.env.VIBE_BASE || "HEAD~1", "..", "HEAD"]);
-  const full = sh("git", ["diff", "-U3", "HEAD~5", "..", "HEAD"]) || sh("git", ["diff", "-U3", "HEAD~1", "..", "HEAD"]);
+const reviewPrompt = (round, base) => {
+  const range = `${base || "HEAD~1"}..HEAD`;
+  const diff = sh("git", ["diff", "--stat", range]);
+  const full = sh("git", ["diff", "-U3", range]);
+  const commits = sh("git", ["log", "--oneline", range]);
   const test = readIf(".vibe-run/TEST.json", 4000);
   return [
     "Bạn là THẨM ĐỊNH VIÊN ĐỘC LẬP (Reviewer) — không phải người viết code này. Soi lỗi logic, vi phạm quy chuẩn, rủi ro.",
     "NHIỆM VỤ GỐC CỦA PIPELINE:\n" + TASK,
     round ? "Đây là vòng REWORK — kiểm tra các lỗi blocking đã được sửa chưa." : "",
+    "\nCOMMITS MỚI (so với gốc pipeline):\n" + (commits || "(pipeline này chưa tạo commit mới — code có thể đã đúng sẵn; hãy kiểm chứng bằng TEST.json)"),
     "\nDIFF STAT:\n" + diff,
     "\n" + (full.slice(0, 60000) || "(empty diff)"),
     "\n" + test,
@@ -265,15 +268,18 @@ function step(name, brain, prompt, timeout, after) {
 }
 
 export function parseJsonLoose(text) {
-  const s = text.indexOf("{");
-  const e = text.lastIndexOf("}");
+  // ChatGPT's browser-only output markdown-escapes punctuation ("blocking":[ →
+  // "blocking":[) — unescape before parse.
+  const clean = text.replace(/\\([[\]{}_*`#|<>=+.-])/g, "$1");
+  const s = clean.indexOf("{");
+  const e = clean.lastIndexOf("}");
   if (s >= 0 && e > s) {
     try {
-      return JSON.parse(text.slice(s, e + 1));
+      return JSON.parse(clean.slice(s, e + 1));
     } catch {}
   }
   try {
-    return JSON.parse(text);
+    return JSON.parse(clean);
   } catch {
     return null;
   }
