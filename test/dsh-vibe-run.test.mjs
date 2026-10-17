@@ -176,6 +176,32 @@ test("mock pipeline: max-rework 0 keeps the rework verdict and exits 1", () => {
   }
 });
 
+test('resume reuses a plan only for the same task and unchanged plan', () => {
+  const dir = makeRepo();
+  try {
+    assert.equal(runTool(dir, {task:'TASK A'}).status, 0);
+    const same = runTool(dir, {task:'TASK A'});
+    assert.equal(same.status, 0, same.stderr);
+    assert.match(same.stdout, /dùng lại/);
+    const different = runTool(dir, {task:'TASK B'});
+    assert.equal(different.status, 0, different.stderr);
+    assert.match(different.stdout, /▶ architect/);
+    assert.doesNotMatch(different.stdout, /dùng lại/);
+    writeFileSync(join(dir,'.vibe-run','PLAN.md'), '# tampered plan\ntool_note: old');
+    assert.match(runTool(dir, {task:'TASK B'}).stdout, /▶ architect/);
+  } finally { rmSync(dir, {recursive:true,force:true}); }
+});
+test('legacy plan without task identity is not reused', () => {
+  const dir = makeRepo();
+  try {
+    assert.equal(runTool(dir).status,0);
+    rmSync(join(dir,'.vibe-run','RUN.json'), {force:true});
+    const r = runTool(dir);
+    assert.equal(r.status,0,r.stderr);
+    assert.match(r.stdout,/▶ architect/);
+  } finally { rmSync(dir, {recursive:true,force:true}); }
+});
+
 test("pipeline refuses to run outside a git repo", () => {
   const dir = mkdtempSync(join(tmpdir(), "vibe-nogit-"));
   try {

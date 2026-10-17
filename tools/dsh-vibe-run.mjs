@@ -17,6 +17,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 const DSH = process.env.DSH_BIN || "/home/dzerok/.local/share/mise/installs/node/26.8.2/bin/dsh";
@@ -153,10 +154,18 @@ const main = () => {
   mkdirSync(join(run.out, "patches"), { recursive: true });
 
   // 1. ARCHITECT — ChatGPT Web plans from inline repo context (browser-only: no tools).
-  // Resume: a non-empty PLAN.md from a previous run is reused (ChatGPT turns are slow).
-  const baseCommit = sh("git", ["rev-parse", "HEAD"]).trim();
+  // Resume only when task identity and plan content both match the saved run.
+  const currentCommit = sh("git", ["rev-parse", "HEAD"]).trim();
   const planPath = join(run.out, "PLAN.md");
-  if (existsSync(planPath) && readFileSync(planPath, "utf8").replace(/\\/g, "").includes("tool_note")) {
+  const statePath = join(run.out, "RUN.json");
+  const hash = (text) => createHash("sha256").update(text).digest("hex");
+  let saved = null;
+  try { saved = JSON.parse(readFileSync(statePath, "utf8")); } catch {}
+  const resume = saved?.version === 1 && saved.task === TASK && saved.mock === MOCK &&
+    typeof saved.baseCommit === "string" && saved.baseCommit.length > 0 &&
+    existsSync(planPath) && saved.planHash === hash(readFileSync(planPath, "utf8"));
+  const baseCommit = resume ? saved.baseCommit : currentCommit;
+  if (resume) {
     console.log(`↻ dùng lại ${planPath} (resume)`);
   } else {
     const tree = sh("git", ["ls-files"]).split("\n").slice(0, 300).join("\n");
@@ -172,6 +181,7 @@ const main = () => {
     step("architect", planBrain, archPrompt, 300, (t) => {
       writeFileSync(planPath, t);
       if (!/tool\\?_note/.test(t)) fail("architect output lacks tool_note — abort (context may be too large)");
+      writeFileSync(statePath, JSON.stringify({ version: 1, task: TASK, mock: MOCK, baseCommit, planHash: hash(t) }, null, 2));
     });
   }
 
