@@ -52,7 +52,13 @@ function pinPatch(file, { provider, model, tools }) {
     `    provider: ${provider}`,
     `    model: ${model}`,
   ];
-  if (tools) lines.push("    sandbox: danger-full-access", "    approval: never");
+  const mode = tools ? "workspace-write" : "read-only";
+  lines.push(
+    "- id: sandbox-policy", "  config:", `    mode: ${mode}`,
+    "- id: approval", "  config:", "    policy: never",
+    "- id: permission", "  config:", `    defaultPreset: ${mode}`,
+    "    presets:", `      ${mode}:`, `        sandbox: ${mode}`, "        approval: never",
+  );
   writeFileSync(file, lines.join("\n") + "\n");
 }
 
@@ -268,7 +274,7 @@ const reworkPrompt = (v) => [
 
 function step(name, brain, prompt, timeout, after) {
   console.log(`▶ ${name}  (${brain.model})`);
-  const r = dshRun({ name, ...brain, tools: brain.provider === "or", prompt, timeout });
+  const r = dshRun({ name, ...brain, tools: /^(coder|tester)(-r\d+)?$/.test(name), prompt, timeout });
   if (!r.ok) fail(`${name} thất bại: ${r.error}`);
   const t = r.text.trim();
   if (name === "tester" || /^tester-/.test(name)) {

@@ -75,6 +75,21 @@ process.exit(outputs.exit ?? 0);
     env: { ...process.env, DSH_BIN: bin, PHASE_OUTPUTS: JSON.stringify(outputs) },
   });
 }
+test('native phase pins constrain writes at the permission owner', () => {
+  const dir = makeRepo();
+  try {
+    const r = runFixture(dir, goodOutputs);
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    const coder = readFileSync(join(dir,'.vibe-run','pin-coder.yml'),'utf8');
+    assert.match(coder, /- id: sandbox-policy\n  config:\n    mode: workspace-write/);
+    assert.match(coder, /- id: approval\n  config:\n    policy: never/);
+    assert.match(coder, /defaultPreset: workspace-write/);
+    assert.doesNotMatch(coder, /danger-full-access/);
+    const reviewer = readFileSync(join(dir,'.vibe-run','pin-reviewer.yml'),'utf8');
+    assert.match(reviewer, /mode: read-only/);
+    assert.match(reviewer, /defaultPreset: read-only/);
+  } finally { rmSync(dir,{recursive:true,force:true}); }
+});
 const goodOutputs = { coder: {status:'done',commits:[]}, tester: {pass:true,failures:[]}, reviewer: {verdict:'pass',blocking:[]} };
 for (const [label, overrides] of [
   ['blocked coder', {coder:{status:'blocked'}}],
