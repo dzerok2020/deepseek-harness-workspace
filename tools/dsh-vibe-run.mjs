@@ -83,6 +83,12 @@ export function parseFinal(jsonl) {
 }
 
 export function stripCgwAdvisory(text) {
+  // The harness prepends a fixed blockquote advisory; the model may CONTINUE on
+  // the advisory's last line ("> …local tools.{\"verdict\":\"pass\"}") — so cut at
+  // the marker instead of dropping whole '>' lines, which would eat the answer.
+  const marker = "access to local tools.";
+  const at = text.indexOf(marker);
+  if (at >= 0) return text.slice(at + marker.length).replace(/^[^\S\n]+/, "").trim();
   const lines = text.split("\n");
   let i = 0;
   while (i < lines.length && (lines[i].startsWith(">") || lines[i].trim() === "")) i++;
@@ -113,7 +119,7 @@ function readIf(path, cap = 8000) {
 
 // ---- canned outputs for --mock (state-machine tests) ------------------
 function mockPhase(name, prompt) {
-  const role = name.replace(/-r\d+$/, "");
+  const role = name.replace(/(-r\d+)?(-retry)?$/, "");
   if (role === "architect") return { ok: true, text: "# PLAN\n\n- thêm hàm fib trong fib.py\n- test pytest\ntool_note: prompt had " + (prompt.includes("git") ? "context" : "none") };
   if (role === "coder") return { ok: true, text: '{"status":"done","commits":["mock1"],"notes":"mock implement"}' };
   if (role === "tester") return { ok: true, text: '{"pass":true,"summary":"mock: all tests green"}' };
@@ -178,10 +184,22 @@ const main = () => {
   // 4. REVIEWER loop — ChatGPT Web reviews the actual diff, different brain.
   let verdict = null;
   for (let round = 0; round <= MAX_REWORK; round++) {
-    const reviewText = step("reviewer" + (round ? `-r${round}` : ""), planBrain, reviewPrompt(round), 300);
+    const tag = "reviewer" + (round ? `-r${round}` : "");
+    let reviewText = step(tag, planBrain, reviewPrompt(round), 420);
+    if (!parseJsonLoose(reviewText)) {
+      console.log("  ⚠ reviewer output unparseable — retrying once");
+      reviewText = step(tag + "-retry", planBrain, reviewPrompt(round), 420);
+    }
+    writeFileSync(join(run.out, "REVIEW-raw.txt"), reviewText);
     verdict = parseJsonLoose(reviewText);
     if (!verdict || (verdict.verdict !== "pass" && verdict.verdict !== "rework")) {
-      verdict = { verdict: "rework", blocking: ["reviewer trả kết quả không parse được"], raw: reviewText.slice(0, 500) };
+      // Gate itself failed — do NOT burn a coder round on nothing.
+      verdict = reviewText.trim()
+        ? { verdict: "rework", blocking: ["reviewer trả kết quả không parse được"], raw: reviewText.slice(0, 500) }
+        : { verdict: "review-unavailable", blocking: ["reviewer (ChatGPT Web) trả về rỗng 2 lần — cầu/bridge có thể đang nghẽn; chạy lại pipeline"] };
+      writeFileSync(join(run.out, "REVIEW.json"), JSON.stringify(verdict, null, 2));
+      console.log(`\nREVIEW round ${round}: ${verdict.verdict}`);
+      break;
     }
     writeFileSync(join(run.out, "REVIEW.json"), JSON.stringify(verdict, null, 2));
     console.log(`\nREVIEW round ${round}: ${verdict.verdict}${verdict.blocking?.length ? " — " + verdict.blocking.join("; ") : ""}`);
@@ -246,10 +264,16 @@ function step(name, brain, prompt, timeout, after) {
   return t;
 }
 
-function parseJsonLoose(text) {
-  const m = text.match(/^[^{]*\{[\s\S]*\}[^}]*$/);
+export function parseJsonLoose(text) {
+  const s = text.indexOf("{");
+  const e = text.lastIndexOf("}");
+  if (s >= 0 && e > s) {
+    try {
+      return JSON.parse(text.slice(s, e + 1));
+    } catch {}
+  }
   try {
-    return JSON.parse(m ? m[0].trim() : text);
+    return JSON.parse(text);
   } catch {
     return null;
   }

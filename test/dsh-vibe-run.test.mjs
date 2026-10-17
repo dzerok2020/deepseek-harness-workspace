@@ -7,7 +7,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { parseFinal, stripCgwAdvisory } from "../tools/dsh-vibe-run.mjs";
+import { parseFinal, stripCgwAdvisory, parseJsonLoose } from "../tools/dsh-vibe-run.mjs";
 
 const TOOL = join(import.meta.dirname, "..", "tools", "dsh-vibe-run.mjs");
 
@@ -32,6 +32,21 @@ test("stripCgwAdvisory removes the leading blockquote advisory only", () => {
   const cgw = '> **Local tools unavailable**: the ChatGPT bridge is text-only.\n>\n\nHere is your JSON:\n{"ok":1}';
   assert.equal(stripCgwAdvisory(cgw), 'Here is your JSON:\n{"ok":1}');
   assert.equal(stripCgwAdvisory("no advisory here"), "no advisory here");
+});
+
+test("stripCgwAdvisory keeps answer concatenated on the advisory's last line", () => {
+  // Observed live: ChatGPT continued right after "...access to local tools." with no newline.
+  const cgw =
+    "> **Local tools unavailable**\n>\n> `ChatGPT Web Instant` cannot access the local Codex computer.\n>\n" +
+    "> **Action:** Open `MCP` in `Codex Web GPT` and connect the `Full` harness to give the selected ChatGPT Web model access to local tools." +
+    '{"verdict":"pass","blocking":[]}';
+  assert.equal(stripCgwAdvisory(cgw), '{"verdict":"pass","blocking":[]}');
+});
+
+test("parseJsonLoose survives code fences and prose around the object", () => {
+  const t = "Here you go:\n```json\n{\"verdict\":\"rework\",\"blocking\":[\"x\"]}\n```\nDone.";
+  assert.equal(parseJsonLoose(t).verdict, "rework");
+  assert.equal(parseJsonLoose("no object here"), null);
 });
 
 // ---- integration: mock pipeline runs the full state machine offline ----
