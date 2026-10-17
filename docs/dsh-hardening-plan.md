@@ -32,3 +32,14 @@ Giữ nguyên model, provider, đăng nhập và dữ liệu. Giới hạn conte
 Mỗi lát: focused tests → toàn bộ `node --test test/`, Python health tests, hai plugin tests khi cần → diff check → commit. Cuối: health static/endpoint, live synthetic task biệt lập và kiểm tra worktree. Chưa chạy được phải ghi chưa verify.
 
 Rollback code bằng `git revert <commit>` theo thứ tự ngược (không reset hard). Rollback profile: sao lưu bản hiện tại trước, khôi phục `web-cordis.patch.yml` từ backup và kiểm tra `dsh --profile web --dump-config`; người dùng restart DSH khi thuận tiện. Backup không chứa database, không phải backup toàn hệ. Không tự chạy rollback làm mất sửa đổi người dùng.
+
+## Trạng thái triển khai (2026-10-17)
+
+| Lát | Commit / tệp | Bằng chứng |
+|---|---|---|
+| 1. Quyền | `d6f88f2` (tools/dsh-vibe-run.mjs pin sandbox-policy/approval/permission; test owner-pin) + profile live `defaultPreset: workspace-write` (không thuộc git; backup `~/.dsh/backups/hardening-20261017-1245/web-cordis.patch.yml`) | Test đỏ→xanh (81/81). Probe headless THẬT trong repo tạm (`/tmp/sbx-probe-*`, log `/tmp/sbx-probe-run2.jsonl`): ghi trong repo exit 0; ghi `$HOME` bị chặn `[sandbox: file access denied under workspace-write mode]`, file không tồn tại. Lưu ý: phiên GUI đang chạy vẫn giữ danger-full-access cho tới khi restart — thay đổi chỉ áp dụng cho phiên/s进程 mới. |
+| 2. Context | `9b2577d` (vibe-native.yml, vibe-cgw.yml) + profile live cordis.patch.yml | `test/route-budget.test.mjs` đỏ→xanh; mọi model or/cgw khai báo tường minh 128000/16384; `dsh --profile web --dump-config` exit 0 stderr rỗng, `grep` không còn 1000000/131072/384192. |
+| 3. Health | `e05c2a6` (tools/orchestration-health.py + test + dsh-health.sh mục 12) | 5 unit test negative (mode sai, catalog thiếu model, bridge không accepting_turns, endpoint chết) pass; check thật ĐẠT exit 0. HTTP 200 không còn được coi là đủ. |
+| 4. Đo rồi tinh gọn | tài liệu này | Baseline mới vs audit sáng: laya-serve 5.202GB→5.202GB, hindsight-daemon 3.846GB→3.694GB, omniroute 1.459→1.471GB, headroom 0.701→0.674GB, shim 32MB, 34 bundles, RAM 22.2/31.9GB. Dao động ±4%, không dấu hiệu leak → KHÔNG tắt/dịch vụ xoá/lớp nào: chưa có bằng chứng trùng đột phá chức năng; các lớp memory (Hindsight/OpenViking/StrataGate/Mnemon) giữ nguyên. vibe-native.yml trông như trùng web profile nhưng headless profile bắt buộc cần overlay riêng → giữ. |
+
+Nghiệm thu tổng: chạy toàn bộ `node --test test/` (83), 2 bộ Python, `bash tools/dsh-health.sh`, và pipeline 4-vai-tò thật task mới (`/tmp/vibe-live2-XXXX`) với pin + budget mới — kết quả ghi trong báo cáo cuối.
