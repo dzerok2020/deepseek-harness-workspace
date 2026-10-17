@@ -1,0 +1,20 @@
+# vibe-run overlay: native "or" provider (copied from web profile) for CODER/TESTER phases.
+- id: llm-pi-ai
+  config:
+    providers:
+      or:
+        displayName: OmniRoute
+        apiKeyEnv: OR_API_KEY
+        api: anthropic-messages
+        baseURL: http://localhost:8787/v1
+        defaultContextWindow: 128000
+        defaultMaxTokens: 16384
+        models:
+          - id: b-ai/qwen3.8-flash
+            name: qwen3.8 flash
+            contextWindow: 1000000
+            maxTokens: 131072
+          - id: b-ai/deepseek-v4.1-flash
+            name: deepseek v4.1 flash
+            contextWindow: 1000000
+            maxTokens: 384192

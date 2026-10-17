@@ -1,0 +1,19 @@
+# vibe-run overlay: "cgw" ChatGPT-Web provider (copied from web profile) for ARCHITECT/REVIEWER phases.
+- id: llm-pi-ai
+  config:
+    providers:
+      cgw:
+        displayName: ChatGPT Web (codex-chatgpt-web)
+        api: openai-responses
+        apiKeyEnv: CGW_API_KEY
+        baseURL: http://127.0.0.1:17842/v1
+        defaultContextWindow: 128000
+        models:
+          - id: chatgpt-web/gpt-6-sol-instant
+            name: gpt 6 sol instant (ChatGPT Web)
+            contextWindow: 1000000
+            maxTokens: 128000
+          - id: chatgpt-web/gpt-6-sol
+            name: gpt 6 sol (ChatGPT Web)
+            contextWindow: 1000000
+            maxTokens: 128000
