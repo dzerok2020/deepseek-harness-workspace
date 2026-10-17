@@ -12,9 +12,9 @@
         models:
           - id: b-ai/qwen3.8-flash
             name: qwen3.8 flash
-            contextWindow: 1000000
-            maxTokens: 131072
+            contextWindow: 128000
+            maxTokens: 16384
           - id: b-ai/deepseek-v4.1-flash
             name: deepseek v4.1 flash
-            contextWindow: 1000000
-            maxTokens: 384192
+            contextWindow: 128000
+            maxTokens: 16384
