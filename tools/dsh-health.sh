@@ -13,6 +13,28 @@ ok()   { printf '  \033[32mĐẠT\033[0m  %s\n' "$1"; PASS=$((PASS+1)); }
 bad()  { printf '  \033[31mLỖI\033[0m  %s\n' "$1"; FAIL=$((FAIL+1)); }
 note() { printf '       %s\n' "$1"; }
 head_() { printf '\n\033[1m%s\033[0m\n' "$1"; }
+SKIP=0
+skip() { printf '  \033[33mBỎ QUA\033[0m  %s\n' "$1"; SKIP=$((SKIP+1)); }
+
+# Sandbox của agent (bwrap --ro-bind / --unshare-pid) không nối được user bus
+# systemd và không ghi được file ngoài workspace. Hai probe dưới đây tách
+# "dịch vụ chết thật" khỏi "không nhìn thấy được từ sandbox": báo BỎ QUA thay
+# vì LỖI giả — bằng chứng sống thật là các HTTP probe ngay phía dưới.
+BUS_OK=1
+case "$(systemctl --user is-system-running 2>&1 || true)" in
+  *Failed\ to\ connect*) BUS_OK=0 ;;
+esac
+
+unit_enabled() { # $1=unit $2=msg-đạt $3=msg-lỗi-kèm-lệnh-sửa
+  if   [ "$BUS_OK" -eq 0 ]; then skip "$1 is-enabled: không kiểm được từ sandbox agent — mở terminal: systemctl --user is-enabled $1"
+  elif [ "$(systemctl --user is-enabled "$1" 2>/dev/null)" = "enabled" ]; then ok "$2"
+  else bad "$3"; fi
+}
+unit_active() { # $1=unit $2=msg-đạt $3=msg-lỗi-kèm-lệnh-sửa
+  if   [ "$BUS_OK" -eq 0 ]; then skip "$1 is-active: không kiểm được từ sandbox agent — tin HTTP probe bên dưới; hoặc terminal: systemctl --user is-active $1"
+  elif systemctl --user is-active --quiet "$1" 2>/dev/null; then ok "$2"
+  else bad "$3"; fi
+}
 
 head_ "1. DSH cài đặt được"
 if command -v dsh >/dev/null 2>&1; then ok "dsh có trong PATH ($(dsh --version 2>/dev/null | head -1))"
@@ -20,14 +42,19 @@ else bad "không tìm thấy lệnh dsh trong PATH"; fi
 
 head_ "2. Profile nạp được toàn bộ bundle (không lỗi cấu hình)"
 DUMP_ERR="$(mktemp)"; DUMP_OUT="$(mktemp)"
-if dsh --profile web --dump-config >"$DUMP_OUT" 2>"$DUMP_ERR"; then
+dsh --profile web --dump-config >"$DUMP_OUT" 2>"$DUMP_ERR" && DUMP_RC=0 || DUMP_RC=$?
+# --dump-config bắt buộc ghi cordis.yml từ patch; trong sandbox agent (ro-bind /)
+# nó chết EROFS — artifact môi trường, không phải hỏng cấu hình.
+if [ "$DUMP_RC" -ne 0 ] && grep -qE 'EROFS|read-only file system' "$DUMP_ERR"; then
+  skip "dsh --dump-config: phải ghi cordis.yml nên chết EROFS trong sandbox agent — chạy lại mục này từ terminal thường"
+elif [ "$DUMP_RC" -eq 0 ]; then
   ok "dsh --dump-config chạy thành công ($(wc -l <"$DUMP_OUT") dòng)"
+  if [ -s "$DUMP_ERR" ]; then bad "có cảnh báo/lỗi ở stderr khi nạp profile:"; head -10 "$DUMP_ERR" | sed 's/^/       /'
+  else ok "stderr rỗng (không có cảnh báo khi nạp)"; fi
 else
   bad "dsh --dump-config THẤT BẠI — đọc lỗi bên dưới"
   head -20 "$DUMP_ERR" | sed 's/^/       /'
 fi
-if [ -s "$DUMP_ERR" ]; then bad "có cảnh báo/lỗi ở stderr khi nạp profile:"; head -10 "$DUMP_ERR" | sed 's/^/       /'
-else ok "stderr rỗng (không có cảnh báo khi nạp)"; fi
 
 head_ "3. Plugin chống lặp đã được cài"
 N="$(node -p "try{require('$PROFILE/package.json').dsh.profile.bundles.length}catch(e){-1}" 2>/dev/null)"
@@ -115,12 +142,10 @@ if [ -L "$UNIT" ] && [ "$(readlink "$UNIT")" = "$SRC" ]; then ok "unit là symli
 elif [ -L "$UNIT" ]; then bad "unit trỏ sai chỗ: $(readlink "$UNIT") (muốn: $SRC)"
 elif [ -f "$UNIT" ]; then bad "unit là bản sao, không phải symlink (sửa trong repo sẽ không có tác dụng)"
 else bad "THIẾU $UNIT — bật: ln -sfn $SRC $UNIT && systemctl --user daemon-reload && systemctl --user enable --now laya-serve.service"; fi
-[ "$(systemctl --user is-enabled laya-serve.service 2>/dev/null)" = "enabled" ] \
-  && ok "đã enable (tự chạy khi đăng nhập — linger đang bật)" \
-  || bad "CHƯA enable: systemctl --user enable laya-serve.service"
-systemctl --user is-active --quiet laya-serve.service \
-  && ok "laya-serve.service đang chạy" \
-  || bad "laya-serve.service KHÔNG chạy — decide sẽ rơi xuống Jev: systemctl --user start laya-serve.service"
+unit_enabled laya-serve.service "đã enable (tự chạy khi đăng nhập — linger đang bật)" \
+  "CHƯA enable: systemctl --user enable laya-serve.service"
+unit_active laya-serve.service "laya-serve.service đang chạy" \
+  "laya-serve.service KHÔNG chạy — decide sẽ rơi xuống Jev: systemctl --user start laya-serve.service"
 CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:8000/health 2>/dev/null)"
 [ "$CODE" = "200" ] && ok "GET /health = 200 (Laya sẵn sàng ở 127.0.0.1:8000; nạp model lần đầu ~16s)" \
   || bad "GET /health = ${CODE:-000} — Laya chưa sẵn sàng"
@@ -129,9 +154,8 @@ head_ "10. Dịch vụ Hindsight (bộ nhớ dài hạn của DSH)"
 # Hindsight chết im lặng: DSH vẫn chạy bình thường, chỉ là không có ký ức nào được
 # ghi vào hay nạp ra (đã từng có 1038 lần retain thất bại mà không hiện lỗi ở đâu).
 # Mục này để nhìn ra, gồm cả trang quản trị ở http://localhost:9999.
-systemctl --user is-active --quiet hindsight-daemon.service \
-  && ok "hindsight-daemon.service đang chạy" \
-  || bad "hindsight-daemon.service KHÔNG chạy — DSH sẽ chạy mà không có ký ức: systemctl --user start hindsight-daemon.service"
+unit_active hindsight-daemon.service "hindsight-daemon.service đang chạy" \
+  "hindsight-daemon.service KHÔNG chạy — DSH sẽ chạy mà không có ký ức: systemctl --user start hindsight-daemon.service"
 CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:9077/health 2>/dev/null)"
 [ "$CODE" = "200" ] && ok "GET 127.0.0.1:9077/health = 200 (daemon sẵn sàng)" \
   || bad "GET 127.0.0.1:9077/health = ${CODE:-000} — daemon chưa sẵn sàng"
@@ -142,12 +166,10 @@ if [ -L "$UNIT" ] && [ "$(readlink "$UNIT")" = "$SRC" ]; then ok "unit control p
 elif [ -L "$UNIT" ]; then bad "unit control plane trỏ sai chỗ: $(readlink "$UNIT") (muốn: $SRC)"
 elif [ -f "$UNIT" ]; then bad "unit control plane là bản sao, không phải symlink (sửa trong repo sẽ không có tác dụng)"
 else bad "THIẾU $UNIT — bật: ln -sfn $SRC $UNIT && systemctl --user daemon-reload && systemctl --user enable --now hindsight-control-plane.service"; fi
-[ "$(systemctl --user is-enabled hindsight-control-plane.service 2>/dev/null)" = "enabled" ] \
-  && ok "đã enable (tự chạy khi đăng nhập — linger đang bật)" \
-  || bad "CHƯA enable: systemctl --user enable hindsight-control-plane.service"
-systemctl --user is-active --quiet hindsight-control-plane.service \
-  && ok "hindsight-control-plane.service đang chạy" \
-  || bad "hindsight-control-plane.service KHÔNG chạy — http://localhost:9999 không mở được: systemctl --user start hindsight-control-plane.service"
+unit_enabled hindsight-control-plane.service "đã enable (tự chạy khi đăng nhập — linger đang bật)" \
+  "CHƯA enable: systemctl --user enable hindsight-control-plane.service"
+unit_active hindsight-control-plane.service "hindsight-control-plane.service đang chạy" \
+  "hindsight-control-plane.service KHÔNG chạy — http://localhost:9999 không mở được: systemctl --user start hindsight-control-plane.service"
 CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:9999/api/health 2>/dev/null)"
 [ "$CODE" = "200" ] && ok "GET 127.0.0.1:9999/api/health = 200 (trang quản trị: http://localhost:9999)" \
   || bad "GET 127.0.0.1:9999/api/health = ${CODE:-000} — trang quản trị chưa sẵn sàng"
@@ -174,21 +196,18 @@ if [ -L "$UNIT" ] && [ "$(readlink "$UNIT")" = "$SRC" ]; then ok "unit là symli
 elif [ -L "$UNIT" ]; then bad "unit trỏ sai chỗ: $(readlink "$UNIT") (muốn: $SRC)"
 elif [ -f "$UNIT" ]; then bad "unit là bản sao, không phải symlink (sửa trong repo sẽ không có tác dụng) — bật: ln -sfn $SRC $UNIT && systemctl --user daemon-reload"
 else bad "THIẾU $UNIT — bật: ln -sfn $SRC $UNIT && systemctl --user daemon-reload && systemctl --user enable --now omniroute.service"; fi
-[ "$(systemctl --user is-enabled omniroute.service 2>/dev/null)" = "enabled" ] \
-  && ok "omniroute đã enable (tự chạy khi đăng nhập — linger đang bật)" \
-  || bad "omniroute CHƯA enable: systemctl --user enable omniroute.service"
-systemctl --user is-active --quiet omniroute.service \
-  && ok "omniroute.service đang chạy" \
-  || bad "omniroute.service KHÔNG chạy — DSH không gọi được model nào: systemctl --user start omniroute.service (KHÔNG dùng 'omniroute stop' khi unit chạy)"
+unit_enabled omniroute.service "omniroute đã enable (tự chạy khi đăng nhập — linger đang bật)" \
+  "omniroute CHƯA enable: systemctl --user enable omniroute.service"
+unit_active omniroute.service "omniroute.service đang chạy" \
+  "omniroute.service KHÔNG chạy — DSH không gọi được model nào: systemctl --user start omniroute.service (KHÔNG dùng 'omniroute stop' khi unit chạy)"
 CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:20128/api/health 2>/dev/null)"
 [ "$CODE" = "200" ] && ok "GET 127.0.0.1:20128/api/health = 200 (dashboard: http://localhost:20128)" \
   || bad "GET 127.0.0.1:20128/api/health = ${CODE:-000} — OmniRoute chưa sẵn sàng (khởi động ~10s)"
 if ss -ltn 2>/dev/null | grep -q '0\.0\.0\.0:20128'; then
   bad "OmniRoute nghe trên 0.0.0.0:20128 trong khi REQUIRE_API_KEY=false — cả LAN xài nhờ được (sửa OMNIROUTE_SERVER_HOST=127.0.0.1 trong ~/.omniroute/.env rồi systemctl --user restart omniroute.service)"
 else ok "OmniRoute chỉ nghe trên loopback (không lộ gateway ra LAN)"; fi
-systemctl --user is-active --quiet headroom-proxy.service \
-  && ok "headroom-proxy.service đang chạy" \
-  || bad "headroom-proxy.service KHÔNG chạy — provider or của DSH chết theo: systemctl --user start headroom-proxy.service"
+unit_active headroom-proxy.service "headroom-proxy.service đang chạy" \
+  "headroom-proxy.service KHÔNG chạy — provider or của DSH chết theo: systemctl --user start headroom-proxy.service"
 CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:8787/v1/models 2>/dev/null)"
 case "$CODE" in
   401|403|200) ok "headroom 127.0.0.1:8787 đáp HTTP $CODE (401/403 là đúng — proxy giữ nguyên xác thực tới OmniRoute)" ;;
@@ -202,7 +221,9 @@ head_ "12. Chuỗi ChatGPT Web — kiểm chứng CHỨC NĂNG (không chỉ HTT
 if python3 "$WS/tools/orchestration-health.py"; then ok "shim + bridge + catalog đạt (chức năng)"
 else bad "chuỗi ChatGPT Web chưa đạt — pipeline sẽ fallback native; xem dòng LỖI ở trên"; fi
 
-printf '\n\033[1mKẾT QUẢ:\033[0m %d đạt, %d lỗi\n' "$PASS" "$FAIL"
-[ "$FAIL" -eq 0 ] && echo "Các kiểm tra trong script đều đạt; không thay thế kiểm thử tải, UI hoặc nghiệm thu dự án thật." || echo "Có mục cần xử lý — xem các dòng LỖI ở trên."
+printf '\n\033[1mKẾT QUẢ:\033[0m %d đạt, %d lỗi, %d bỏ qua\n' "$PASS" "$FAIL" "$SKIP"
+if [ "$FAIL" -gt 0 ]; then echo "Có mục cần xử lý — xem các dòng LỖI ở trên."
+elif [ "$SKIP" -gt 0 ]; then printf 'Đạt mọi mục kiểm được ở đây; %d mục BỎ QUA vì sandbox agent không nhìn thấy (systemd bus/EROFS) — chạy lại từ terminal thường để phủ đủ.\n' "$SKIP"
+else echo "Các kiểm tra trong script đều đạt; không thay thế kiểm thử tải, UI hoặc nghiệm thu dự án thật."; fi
 rm -f "$DUMP_ERR" "$DUMP_OUT"
 exit $([ "$FAIL" -eq 0 ] && echo 0 || echo 1)
