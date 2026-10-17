@@ -23,7 +23,7 @@ const DSH = process.env.DSH_BIN || "/home/dzerok/.local/share/mise/installs/node
 const WORK = "/home/dzerok/Documents/deepseek-harness/default-workspace";
 const CGW_CATALOG = join(WORK, "tools/vibe-cgw.yml");
 const NATIVE_CATALOG = join(WORK, "tools/vibe-native.yml");
-const CGW_MODEL = "chatgpt-web/gpt-6-sol-instant";
+const CGW_MODEL = "chatgpt-web/gpt-6-sol";
 const NATIVE_MODEL = "b-ai/qwen3.8-flash";
 const SHIM_HEALTH = "http://127.0.0.1:17842/healthz";
 
