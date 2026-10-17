@@ -47,6 +47,54 @@ def fetch_json(url, timeout=5):
         return json.load(response)
 
 
+def check_profile_budgets(path):
+    """Đọc cordis.patch.yml thật, kiểm provider or/cgw có ngân sách 128000/16384 tường minh.
+
+    GUI từng ghi đè file lúc 13:24 trả 1M/65000/131000 — kiểm định trực tiếp
+    trên đĩa, không tin bản nhớ trong đầu tiến trình.
+    """
+    providers = {}
+    current = None
+    model = None
+    with open(path, encoding='utf-8') as stream:
+        for raw in stream:
+            line = raw.rstrip('\n')
+            stripped = line.strip()
+            indent = len(line) - len(line.lstrip())
+            if indent == 6 and stripped.endswith(':'):
+                current = stripped[:-1] if stripped[:-1] in ('or', 'cgw') else None
+                if current:
+                    providers[current] = {'defaultContextWindow': None, 'defaultMaxTokens': None, 'models': []}
+                model = None
+            elif current is None or indent < 8:
+                continue
+            elif indent == 8 and ':' in stripped:
+                key, _, value = stripped.partition(':')
+                if key == 'defaultContextWindow':
+                    providers[current]['defaultContextWindow'] = int(value)
+                elif key == 'defaultMaxTokens':
+                    providers[current]['defaultMaxTokens'] = int(value)
+                elif key == 'models':
+                    pass
+            elif indent == 10 and stripped.startswith('- id:'):
+                model = {'id': stripped[len('- id:'):].strip()}
+                providers[current]['models'].append(model)
+            elif indent == 12 and ':' in stripped and model is not None:
+                key, _, value = stripped.partition(':')
+                if key in ('contextWindow', 'maxTokens'):
+                    try:
+                        model[key] = int(value)
+                    except ValueError:
+                        pass
+    if not providers:
+        return ['khong thay provider or/cgw trong profile']
+    errors = []
+    for name, provider in providers.items():
+        for message in budget_errors(provider):
+            errors.append(name + ' -> ' + message)
+    return errors
+
+
 def main():
     shim_url = os.environ.get('CGW_SHIM_URL', 'http://127.0.0.1:17842')
     pipeline_model = os.environ.get('CGW_PIPELINE_MODEL', 'chatgpt-web/gpt-6-sol')
@@ -77,6 +125,12 @@ def main():
                 failures.append('catalog shim thieu model pipeline: ' + pipeline_model)
         except Exception as error:
             failures.append('shim /v1/models khong dap ung: ' + type(error).__name__)
+    profile_path = os.environ.get('DSH_WEB_CORDIS', os.path.expanduser('~/.dsh/profiles/web/cordis.patch.yml'))
+    if os.path.exists(profile_path):
+        for drift in check_profile_budgets(profile_path):
+            failures.append('profile: ' + drift)
+    else:
+        failures.append('profile: khong thay file ' + profile_path)
     for failure in failures:
         print('LỖI:', failure)
     if not failures:
