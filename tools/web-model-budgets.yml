@@ -1,0 +1,72 @@
+# Portable budget overlay for the current web profile; contains no credentials.
+# These are conservative route budgets, NOT verified native model maxima.
+# Merge into the profile with DSH configuration tooling, then restart DSH.
+# Explicit model budgets take precedence over provider defaults.
+- id: llm-pi-ai
+  config:
+    providers:
+      or:
+        defaultContextWindow: 128000
+        defaultMaxTokens: 16384
+        models:
+          - id: cx/gpt-6-astra
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: cx/gpt-6-sol
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: cx/gpt-6-luna
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: b-ai/deepseek-v4.1-flash
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: b-ai/glm-5.3-flash
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: b-ai/qwen3.8-flash
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: b-ai/jev-latest
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: antigravity/gemini-3.8-flash-tiered
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: gpt-free
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: b-ai/gemini-4-argon
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: b-ai/gpt-6.1-sol
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: cx/gpt-6.1-sol
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: cx/gpt-6.1-sol-fast
+            contextWindow: 128000
+            maxTokens: 16384
+      cgw:
+        defaultContextWindow: 128000
+        defaultMaxTokens: 16384
+        models:
+          - id: chatgpt-web/gpt-6-sol-instant
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: chatgpt-web/gpt-6-sol
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: chatgpt-web/gpt-6-pro
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: chatgpt-web/gpt-5.6-sol-instant
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: chatgpt-web/gpt-5.6-sol
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: chatgpt-web/gpt-5.6-pro
+            contextWindow: 128000
+            maxTokens: 16384

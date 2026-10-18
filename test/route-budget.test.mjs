@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-for (const name of ['vibe-native.yml', 'vibe-cgw.yml']) {
+for (const name of ['vibe-native.yml', 'vibe-cgw.yml', 'web-model-budgets.yml']) {
   test(`${name} uses explicit conservative budgets for every model`, () => {
     const text = readFileSync(new URL(`../tools/${name}`, import.meta.url), 'utf8');
     assert.match(text, /defaultContextWindow: 128000/);
