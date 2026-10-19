@@ -1,0 +1,10 @@
+{
+  "name": "dsh-prompt-intake",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": "./lib/index.js",
+  "scripts": { "test": "node --test test/*.test.mjs" },
+  "peerDependencies": { "@deepseek-ai/dsh-llm": "*" },
+  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }
+}
