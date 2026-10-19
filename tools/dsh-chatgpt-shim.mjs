@@ -33,7 +33,7 @@
 //                   shape will be wrong for it.
 
 import http from "node:http";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 // The bridge validates turn metadata with an all-or-nothing rule: if thread_id
 // or turn_id looks like a native Codex identifier (a bare RFC-4122 UUID,
@@ -106,12 +106,15 @@ export function listModels(models = DEFAULT_MODELS) {
  * add the missing id, and leave genuinely non-message items untouched.
  */
 export function normalizeInput(input) {
-  return input.map((item) => {
+  return input.map((item, index) => {
     if (!item || typeof item !== "object") return item;
     const isMessage = item.type === "message" || (item.type === undefined && typeof item.role === "string");
     if (!isMessage) return item;
     const next = { ...item, type: "message" };
-    if (!next.id) next.id = `msg_${hex()}`;
+    // The bridge hashes [message id, content] to recognize instruction lineage.
+    // Random ids make an overlapping replay look like unrelated steering.
+    // Position distinguishes repeated identical messages; existing ids stay authoritative.
+    if (!next.id) next.id = `msg_${createHash("sha256").update(JSON.stringify([index, next.role, next.content])).digest("hex").slice(0, 32)}`;
     return next;
   });
 }

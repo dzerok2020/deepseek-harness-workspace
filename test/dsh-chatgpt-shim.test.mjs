@@ -33,6 +33,22 @@ const dshRequest = (extra = {}) => ({
   ...extra,
 });
 
+test("replayed DSH history without message ids preserves canonical instruction lineage", () => {
+  const input = [
+    { role: "user", content: "first instruction" },
+    { role: "assistant", content: "first answer" },
+    { role: "user", content: "next instruction" },
+  ];
+  const first = normalizeInput(input);
+  const replay = normalizeInput(JSON.parse(JSON.stringify(input)));
+  assert.deepEqual(replay, first, "replay must not look like a different instruction");
+  assert.deepEqual(normalizeInput([...input, { role: "assistant", content: "next answer" }]).slice(0, 3), first);
+  assert.notEqual(normalizeInput([{ role: "user", content: "changed" }])[0].id, first[0].id);
+  const repeated = normalizeInput([{ role: "user", content: "same" }, { role: "user", content: "same" }]);
+  assert.notEqual(repeated[0].id, repeated[1].id, "distinct occurrences must not collapse");
+  assert.deepEqual(input.map(item => item.id), [undefined, undefined, undefined], "caller data remains unchanged");
+});
+
 test("environment context carries the cwd as both cwd and workspace root", () => {
   const ctx = buildEnvironmentContext(CWD);
   assert.match(ctx, /^<environment_context>\n/);
