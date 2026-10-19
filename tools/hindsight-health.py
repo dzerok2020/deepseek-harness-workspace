@@ -5,6 +5,7 @@ from pathlib import Path
 import stat
 import subprocess
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -23,14 +24,45 @@ def unsafe_listeners(output, ports):
 
 
 def validate_extraction(response):
-    facts = response.get('facts')
+    facts = response.get('facts') if isinstance(response, dict) else None
     return isinstance(facts, list) and any(
         '45678' in json.dumps(fact) for fact in facts
     )
 
 
+def describe_error(error):
+    """Use only local labels and numeric status; never echo remote data."""
+    if isinstance(error, urllib.error.HTTPError):
+        code = error.code
+        if code in (401, 403):
+            category = 'xác thực/quyền truy cập'
+        elif code in (404, 405):
+            category = 'endpoint/phương thức không khớp'
+        elif code == 429:
+            category = 'giới hạn lượt gọi'
+        elif code in (408, 504):
+            category = 'timeout'
+        elif 500 <= code < 600:
+            category = 'dịch vụ/upstream'
+        else:
+            category = 'yêu cầu bị từ chối'
+        return f'HTTP {code} — {category}'
+    if isinstance(error, TimeoutError) or (
+        isinstance(error, urllib.error.URLError) and isinstance(error.reason, TimeoutError)
+    ):
+        return 'timeout'
+    if isinstance(error, urllib.error.URLError):
+        return 'không kết nối được dịch vụ'
+    if isinstance(error, (ValueError, UnicodeError)):
+        return 'phản hồi không đúng JSON'
+    if isinstance(error, OSError):
+        return 'lỗi hệ thống/file cục bộ'
+    return 'lỗi không xác định (không hiển thị payload)'
+
+
 def main():
     failures = []
+    stage = 'bảo vệ truy cập'
     env_file = Path.home() / '.hindsight/profiles/coding-agent.env'
     try:
         if stat.S_IMODE(env_file.stat().st_mode) & 0o077:
@@ -39,6 +71,10 @@ def main():
         exposed = unsafe_listeners(result.stdout, {'9077', '9999'})
         if exposed:
             failures.append('API bộ nhớ nghe ngoài loopback: ' + ', '.join(exposed))
+        stage = 'kết nối'
+        with urllib.request.urlopen('http://127.0.0.1:9077/health', timeout=10):
+            pass
+        stage = 'trích xuất LLM'
         bank = urllib.parse.quote('coding-agent::default-workspace', safe='')
         request = urllib.request.Request(
             'http://127.0.0.1:9077/v1/default/banks/' + bank + '/memories/dry-run-extract',
@@ -54,7 +90,9 @@ def main():
             failures.append('trích xuất không trả về fact chứa giá trị thử 45678')
     except Exception as error:
         # Never print remote payloads or credential values.
-        failures.append('kiểm chứng chức năng thất bại: ' + type(error).__name__)
+        failures.append(f'{stage} thất bại: {describe_error(error)}')
+        if isinstance(error, urllib.error.HTTPError):
+            error.close()
     for failure in failures:
         print('LỖI:', failure)
     if not failures:
