@@ -1,0 +1,32 @@
+{
+  "frozen": "2026-10-20T01:59:00.431240+00:00",
+  "policy_sha256": "7f34a70b9512b11e6695730cb5b2cdbeaceefee350fb23646136cbd447794b54",
+  "demos": [
+    {
+      "augmented": true,
+      "case": "{\"context\": \"Có repo app trong workspace; chưa có log lỗi.\", \"id\": \"vi-001\", \"prompt\": \"app k chay, xem giup\"}",
+      "response": "Mình hiểu là: app không chạy được và bạn cần kiểm tra nguyên nhân. Vì chưa có log, bước tiếp theo là xác định chỗ hỏng trước:\n\n1. Bạn đang chạy app bằng lệnh nào, hoặc thao tác nào thì bị lỗi?\n2. Lỗi hiện ra ở đâu: terminal, console trình duyệt, hay giao diện app?\n3. Nếu có thông báo lỗi, gửi vài dòng đầu/cuối là đủ.\n\nNếu bạn không rõ, mình sẽ giả định theo hướng dễ gặp nhất: lỗi khi start app, ví dụ thiếu dependency, sai cấu hình, hoặc port đang bị chiếm."
+    },
+    {
+      "augmented": true,
+      "case": "{\"context\": \"Màn hình nhập ghi chú; chưa có stack trace.\", \"id\": \"vi-002\", \"prompt\": \"bam luu thi loi, dung xoa du lieu nhe\"}",
+      "response": "Mình hiểu là: khi bấm **Lưu** ở màn hình nhập ghi chú thì phát sinh lỗi, và bạn yêu cầu **không xoá dữ liệu**. Mình sẽ chỉ chẩn đoán an toàn, không đụng vào dữ liệu.\n\nĐể sửa đúng, bạn cho mình 2 thông tin:\n\n1. **Lỗi hiện ra như thế nào?**  \n   - a) Có thông báo đỏ/cảnh báo trên màn hình  \n   - b) Không có thông báo, chỉ không lưu được  \n   - c) Có lỗi trong console/network/stack trace  \n   - d) Khác  \n\n2. **Sau khi bấm Lưu và gặp lỗi, dữ liệu ghi chú còn hay mất?**  \n   - a) Vẫn còn trong ô nhập  \n   - b) Mất khỏi màn hình  \n   - c) Chưa kiểm tra  \n\nNếu có dòng lỗi cụ thể, bạn dán nguyên văn cho mình."
+    },
+    {
+      "augmented": true,
+      "case": "{\"context\": \"Vừa chỉ một lỗi sai tổng tiền trong giỏ hàng.\", \"id\": \"vi-003\", \"prompt\": \"sửa cái đó giúp\"}",
+      "response": "Mình hiểu là: bạn muốn sửa lỗi tính tổng tiền trong giỏ hàng vừa được chỉ ra.\n\nBước tiếp theo là xác định đúng chỗ lỗi để sửa, vì hiện chưa có logic/code cụ thể. Bạn chọn giúp mình một phương án:\n\n1. Lỗi tổng tiền là dạng nào?\n   a. Tổng không cập nhật khi thêm/xóa sản phẩm  \n   b. Tổng sai do thuế, phí vận chuyển, giảm giá  \n   c. Tổng hiển thị sai định dạng/tiền tệ  \n   d. Khác\n\n2. Bạn đang cần sửa ở đâu?\n   a. Frontend/UI  \n   b. Backend/API  \n   c. Chưa rõ, cần tìm nguyên nhân trước\n\nBạn có thể trả lời kiểu: `1b, 2a` hoặc dán đoạn code/mô tả logic tính tổng, mình sẽ đề xuất hướng sửa tiếp."
+    },
+    {
+      "augmented": true,
+      "case": "{\"context\": \"Danh sách liên hệ local.\", \"id\": \"vi-005\", \"prompt\": \"thêm tìm kiếm tên vào danh sách, giữ chức năng cũ\"}",
+      "response": "Mình hiểu là: thêm tính năng tìm kiếm theo tên vào danh sách liên hệ local, đồng thời giữ nguyên các chức năng cũ như hiển thị, thêm/sửa/xoá hoặc sắp xếp nếu có.\n\nBước tiếp theo: chỉnh phần danh sách liên hệ để có một ô nhập từ khoá tìm kiếm; khi người dùng gõ, lọc danh sách theo tên, ưu tiên không phân biệt hoa/thường và có thể bỏ dấu. Các hành động cũ vẫn giữ nguyên, không làm ảnh hưởng đến dữ liệu hiện có.\n\nNếu danh sách có nhiều cách lọc/sắp xếp cũ, mình sẽ chỉ thêm tìm kiếm tên như một lớp lọc phụ, không thay đổi logic cũ."
+    },
+    {
+      "augmented": true,
+      "case": "{\"context\": \"Repo đã có sẵn.\", \"id\": \"vi-006\", \"prompt\": \"chỉ đọc code và góp ý, đừng sửa\"}",
+      "response": "Mình hiểu là: chỉ đọc code và góp ý, không sửa file nào.\n\nVì hiện chưa có đường dẫn cụ thể, bước tiếp theo là bạn cho mình phạm vi cần review, ví dụ:\n\n- toàn bộ repo,\n- một folder,\n- một file,\n- hoặc một diff/PR.\n\nNếu bạn muốn nhanh, mình mặc định sẽ review theo hướng: lỗi logic, cấu trúc, naming, edge cases, khả năng maintain, và các điểm dễ gây bug."
+    }
+  ],
+  "candidate_sha256": "4bfd42543f20b7fad608907dafcd91b044b17e5d41dad21705909b2522346c7c"
+}

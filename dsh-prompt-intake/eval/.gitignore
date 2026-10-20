@@ -1,0 +1,5 @@
+.venv/
+__pycache__/
+*.pyc
+# Raw provider envelopes stay local; reviewed synthetic summaries may be tracked.
+runs/*/attempt-*.json

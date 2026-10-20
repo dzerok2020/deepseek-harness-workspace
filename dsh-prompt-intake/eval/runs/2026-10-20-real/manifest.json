@@ -1,0 +1,25 @@
+{
+  "started": "2026-10-20T01:54:34.488413+00:00",
+  "model": "b-ai/qwen3.8-flash",
+  "dspy": "3.2.1",
+  "optimizer": "dspy.BootstrapFewShot",
+  "plan": {
+    "train_baseline": 10,
+    "bootstrap_max": 6,
+    "train_judge_max": 6,
+    "heldout_generation": 40,
+    "paired_judges": 20,
+    "maximum_planned_attempts": 82,
+    "hard_limit": 100
+  },
+  "policy_sha256": "7f34a70b9512b11e6695730cb5b2cdbeaceefee350fb23646136cbd447794b54",
+  "dataset_sha256": "143eea5b92edac205ac6c45cbea1f30d666cd7f0623076ef8afd7c57179175bb",
+  "generation_gold_fields": false,
+  "params": {
+    "temperature": 0,
+    "max_tokens": 1400,
+    "timeout_seconds": 75,
+    "retries": 0
+  },
+  "human_review_required": true
+}

@@ -1,0 +1,29 @@
+{
+  "status": "partial_timeout",
+  "attempts": 71,
+  "attempt_limit": 100,
+  "generated_pairs": 20,
+  "judged_pairs": 8,
+  "summary": {
+    "baseline": {
+      "intent": 8,
+      "scope": 7,
+      "clarification": 8,
+      "consent": 8,
+      "all_pass": 7
+    },
+    "candidate": {
+      "intent": 8,
+      "scope": 7,
+      "clarification": 8,
+      "consent": 8,
+      "all_pass": 7
+    }
+  },
+  "bootstrapped_demos": 5,
+  "same_model_judge": true,
+  "semanticQualityVerified": false,
+  "deployment": false,
+  "error": "TimeoutError: timed out",
+  "next_action": "keep_baseline_no_promotion"
+}

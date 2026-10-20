@@ -166,7 +166,7 @@ con số này chỉ kiểm tra logic, không phải benchmark mô hình.
 5. Chưa nghiệm thu live. Kiểm tra plugin thật và quyết định rollout là công việc
    khác, cần quyền riêng; không có đường tự deployment từ report này.
 
-## Giới hạn và DSPy để sau
+## Giới hạn của bộ chấm nhãn
 
 - Máy kiểm tra **nhãn tự khai**, không hiểu nghĩa tự do của `summary`, `text` hoặc
   lựa chọn. Một output có nhãn đúng nhưng văn bản trái ý vẫn có thể pass. Câu
@@ -179,7 +179,7 @@ con số này chỉ kiểm tra logic, không phải benchmark mô hình.
   thực thi tool hay chất lượng ngoài thực tế. Held-out nhỏ và công khai.
 - Report luôn có `semanticQualityVerified: false`; không đọc lịch sử, không gọi
   LLM, không tính chi phí/token hay xác nhận provenance đầu ra.
-- DSPy integration được **hoãn rõ ràng**: chưa cài DSPy, chưa optimizer, chưa
-  chọn model. Chỉ cân nhắc adapter tối thiểu sau khi người dùng duyệt model,
-  ngân sách, dữ liệu được phép gửi và cách đánh giá; không suy consent từ việc
-  đã duyệt scaffold offline. Không tự ingest history hoặc đổi runtime.
+- Bộ chấm nhãn này vẫn không gọi model. Thử nghiệm model thật và DSPy nằm trong
+  runner riêng, sau khi được duyệt model, ngân sách và dữ liệu; xem
+  [báo cáo real-model](./REAL_MODEL.md) để biết trạng thái và bằng chứng thực tế.
+  Không tự ingest history hoặc đổi runtime; kết quả không tự deployment.

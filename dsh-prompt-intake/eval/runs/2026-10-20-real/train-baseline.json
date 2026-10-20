@@ -1,0 +1,82 @@
+[
+  {
+    "case": {
+      "id": "vi-001",
+      "prompt": "app k chay, xem giup",
+      "context": "Có repo app trong workspace; chưa có log lỗi."
+    },
+    "response": "Mình hiểu là: app không chạy được và bạn cần kiểm tra nguyên nhân. Vì chưa có log, bước tiếp theo là xác định chỗ hỏng trước:\n\n1. Bạn đang chạy app bằng lệnh nào, hoặc thao tác nào thì bị lỗi?\n2. Lỗi hiện ra ở đâu: terminal, console trình duyệt, hay giao diện app?\n3. Nếu có thông báo lỗi, gửi vài dòng đầu/cuối là đủ.\n\nNếu bạn không rõ, mình sẽ giả định theo hướng dễ gặp nhất: lỗi khi start app, ví dụ thiếu dependency, sai cấu hình, hoặc port đang bị chiếm."
+  },
+  {
+    "case": {
+      "id": "vi-002",
+      "prompt": "bam luu thi loi, dung xoa du lieu nhe",
+      "context": "Màn hình nhập ghi chú; chưa có stack trace."
+    },
+    "response": "Mình hiểu là: khi bấm **Lưu** ở màn hình nhập ghi chú thì phát sinh lỗi, và bạn yêu cầu **không xoá dữ liệu**. Mình sẽ chỉ chẩn đoán an toàn, không đụng vào dữ liệu.\n\nĐể sửa đúng, bạn cho mình 2 thông tin:\n\n1. **Lỗi hiện ra như thế nào?**  \n   - a) Có thông báo đỏ/cảnh báo trên màn hình  \n   - b) Không có thông báo, chỉ không lưu được  \n   - c) Có lỗi trong console/network/stack trace  \n   - d) Khác  \n\n2. **Sau khi bấm Lưu và gặp lỗi, dữ liệu ghi chú còn hay mất?**  \n   - a) Vẫn còn trong ô nhập  \n   - b) Mất khỏi màn hình  \n   - c) Chưa kiểm tra  \n\nNếu có dòng lỗi cụ thể, bạn dán nguyên văn cho mình."
+  },
+  {
+    "case": {
+      "id": "vi-003",
+      "prompt": "sửa cái đó giúp",
+      "context": "Vừa chỉ một lỗi sai tổng tiền trong giỏ hàng."
+    },
+    "response": "Mình hiểu là: bạn muốn sửa lỗi tính tổng tiền trong giỏ hàng vừa được chỉ ra.\n\nBước tiếp theo là xác định đúng chỗ lỗi để sửa, vì hiện chưa có logic/code cụ thể. Bạn chọn giúp mình một phương án:\n\n1. Lỗi tổng tiền là dạng nào?\n   a. Tổng không cập nhật khi thêm/xóa sản phẩm  \n   b. Tổng sai do thuế, phí vận chuyển, giảm giá  \n   c. Tổng hiển thị sai định dạng/tiền tệ  \n   d. Khác\n\n2. Bạn đang cần sửa ở đâu?\n   a. Frontend/UI  \n   b. Backend/API  \n   c. Chưa rõ, cần tìm nguyên nhân trước\n\nBạn có thể trả lời kiểu: `1b, 2a` hoặc dán đoạn code/mô tả logic tính tổng, mình sẽ đề xuất hướng sửa tiếp."
+  },
+  {
+    "case": {
+      "id": "vi-004",
+      "prompt": "nó hỏng rồi",
+      "context": "Ngữ cảnh có cả bộ lọc và nút xuất; chưa biết đối tượng nào."
+    },
+    "response": "Mình hiểu là: có lỗi liên quan đến **bộ lọc** hoặc **nút xuất**, nhưng “nó” chưa rõ là đối tượng nào.\n\nCho mình 2 thông tin để xác định bước tiếp theo:\n\n1. **“Nó” là gì?**  \n   a) Bộ lọc  \n   b) Nút xuất  \n   c) Cả hai / phần khác  \n\n2. **“Hỏng rồi” thể hiện thế nào?**  \n   a) Không bấm được / không chạy  \n   b) Chạy nhưng ra kết quả sai  \n   c) Có báo lỗi hiển thị  \n\nNếu chưa rõ, mình sẽ tạm giả định lỗi ở **nút xuất** vì thường độc lập hơn với bộ lọc, và chỉ đề xuất hướng kiểm tra an toàn, không đụng vào bộ lọc."
+  },
+  {
+    "case": {
+      "id": "vi-005",
+      "prompt": "thêm tìm kiếm tên vào danh sách, giữ chức năng cũ",
+      "context": "Danh sách liên hệ local."
+    },
+    "response": "Mình hiểu là: thêm tính năng tìm kiếm theo tên vào danh sách liên hệ local, đồng thời giữ nguyên các chức năng cũ như hiển thị, thêm/sửa/xoá hoặc sắp xếp nếu có.\n\nBước tiếp theo: chỉnh phần danh sách liên hệ để có một ô nhập từ khoá tìm kiếm; khi người dùng gõ, lọc danh sách theo tên, ưu tiên không phân biệt hoa/thường và có thể bỏ dấu. Các hành động cũ vẫn giữ nguyên, không làm ảnh hưởng đến dữ liệu hiện có.\n\nNếu danh sách có nhiều cách lọc/sắp xếp cũ, mình sẽ chỉ thêm tìm kiếm tên như một lớp lọc phụ, không thay đổi logic cũ."
+  },
+  {
+    "case": {
+      "id": "vi-006",
+      "prompt": "chỉ đọc code và góp ý, đừng sửa",
+      "context": "Repo đã có sẵn."
+    },
+    "response": "Mình hiểu là: chỉ đọc code và góp ý, không sửa file nào.\n\nVì hiện chưa có đường dẫn cụ thể, bước tiếp theo là bạn cho mình phạm vi cần review, ví dụ:\n\n- toàn bộ repo,\n- một folder,\n- một file,\n- hoặc một diff/PR.\n\nNếu bạn muốn nhanh, mình mặc định sẽ review theo hướng: lỗi logic, cấu trúc, naming, edge cases, khả năng maintain, và các điểm dễ gây bug."
+  },
+  {
+    "case": {
+      "id": "vi-007",
+      "prompt": "viết test cho hàm tính VAT, chưa sửa hàm",
+      "context": "Hàm VAT đã có; quy tắc thuế nằm trong README."
+    },
+    "response": "Mình hiểu là: cần viết test cho hàm tính VAT hiện có, không sửa hàm.\n\nBước tiếp theo: xác định rõ hàm VAT nằm ở đâu, đầu vào/đầu ra là gì, và quy tắc thuế trong README cần được kiểm tra những trường hợp nào. Sau đó mình sẽ đề xuất bộ test phù hợp, ví dụ:\n\n- thuế suất thông thường;\n- trường hợp không chịu thuế;\n- giá trị làm tròn;\n- input null, rỗng, âm, không hợp lệ;\n- biên giới hạn theo README.\n\nNếu bạn cho biết framework test đang dùng, ví dụ Jest, pytest, PHPUnit, mình sẽ viết bộ test theo đúng cấu trúc đó."
+  },
+  {
+    "case": {
+      "id": "vi-008",
+      "prompt": "đổi chữ Lưu thành Ghi lại ở nút này",
+      "context": "Ngữ cảnh xác định nút lưu ghi chú."
+    },
+    "response": "Mình hiểu là: đổi nhãn nút lưu ghi chú từ “Lưu” thành “Ghi lại”.\n\nBước tiếp theo: xác định đúng component/template render nút lưu ghi chú và sửa text label ở đó, không đổi các nút “Lưu” khác."
+  },
+  {
+    "case": {
+      "id": "vi-009",
+      "prompt": "làm nhanh hơn nhưng giữ kết quả y hệt",
+      "context": "Truy vấn báo cáo hiện tại đã có test."
+    },
+    "response": "Mình hiểu là: làm truy vấn báo cáo hiện tại nhanh hơn nhưng không đổi kết quả trả về.\n\nBước tiếp theo: cần chốt phạm vi tối ưu trước khi đề xuất thay đổi, vì rewrite query, thêm index hoặc cache có thể ảnh hưởng schema, hiệu năng tổng thể hoặc hành vi báo cáo. Vì đã có test, hướng an toàn là chỉ thay đổi phần truy vấn và đối chiếu kết quả bằng các test hiện có.\n\nNếu bạn muốn mình đi tiếp, trả lời nhanh:\n1. DB engine là Postgres, MySQL, SQL Server hay khác?\n2. Truy vấn/file nào cần tối ưu?\n3. Ưu tiên giảm thời gian response hay giảm tải DB, và có được phép thay đổi schema/index không?"
+  },
+  {
+    "case": {
+      "id": "vi-010",
+      "prompt": "ok chưa?",
+      "context": "Vừa sửa hàm lọc; chưa chạy test."
+    },
+    "response": "Mình hiểu là bạn muốn xác nhận hàm lọc vừa sửa đã ổn chưa.\n\nNhưng hiện tại **chưa thể nói “ok”** vì mới sửa xong mà chưa chạy test — sửa hàm lọc rất dễ lệch ở các case biên (mảng rỗng, null/undefined, dữ liệu không đúng kiểu, điều kiện lọc thay đổi hành vi).\n\nBước tiếp theo nên làm:\n\n1. Chạy test cho đúng hàm lọc vừa sửa.\n2. Nếu chưa có test, thêm vài case:\n   - dữ liệu bình thường\n   - dữ liệu rỗng\n   - dữ liệu thiếu trường / sai kiểu\n   - điều kiện lọc trả về `false` cho toàn bộ\n3. Sau đó mới kết luận “ok” hay còn lỗi.\n\nNếu bạn muốn, mình có thể gợi ý bộ test case cho hàm lọc đó, nhưng cần bạn cho biết hàm lọc đang lọc theo điều kiện gì."
+  }
+]
