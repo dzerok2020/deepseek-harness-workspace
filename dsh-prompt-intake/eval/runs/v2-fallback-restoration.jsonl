@@ -1,0 +1,5 @@
+{"time": "2026-10-20T03:06:57.613326+00:00", "event": "before", "prior_rows": [], "scope": "single emergency fallback flag only"}
+{"time": "2026-10-20T03:06:57.633979+00:00", "event": "disabled", "value": "false"}
+{"time": "2026-10-20T03:14:59.716874+00:00", "event": "runner_exit", "code": 1}
+{"time": "2026-10-20T03:14:59.743355+00:00", "event": "restored", "restored_rows": [], "matches_prior": true}
+{"event": "recovery_restored", "matches_prior": true, "prior": [], "restored": [], "time": "2026-10-20T20:10:21.875877+00:00"}

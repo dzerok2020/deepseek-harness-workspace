@@ -1,0 +1,27 @@
+{
+  "status": "incomplete_timeout_no_retry",
+  "new_attempts": 15,
+  "new_authorized_cap": 60,
+  "prior_attempts": 71,
+  "combined_attempts": 86,
+  "phase_counts": {"train-generation": 6, "train-judge": 6, "validation-generation": 2, "validation-judge": 1},
+  "failure": "TimeoutError: timed out at first paired validation judge (120 seconds)",
+  "fallback": {"original_override_rows": [], "restored_override_rows": [], "verified_readonly_after_run": true},
+  "dspy": {"optimizer": "BootstrapFewShot", "fresh_demos": 6, "train_judge_all_pass": 6, "validated": false, "replaces_manual_v2": false},
+  "primary_comparison": {"planned_pairs": 12, "generated_pairs": 1, "judged_pairs": 0, "supports_superiority_claim": false},
+  "lead_inspection": {
+    "case": "reg-037",
+    "baseline": "Asks purpose and selection priorities but does not explicitly ask budget limit; proposes a default free/low-cost service approach.",
+    "manual_v2": "Explicitly asks budget and waits for confirmation, but ends by assuming a low-cost app/web target not established by the user. This conflicts with the case rule against assuming web app/free tier.",
+    "conclusion": "Partial qualitative evidence only. Neither response fully satisfies the case annotation; no validated winner."
+  },
+  "verification": {
+    "eval_suite": "Ran 21 tests in 3.734s; OK",
+    "plugin_suite": "tests 7; pass 7; fail 0",
+    "diff_check": "exit 0",
+    "warnings": ["Existing sqlite ResourceWarnings", "DSPy deprecated prefix warnings"]
+  },
+  "runtime_deployment": false,
+  "commit": "Not committed: requested real-model comparison did not complete; preserve artifacts and report failure rather than a completion commit.",
+  "next_run": "No automatic rerun. Existing output and ledger are retained. Any continuation needs explicit bounded recovery design retaining all 15 attempts; do not reset ledger or regenerate completed calls."
+}

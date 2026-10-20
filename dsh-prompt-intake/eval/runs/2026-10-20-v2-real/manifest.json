@@ -1,0 +1,47 @@
+{
+  "started": "2026-10-20T03:08:02.726376+00:00",
+  "plan": {
+    "main_comparison": "exact frozen baseline vs exact frozen manual v2",
+    "validation_cases": 12,
+    "validation_status": "public, not sealed",
+    "secondary": "DSPy BootstrapFewShot train-only fresh demos; unvalidated",
+    "phase_caps": {
+      "train-generation": 6,
+      "train-judge": 6,
+      "validation-generation": 24,
+      "validation-judge": 12
+    },
+    "maximum_planned_attempts": 48,
+    "hard_limit": 60,
+    "prior_attempts": 71,
+    "maximum_actual_total": 131,
+    "broader_total_ceiling": 160,
+    "retries": 0
+  },
+  "model": "b-ai/qwen3.8-flash",
+  "authorized_label": "b-ai/qwen3.8-flash/BAI",
+  "frozen_bundle": {
+    "version": 2,
+    "status": "offline_unverified",
+    "model_calls": 0,
+    "baseline_source": "runs/2026-10-20-real/baseline-policy.json",
+    "candidate_parent": "runs/2026-10-20-real/candidate-frozen.json",
+    "candidate_method": "manual policy addendum retaining five DSPy demos; not a new DSPy optimization",
+    "new_cases_status": "public validation, not sealed heldout",
+    "sha256": {
+      "baseline.json": "17d39f873140668926b0b9b32d7ff994ade22902fca99735056b7be473ce6fef",
+      "candidate.json": "5e7f0bdcd9581a63b88d02e100ec0a54aa893153e76c55b3cd671a9425ecffd1",
+      "policy-addendum.md": "a7c51d2650424c631f8aeedcc9fdb9553d6109e97189b4276aa4342b9890f464",
+      "cases.json": "ce097e40b01dbcbbbbc53857b467eb9d31eb9c47777a7b5c520577c173d6aaad"
+    }
+  },
+  "bundle_manifest_sha256": "b16b22c7c41e4cb41903485a57dbf1c54aa325224ae7a391ef68631bca1e37af",
+  "train_sha256": "538a6d33a459eeca6cec6840ad202bf4851250df2651077c6ad84977917cdade",
+  "generation_gold_fields": false,
+  "params": {
+    "temperature": 0,
+    "max_tokens": 1400,
+    "timeout_seconds": 120,
+    "retries": 0
+  }
+}

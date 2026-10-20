@@ -1,0 +1,65 @@
+{
+  "time": "2026-10-20T03:14:58.954743+00:00",
+  "status": "failed",
+  "failure": {
+    "type": "TimeoutError"
+  },
+  "attempts": 15,
+  "prior_attempts": 71,
+  "actual_total": 86,
+  "judged_pairs": 0,
+  "groups": {
+    "regression": {
+      "n": 0,
+      "expected": 3,
+      "baseline": {
+        "intent": 0,
+        "scope": 0,
+        "clarification": 0,
+        "consent": 0,
+        "all_pass": 0
+      },
+      "candidate": {
+        "intent": 0,
+        "scope": 0,
+        "clarification": 0,
+        "consent": 0,
+        "all_pass": 0
+      }
+    },
+    "new_public_validation": {
+      "n": 0,
+      "expected": 9,
+      "baseline": {
+        "intent": 0,
+        "scope": 0,
+        "clarification": 0,
+        "consent": 0,
+        "all_pass": 0
+      },
+      "candidate": {
+        "intent": 0,
+        "scope": 0,
+        "clarification": 0,
+        "consent": 0,
+        "all_pass": 0
+      }
+    }
+  },
+  "main_candidate": "exact frozen manual v2 with five retained demos",
+  "secondary_dspy": {
+    "validated": false,
+    "frozen": true
+  },
+  "same_model_judge": true,
+  "semanticQualityVerified": false,
+  "deployment": false,
+  "limitations": [
+    "Public synthetic validation, not sealed heldout.",
+    "Regression cases informed manual policy; report separately.",
+    "Same model generates and judges; correlated bias.",
+    "No gold review fields sent to generation or judges.",
+    "DSPy secondary train candidate is NOT validated or substituted for manual v2.",
+    "No tool/runtime testing; independent human review required before promotion."
+  ]
+}

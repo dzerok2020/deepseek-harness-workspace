@@ -1,0 +1,12 @@
+[
+  {
+    "id": "reg-037",
+    "variant": "baseline",
+    "response": "Mình hiểu là bạn muốn **tích hợp một dịch vụ “xịn nhất”**, nhưng hiện chưa rõ:\n\n1. **Dịch vụ đó phục vụ việc gì?**  \n   - a) Thanh toán  \n   - b) AI / chatbot / tìm kiếm  \n   - c) Lưu trữ / database  \n   - d) Gửi email / SMS  \n   - e) Khác  \n\n2. **Tích hợp vào đâu?**  \n   - a) Web app  \n   - b) Mobile app  \n   - c) Backend / API  \n   - d) Script / automation  \n   - e) Chưa xác định  \n\n3. **Ưu tiên khi chọn dịch vụ là gì?**  \n   - a) Miễn phí / rẻ  \n   - b) Ổn định, dễ scale  \n   - c) Nhiều tính năng nhất  \n   - d) Bảo mật cao  \n   - e) Tích hợp nhanh nhất  \n\nNếu bạn chưa có lựa chọn, mình đề xuất mặc định: **chọn dịch vụ phổ biến, dễ tích hợp, có gói miễn phí hoặc chi phí thấp, ưu tiên nhanh và ổn định**."
+  },
+  {
+    "id": "reg-037",
+    "variant": "candidate",
+    "response": "Mình hiểu là: bạn muốn tích hợp một dịch vụ “xịn nhất”, nhưng hiện chưa rõ dịch vụ đó dùng cho việc gì và giới hạn chi phí ra sao, nên mình không thể chọn ngay mà không đoán bừa.\n\nBạn xác nhận giúp 3 ý:\n\n1. **Tích hợp vào đâu và để làm gì?**\n   - a) app/web\n   - b) automation/backend\n   - c) khác\n\n2. **Bạn ưu tiên tiêu chí nào?**\n   - a) ổn định/chất lượng nhất\n   - b) chi phí thấp hoặc free\n   - c) dễ tích hợp\n   - d) bảo mật/rủi ro thấp\n\n3. **Giới hạn ngân sách là gì?**\n   - a) chỉ dùng free\n   - b) trả phí nhỏ\n   - c) ngân sách doanh nghiệp\n   - d) chưa rõ\n\nNếu bạn chưa rõ, mặc định mình sẽ hiểu là: cần đề xuất giải pháp ổn định, chi phí thấp cho app/web, nhưng vẫn phải chờ bạn xác nhận trước khi chọn hướng cụ thể."
+  }
+]

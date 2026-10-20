@@ -1,0 +1,50 @@
+{
+  "time": "2026-10-20T20:10:21.860213+00:00",
+  "status": "completed",
+  "failure": null,
+  "attempts": 49,
+  "prior_attempts": 71,
+  "actual_total": 120,
+  "judged_pairs": 12,
+  "groups": {
+    "regression": {
+      "n": 3,
+      "expected": 3,
+      "baseline": {
+        "intent": 3,
+        "scope": 1,
+        "clarification": 1,
+        "consent": 3,
+        "all_pass": 1
+      },
+      "candidate": {
+        "intent": 3,
+        "scope": 2,
+        "clarification": 3,
+        "consent": 3,
+        "all_pass": 2
+      }
+    },
+    "new_public_validation": {
+      "n": 9,
+      "expected": 9,
+      "baseline": {
+        "intent": 9,
+        "scope": 6,
+        "clarification": 9,
+        "consent": 9,
+        "all_pass": 6
+      },
+      "candidate": {
+        "intent": 9,
+        "scope": 8,
+        "clarification": 9,
+        "consent": 9,
+        "all_pass": 8
+      }
+    }
+  },
+  "deployment": false,
+  "secondary_dspy_validated": false,
+  "same_model_judge": true
+}
