@@ -106,15 +106,24 @@ export function listModels(models = DEFAULT_MODELS) {
  * add the missing id, and leave genuinely non-message items untouched.
  */
 export function normalizeInput(input) {
-  return input.map((item, index) => {
+  const seenCounts = new Map();
+  return input.map((item) => {
     if (!item || typeof item !== "object") return item;
     const isMessage = item.type === "message" || (item.type === undefined && typeof item.role === "string");
     if (!isMessage) return item;
     const next = { ...item, type: "message" };
     // The bridge hashes [message id, content] to recognize instruction lineage.
     // Random ids make an overlapping replay look like unrelated steering.
-    // Position distinguishes repeated identical messages; existing ids stay authoritative.
-    if (!next.id) next.id = `msg_${createHash("sha256").update(JSON.stringify([index, next.role, next.content])).digest("hex").slice(0, 32)}`;
+    // Index-based ids break when compaction or truncation drops earlier
+    // messages (the same content re-indexes to a new id), so hash
+    // [role, content, occurrence]; occurrence still distinguishes repeated
+    // identical messages and existing ids stay authoritative.
+    if (!next.id) {
+      const key = JSON.stringify([next.role, next.content]);
+      const occurrence = seenCounts.get(key) ?? 0;
+      seenCounts.set(key, occurrence + 1);
+      next.id = `msg_${createHash("sha256").update(JSON.stringify([next.role, next.content, occurrence])).digest("hex").slice(0, 32)}`;
+    }
     return next;
   });
 }
@@ -253,6 +262,28 @@ function sendJson(res, status, payload) {
   res.end(text);
 }
 
+// DSH's compaction package appends this exact instruction as the last user
+// message of a background summarization request (dsh-compaction-basic).
+const COMPACTION_PREFIX = "You are now acting as a compaction engine";
+
+function lastUserText(input) {
+  if (!Array.isArray(input)) return "";
+  for (let i = input.length - 1; i >= 0; i -= 1) {
+    const item = input[i];
+    if (!item || typeof item !== "object") continue;
+    const isMessage = item.type === "message" || (item.type === undefined && typeof item.role === "string");
+    if (!isMessage || item.role !== "user") continue;
+    if (typeof item.content === "string") return item.content;
+    if (Array.isArray(item.content)) return item.content.map((part) => (part && typeof part.text === "string" ? part.text : "")).join("");
+    return "";
+  }
+  return "";
+}
+
+function isCompactionRequest(input) {
+  return lastUserText(input).startsWith(COMPACTION_PREFIX);
+}
+
 export function createServer({ bridgeUrl, cwd, models, mode = "browser-only" }) {
   const base = bridgeUrl.replace(/\/+$/, "");
   return http.createServer(async (req, res) => {
@@ -272,7 +303,11 @@ export function createServer({ bridgeUrl, cwd, models, mode = "browser-only" }) 
       // DSH keeps prompt_cache_key stable per session; reuse it so the bridge's
       // retry budget and thread mapping see one thread across turns.
       const rawThread = typeof dshBody.prompt_cache_key === "string" && dshBody.prompt_cache_key ? dshBody.prompt_cache_key : randomUUID();
-      const threadId = NON_NATIVE(rawThread);
+      // The bridge registry allows one active instruction per thread: a DSH
+      // compaction request sharing the session thread supersedes (HTTP 499)
+      // the user turn still streaming there. Route background compaction
+      // prompts to their own thread so they never retire a live user turn.
+      const threadId = NON_NATIVE(isCompactionRequest(dshBody.input) ? `${rawThread}-compaction` : rawThread);
       body = adaptRequestBody(dshBody, { cwd, models, threadId, turnId: NON_NATIVE(randomUUID()), mode });
     } catch (err) {
       return sendJson(res, 400, { error: { message: String(err.message ?? err), type: "invalid_request_error" } });

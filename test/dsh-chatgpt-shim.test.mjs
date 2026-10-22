@@ -453,3 +453,75 @@ test("listModels reports the bridge owner for every entry", () => {
     assert.equal(m.owned_by, "codex-chatgpt-web");
   }
 });
+
+test("generated ids survive history truncation after compaction", () => {
+  const history = [
+    { type: "message", role: "system", content: [{ type: "input_text", text: "SYS" }] },
+    { type: "message", role: "user", content: [{ type: "input_text", text: "first turn" }] },
+    { type: "message", role: "assistant", content: [{ type: "output_text", text: "first reply" }] },
+    { type: "message", role: "user", content: [{ type: "input_text", text: "current turn" }] },
+  ];
+  const full = normalizeInput(history);
+  const byContent = new Map(full.map((m) => [JSON.stringify(m.content), m.id]));
+  const truncated = normalizeInput(history.slice(1));
+  for (const m of truncated) {
+    assert.equal(
+      m.id,
+      byContent.get(JSON.stringify(m.content)),
+      "an id must not change when older messages are dropped",
+    );
+  }
+});
+
+test("server routes a compaction request onto its own bridge thread", async (t) => {
+  const seen = [];
+  const bridge = http.createServer(async (req, res) => {
+    const chunks = [];
+    for await (const c of req) chunks.push(c);
+    seen.push(JSON.parse(Buffer.concat(chunks).toString()));
+    res.writeHead(200, { "content-type": "text/event-stream" });
+    res.end("data: [DONE]\n\n");
+  });
+  bridge.listen(0, "127.0.0.1");
+  await once(bridge, "listening");
+  const shim = createServer({
+    bridgeUrl: `http://127.0.0.1:${bridge.address().port}`,
+    cwd: CWD,
+    models: [...DEFAULT_MODELS],
+  });
+  shim.listen(0, "127.0.0.1");
+  await once(shim, "listening");
+  t.after(() => {
+    shim.close();
+    bridge.close();
+  });
+  const post = (input) =>
+    fetch(`http://127.0.0.1:${shim.address().port}/v1/responses`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(dshRequest({ prompt_cache_key: "pcache-r2", input })),
+    }).then((r) => r.text());
+  const userTurn = [{ type: "message", id: USER_MSG_ID, role: "user", content: [{ type: "input_text", text: "hello" }] }];
+  const compactionTurn = [
+    { type: "message", id: USER_MSG_ID, role: "user", content: [{ type: "input_text", text: "hello" }] },
+    { type: "message", role: "assistant", content: [{ type: "output_text", text: "hi" }] },
+    {
+      type: "message",
+      role: "user",
+      content: [
+        {
+          type: "input_text",
+          text: "You are now acting as a compaction engine for this AI coding assistant. Condense the conversation ABOVE into a structured checkpoint that lets another model resume the work with no loss of essential context.",
+        },
+      ],
+    },
+  ];
+  await post(userTurn);
+  await post(compactionTurn);
+  const threads = seen.map((b) => JSON.parse(b.client_metadata["x-codex-turn-metadata"]).thread_id);
+  assert.deepEqual(
+    threads,
+    ["dsh-pcache-r2", "dsh-pcache-r2-compaction"],
+    "a background compaction prompt must not share the live user thread",
+  );
+});
