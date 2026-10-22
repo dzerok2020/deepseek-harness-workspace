@@ -18,6 +18,7 @@ import {
   loadConfig,
   normalizeInput,
   resolveWorkspaceCwd,
+  withEnvironmentContext,
 } from "../tools/dsh-chatgpt-shim.mjs";
 
 const CWD = "/tmp/ws";
@@ -96,18 +97,27 @@ test("browser-only default stamps the turn id on the last user message, no env e
 });
 
 test("full mode places the trusted environment envelope before the current user message", () => {
-  const body = dshRequest();
-  const original = structuredClone(body);
+  // Real DSH shape: a system item first, then user items sorted last-to-first
+  // (DSH orders items this way), none typed or identified.
+  const body = dshRequest({
+    input: [
+      { role: "system", content: "SYS" },
+      { type: "message", id: USER_MSG_ID, role: "user", content: [{ type: "input_text", text: "hello" }] },
+    ],
+  });
   const out = adaptRequestBody(body, { cwd: CWD, ...IDS, mode: "full" });
 
-  assert.equal(out.input.length, original.input.length + 1);
-  const [env, ...rest] = out.input;
+  const envIndex = out.input.findIndex((item) => item.id?.startsWith("msg_environment_"));
+  assert.equal(envIndex, 0, "the envelope precedes the only user message");
+  const env = out.input[envIndex];
   assert.equal(env.type, "message");
   assert.equal(env.role, "user");
   assert.match(env.id, /^msg_environment_[0-9a-f]{32}$/);
   assert.ok(env.content[0].text.startsWith("<environment_context>"));
   assert.equal(env.internal_chat_message_metadata_passthrough.turn_id, IDS.turnId);
-  assert.deepEqual(rest, original.input, "original input must pass through unchanged");
+  assert.equal(out.input.length, 2, "env + user message; the system item moved to instructions");
+  assert.equal(out.input[1].id, USER_MSG_ID, "the current user message follows the envelope");
+  assert.equal(out.instructions, "SYS");
 });
 
 test("full mode puts the environment envelope before the LAST user, not the head", () => {
@@ -347,6 +357,46 @@ test("server forwards an adapted turn to the bridge and streams the reply back",
   assert.equal(health.service, "dsh-chatgpt-shim");
   const missing = await fetch(`${base}/v1/nope`);
   assert.equal(missing.status, 404);
+});
+
+// Regression: DSH's system prompt is a system-role item whose type is only set
+// by normalizeInput. The envelope scan used to require `item.type === "message"`
+// on its own, so a system item made it miss the user — and the `last === -1`
+// fallback then pushed the envelope to the HEAD of the history. Live on
+// 2026-10-22 the bridge (CGW_BRIDGE_MODE=full) rejected every DSH turn with
+// "ChatGPT web turn is missing cwd in trusted Codex environment context" — the
+// reported failure.
+test("full mode still finds the current user when a system item precedes it", () => {
+  const out = withEnvironmentContext(
+    normalizeInput([
+      { role: "system", content: "SYS" },
+      { role: "user", content: [{ type: "input_text", text: "hello" }] },
+    ]),
+    CWD,
+    "turn_1",
+  );
+
+  assert.equal(out.length, 3, "system + env + user");
+  assert.equal(out.findIndex((i) => i.id?.startsWith("msg_environment_")), 1, "the envelope sits right before the user");
+  assert.ok(out[1].content[0].text.includes(`<cwd>${CWD}</cwd>`));
+  assert.equal(out.at(-1).role, "user", "the envelope must not be pushed past the current user message");
+  assert.equal(out.at(-1).content[0].text, "hello");
+});
+
+test("full mode finds the last user even when items carry no type at all", () => {
+  const out = withEnvironmentContext(
+    [
+      { role: "system", content: "SYS" },
+      { role: "user", content: [{ type: "input_text", text: "ambient" }] },
+      { role: "user", content: [{ type: "input_text", text: "current" }] },
+    ],
+    CWD,
+    "turn_1",
+  );
+
+  const envIndex = out.findIndex((item) => item.id?.startsWith("msg_environment_"));
+  assert.equal(envIndex, 2, "the envelope belongs directly before the LAST untyped user item");
+  assert.equal(out.at(-1).content[0].text, "current");
 });
 
 test("server rejects an unknown model without calling the bridge", async (t) => {

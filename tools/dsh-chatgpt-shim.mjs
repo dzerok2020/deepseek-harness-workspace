@@ -153,11 +153,25 @@ export function liftSystemMessages(input) {
  * "ChatGPT web requires a current-turn user message for browser-session replay"
  * (verified 2026-10-17 against bridge v6.1.9 browser-only mode).
  */
-export function stampCurrentTurnId(input, turnId) {
+/**
+ * Index of the current-turn user message.
+ *
+ * Match on `role` alone, never on `type`: DSH sends `{role, content}` items and
+ * only `normalizeInput` adds `type: "message"`. The two helpers below run after
+ * that normalization in `adaptRequestBody`, but the regression test that first
+ * caught this built its input by hand — so keep the lookup shape-agnostic and
+ * the envelope can never be misplaced because of an untyped item again.
+ */
+function lastUserIndex(input) {
   let last = -1;
   input.forEach((item, i) => {
-    if (item?.type === "message" && item.role === "user") last = i;
+    if (item && typeof item === "object" && item.role === "user") last = i;
   });
+  return last;
+}
+
+export function stampCurrentTurnId(input, turnId) {
+  const last = lastUserIndex(input);
   if (last === -1) throw new Error("no user message to stamp turn_id on");
   return input.map((item, i) =>
     i === last ? { ...item, internal_chat_message_metadata_passthrough: { turn_id: turnId } } : item,
@@ -180,10 +194,7 @@ export function withEnvironmentContext(input, cwd, turnId) {
     content: [{ type: "input_text", text: buildEnvironmentContext(cwd) }],
     internal_chat_message_metadata_passthrough: { turn_id: turnId },
   };
-  let last = -1;
-  input.forEach((item, i) => {
-    if (item?.type === "message" && item.role === "user") last = i;
-  });
+  let last = lastUserIndex(input);
   if (last === -1) return [environment, ...input];
   return [...input.slice(0, last), environment, ...input.slice(last)];
 }
