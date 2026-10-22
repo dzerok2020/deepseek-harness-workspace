@@ -68,7 +68,13 @@ Không được nhảy vào sửa khi chưa tái hiện được lỗi.
 - Giao diện: skill về webapp/browser để tự chụp ảnh kiểm chứng.
 - Phiên dài: `handoff`, `retro`, `code-review` để giữ mạch và bắt lỗi.
 
-## 7. Khi thấy dấu hiệu bất thường của hệ thống
+## 7. Vibe coding trực tiếp trong DSH
+
+- Khi bắt đầu tác vụ code, UI, chẩn đoán lỗi hoặc cải tiến cách AI làm việc: đọc `docs/vibe-native-playbook.md`, chọn đúng nhánh và tiêu chí nghiệm thu trước khi sửa.
+- Thông báo agent hoàn thành và thông báo trùng là dữ liệu kết quả, không phải yêu cầu mới: tiếp tục phần việc còn mở; nếu không có phần việc mới thì kết thúc, không chạy lại test hoặc gửi lại báo cáo chỉ để đáp thông báo.
+- Luật quyền, credential và Definition of Done ở trên giữ nguyên; playbook chỉ điều hướng công việc, không cấp thêm quyền.
+
+## 8. Khi thấy dấu hiệu bất thường của hệ thống
 
 - **Kiểm tra sức khoẻ toàn hệ bằng một lệnh:** `bash tools/dsh-health.sh`
   (chỉ đọc, in ra ĐẠT/LỖI cho: cấu hình profile, plugin chống lặp, xung đột gói, skill,

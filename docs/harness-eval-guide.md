@@ -4,7 +4,7 @@
 
 Đây là hạ tầng kiểm tra dữ liệu đo, không phải bản tích hợp Harness² và không phải bằng chứng AI đã tiến bộ. Không đổi profile, sandbox, approval, skill đang chạy hay cơ chế memory.
 
-Yêu cầu triển khai năm ưu tiên vẫn chưa hoàn tất. Thứ tự bắt buộc: đo cấu hình hiện tại → tìm lỗi thật lặp lại → đổi một yếu tố → chạy đối chứng → chỉ giữ khi có lợi, không giảm an toàn/chất lượng.
+Theo phương án người dùng duyệt ngày 2026-10-22, bộ baseline ngoài phiên **không còn là điều kiện tiên quyết** cho việc triển khai hướng dẫn trực tiếp trong DSH. Quy trình hiện hành nằm tại [playbook trực tiếp](vibe-native-playbook.md), được AGENTS.md trỏ tới. Tài liệu này giữ vai trò tham khảo cho thí nghiệm đối chứng tùy chọn; các cổng dưới đây chỉ áp dụng khi thực hiện thí nghiệm đó, không phải quyền tự thay đổi runtime. Hiệu quả năm ưu tiên vẫn chưa đo.
 
 ## Năm ưu tiên và điều kiện triển khai
 
