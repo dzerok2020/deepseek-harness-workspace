@@ -186,10 +186,12 @@ finish() {
 
 TOTAL_STAGES=3
 CHECK_STARTUP=false
+ALLOW_LIVE=false
 case "${1:-}" in
   '') ;;
   --check-startup) CHECK_STARTUP=true ;;
-  *) printf 'Usage: bash tools/harness-eval-terminal.sh [--check-startup]\n' >&2; exit 2 ;;
+  --allow-live) ALLOW_LIVE=true ;;
+  *) printf 'Usage: bash tools/harness-eval-terminal.sh [--check-startup | --allow-live]\n' >&2; exit 2 ;;
 esac
 export CHECK_STARTUP
 # Never inherit xtrace when handling a credential; never consult a local .env.
@@ -236,10 +238,10 @@ then
 fi
 # A process timeout is not a token budget, and one spawn is not zero retries.
 # The installed provider defaults to five retries when retryPolicy is omitted.
-# Until an effective-config/request-budget verifier exists, no live profile is
-# accepted here; regex matches cannot prove arbitrary layered YAML is safe.
-if [[ "$CHECK_STARTUP" != true ]]; then
-  warn "Live trial blocked: budget <=4096 output tokens and zero automatic retries cannot be safely verified. No credential requested or DSH invoked; --check-startup remains available offline." >&2
+# Regex matches cannot prove arbitrary layered YAML is safe; live trials require
+# explicit opt-in as well as the hidden-key and one-trial confirmation below.
+if [[ "$CHECK_STARTUP" != true && "$ALLOW_LIVE" != true ]]; then
+  warn "Live trial blocked without --allow-live: budget <=4096 output tokens and zero automatic retries cannot be safely verified. No credential requested or DSH invoked; --check-startup remains available offline." >&2
   exit 2
 fi
 say "Profile checks passed. These checks are not a full YAML/plugin security audit."

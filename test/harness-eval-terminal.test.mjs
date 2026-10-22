@@ -36,10 +36,47 @@ test('live trial with unverified token and retry budgets fails before credential
   const f = fixture(t);
   const result = f.run('\nsecret\ny\n');
   assert.equal(result.status, 2, result.stderr);
+  assert.match(result.stderr, /blocked without --allow-live/i);
   assert.match(result.stderr, /budget.*4096.*retr/i);
   assert.equal(result.stdout.includes('Paste the OmniRoute API key'), false);
   assert.equal(existsSync(f.invoked), false);
   assert.equal(existsSync(f.logs), false);
+});
+
+test('--allow-live permits one confirmed fake trial with hidden key and sanitized output', t => {
+  const f = fixture(t);
+  const key = 'fake-key-not-a-real-credential';
+  const result = f.run(`\n${key}\ny\n`, 0, ['--allow-live']);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Paste the OmniRoute API key/);
+  assert.match(result.stdout, /Invoke DSH exactly ONCE/);
+  const calls = readFileSync(f.invoked, 'utf8').trim().split('\n').map(JSON.parse);
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0].argv, ['--profile', 'harness-eval', '--json',
+    'Reply exactly HARNESS_EVAL_CONNECTIVITY_OK. Do not use tools or modify files.']);
+  assert.equal(calls[0].keyPresent, true);
+  assert.notEqual(calls[0].home, f.home);
+  assert.equal(calls[0].dependencyRoot.startsWith(calls[0].home + '/profiles/harness-eval/'), true);
+  assert.equal(existsSync(calls[0].home), false);
+  const report = readFileSync(join(f.logs, readdirSync(f.logs)[0]), 'utf8');
+  for (const text of [report, result.stdout, result.stderr]) assert.equal(text.includes(key), false);
+  assert.match(report, /fake result \[REDACTED\]/);
+  assert.match(report, /fake diagnostic \[REDACTED\]/);
+  assert.equal(JSON.parse(report).kind, 'connectivity-only');
+  assert.equal(readFileSync(join(f.home, 'profiles/web/sentinel'), 'utf8'), 'unchanged');
+  assert.equal(existsSync(join(f.root, '.env')), false);
+  assert.equal(existsSync(join(f.profile, '.env')), false);
+});
+
+test('--allow-live cancels on decline, missing key, or EOF without invoking DSH', t => {
+  const f = fixture(t);
+  for (const input of ['\nfake-key-not-a-real-credential\nn\n', '\nfake-key-not-a-real-credential\n', '\n\ny\n', '']) {
+    const result = f.run(input, 0, ['--allow-live']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /Cancelled; DSH was not invoked/);
+    assert.equal(existsSync(f.invoked), false);
+    assert.equal(existsSync(f.logs), false);
+  }
 });
 
 test('offline capture sanitizes Bearer output and preserves isolated dependency routing', t => {
