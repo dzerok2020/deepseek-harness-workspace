@@ -14,7 +14,7 @@ function fixture(t) {
   mkdirSync(profile, { recursive: true });
   writeFileSync(join(profile, 'package.json'), JSON.stringify({ dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-headless'] } } }));
   writeFileSync(join(profile, 'cordis.yml'), '[]\n');
-  writeFileSync(join(profile, 'cordis.patch.yml'), '- id: llm-deepseek\n  config:\n    apiKeyEnv: OR_API_KEY\n- id: sandbox-policy\n  config:\n    mode: read-only\n');
+  writeFileSync(join(profile, 'cordis.patch.yml'), '- id: llm-deepseek\n  config:\n    apiKeyEnv: OR_API_KEY\n    defaultMaxTokens: 16384\n    models:\n      - id: fixture-model\n        maxTokens: 16384\n- id: sandbox-policy\n  config:\n    mode: read-only\n');
   mkdirSync(join(profile, 'node_modules'));
   writeFileSync(join(profile, 'node_modules', 'fixture-marker'), 'local dependency');
   mkdirSync(join(home, 'profiles/web'), { recursive: true });
@@ -32,24 +32,34 @@ function fixture(t) {
   return { root, home, profile, invoked, logs, run };
 }
 
-test('one confirmed trial sanitizes output, avoids argv secrets and preserves DSH failure', t => {
+test('live trial with unverified token and retry budgets fails before credential or DSH', t => {
   const f = fixture(t);
-  const secret = 'sk-test-"\\backslash-and-$-secret';
-  const result = f.run(`\n${secret}\ny\n`, 37);
-  assert.equal(result.status, 37, result.stderr);
+  const result = f.run('\nsecret\ny\n');
+  assert.equal(result.status, 2, result.stderr);
+  assert.match(result.stderr, /budget.*4096.*retr/i);
+  assert.equal(result.stdout.includes('Paste the OmniRoute API key'), false);
+  assert.equal(existsSync(f.invoked), false);
+  assert.equal(existsSync(f.logs), false);
+});
+
+test('offline capture sanitizes Bearer output and preserves isolated dependency routing', t => {
+  const f = fixture(t);
+  const executable = join(f.root, 'bin/dsh');
+  writeFileSync(executable, readFileSync(executable, 'utf8').replaceAll("'fake result '", "'fake result Bearer fixture-token '").replaceAll("'fake diagnostic '", "'fake diagnostic Bearer fixture-token '"));
+  const result = f.run('', 37, ['--check-startup']);
+  assert.equal(result.status, 1, result.stderr);
   const calls = readFileSync(f.invoked, 'utf8').trim().split('\n').map(JSON.parse);
   assert.equal(calls.length, 1);
-  assert.deepEqual(calls[0].argv, ['--profile', 'harness-eval', '--json', 'Reply exactly HARNESS_EVAL_CONNECTIVITY_OK. Do not use tools or modify files.']);
-  assert.equal(calls[0].keyPresent, true);
+  assert.deepEqual(calls[0].argv, ['--profile', 'harness-eval', '--json']);
+  assert.equal(calls[0].keyPresent, false);
   assert.equal(calls[0].dependencyRoot.startsWith(calls[0].home + '/profiles/harness-eval/'), true, 'dependency realpaths must remain inside the isolated profile for DSH peer routing');
   assert.equal(calls[0].marker, 'local dependency');
   assert.notEqual(calls[0].home, f.home);
   assert.equal(existsSync(calls[0].home), false);
-  assert.equal(JSON.stringify(calls).includes(secret), false);
   const log = readdirSync(f.logs).map(name => readFileSync(join(f.logs, name), 'utf8')).join('\n');
-  for (const text of [log, result.stdout, result.stderr]) assert.equal(text.includes(secret), false);
-  assert.match(log, /fake result \[REDACTED\]/);
-  assert.match(log, /fake diagnostic \[REDACTED\]/);
+  for (const text of [log, result.stdout, result.stderr]) assert.equal(text.includes('fixture-token'), false);
+  assert.match(log, /fake result Bearer \[REDACTED\]/);
+  assert.match(log, /fake diagnostic Bearer \[REDACTED\]/);
   assert.match(log, /"exitCode":37/);
   assert.equal(readFileSync(join(f.home, 'profiles/web/sentinel'), 'utf8'), 'unchanged');
 });
@@ -103,12 +113,16 @@ test('offline startup rejects ordinary startup errors', t => {
   assert.match(result.stdout, /Startup activation: FAIL/);
 });
 
-test('declining trial or EOF cancels without invoking DSH', t => {
+test('live mode remains blocked for EOF, decline, or apparently safe YAML budgets', t => {
   const f = fixture(t);
-  for (const input of ['\nsecret-not-for-logs\nn\n', '']) {
+  const patch = join(f.profile, 'cordis.patch.yml');
+  writeFileSync(patch, readFileSync(patch, 'utf8').replaceAll('16384', '4096') + '# retryPolicy: {mode: normal, maxRetries: 0}\n');
+  for (const input of ['', '\nsecret-not-for-logs\nn\n', '\nsecret-not-for-logs\ny\n']) {
     const result = f.run(input);
-    assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /cancel/i);
+    assert.equal(result.status, 2, result.stderr);
+    assert.match(result.stderr, /cannot be safely verified/);
+    assert.equal(result.stdout.includes('Paste the OmniRoute API key'), false);
     assert.equal(existsSync(f.invoked), false);
+    assert.equal(existsSync(f.logs), false);
   }
 });

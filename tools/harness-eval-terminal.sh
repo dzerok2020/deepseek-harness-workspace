@@ -234,6 +234,14 @@ NODE
 then
   exit 2
 fi
+# A process timeout is not a token budget, and one spawn is not zero retries.
+# The installed provider defaults to five retries when retryPolicy is omitted.
+# Until an effective-config/request-budget verifier exists, no live profile is
+# accepted here; regex matches cannot prove arbitrary layered YAML is safe.
+if [[ "$CHECK_STARTUP" != true ]]; then
+  warn "Live trial blocked: budget <=4096 output tokens and zero automatic retries cannot be safely verified. No credential requested or DSH invoked; --check-startup remains available offline." >&2
+  exit 2
+fi
 say "Profile checks passed. These checks are not a full YAML/plugin security audit."
 warn "Continue only if you reviewed this profile: no tools, extra plugins, embedded credentials, or unsafe !!js."
 say "Only the isolated profile is copied; home patches and .env files are not used."
