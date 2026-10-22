@@ -30,6 +30,19 @@ def validate_extraction(response):
     )
 
 
+def provider_quota_deferred(error):
+    """True when the daemon deferred extraction only because the upstream model
+    was rate-limited. Loopback, permissions and the service itself are fine, so
+    this must not read as a hard memory failure on every health run.
+
+    Reads the error body once; never echoes it (it carries remote payload)."""
+    try:
+        body = error.read().decode('utf-8', 'replace')
+    except Exception:
+        return False
+    return 'ProviderRateLimitResetError' in body or 'model_cooldown' in body
+
+
 def describe_error(error):
     """Use only local labels and numeric status; never echo remote data."""
     if isinstance(error, urllib.error.HTTPError):
@@ -62,6 +75,7 @@ def describe_error(error):
 
 def main():
     failures = []
+    deferred = False
     stage = 'bảo vệ truy cập'
     env_file = Path.home() / '.hindsight/profiles/coding-agent.env'
     try:
@@ -90,13 +104,23 @@ def main():
             failures.append('trích xuất không trả về fact chứa giá trị thử 45678')
     except Exception as error:
         # Never print remote payloads or credential values.
-        failures.append(f'{stage} thất bại: {describe_error(error)}')
+        if stage == 'trích xuất LLM' and provider_quota_deferred(error):
+            stage = 'trích xuất LLM (chờ quota provider)'
+            deferred = stage
+        else:
+            failures.append(f'{stage} thất bại: {describe_error(error)}')
         if isinstance(error, urllib.error.HTTPError):
             error.close()
     for failure in failures:
         print('LỖI:', failure)
     if not failures:
-        print('ĐẠT: trích xuất LLM thật (không lưu dữ liệu), loopback và quyền file')
+        if deferred:
+            print(
+                'ĐẠT (một phần): loopback và quyền file; trích xuất LLM hoãn vì '
+                'provider tạm hết quota — không phải lỗi bộ nhớ cục bộ'
+            )
+        else:
+            print('ĐẠT: trích xuất LLM thật (không lưu dữ liệu), loopback và quyền file')
     return bool(failures)
 
 
