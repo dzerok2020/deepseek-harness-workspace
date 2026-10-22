@@ -27,7 +27,7 @@ set -uo pipefail
 
 PROFILE="${DSH_HOME:-$HOME/.dsh}/profiles/web"
 WS="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PLUGINS=(dsh-decide dsh-vibe-guard dsh-loop-guard)
+PLUGINS=(dsh-decide dsh-vibe-guard dsh-loop-guard dsh-tool-name-normalize)
 FIX=0
 [ "${1:-}" = "--fix" ] && FIX=1
 

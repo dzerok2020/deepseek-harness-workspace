@@ -1,0 +1,27 @@
+{
+  "name": "dsh-tool-name-normalize",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Map Claude-cased tool-call names (Bash, Read, Skill, ...) back to the lowercase tools this harness registers, so calls from a Claude-Code-normalizing gateway resolve instead of failing with \"unknown tool\".",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

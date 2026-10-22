@@ -76,9 +76,10 @@ head_ "4. Không còn bản gói host cũ lồng nhau (nguồn gây disable hàn
 NESTED="$(find "$PROFILE/node_modules" -maxdepth 5 -type d -path '*/node_modules/@deepseek-ai/*' 2>/dev/null | awk -F'/node_modules/' 'NF>=3')"
 if [ -z "$NESTED" ]; then ok "không có bản @deepseek-ai/* lồng trong node_modules"
 else bad "còn bản lồng (dễ làm runtime tắt cả row dùng gói đó):"; echo "$NESTED" | sed 's/^/       /'; fi
+RUNTIME_VER="$(dsh --version 2>/dev/null | head -1 | tr -d '[:space:]')"
 VER_SF="$(node -p "try{require('$PROFILE/node_modules/@deepseek-ai/dsh-skill-filesystem/package.json').version}catch(e){'THIẾU'}" 2>/dev/null)"
-[ "$VER_SF" = "0.2.0-rc.2" ] && ok "@deepseek-ai/dsh-skill-filesystem = $VER_SF (khớp runtime)" \
-  || bad "@deepseek-ai/dsh-skill-filesystem = $VER_SF (nên là 0.2.0-rc.2)"
+if [ -n "$RUNTIME_VER" ] && [ "$VER_SF" = "$RUNTIME_VER" ]; then ok "@deepseek-ai/dsh-skill-filesystem = $VER_SF (khớp runtime $RUNTIME_VER)"
+else bad "@deepseek-ai/dsh-skill-filesystem = $VER_SF (nên khớp runtime ${RUNTIME_VER:-?})"; fi
 VER_OV="$(node -p "try{require('$PROFILE/node_modules/@openviking/dsh-memory-plugin/package.json').version}catch(e){'THIẾU'}" 2>/dev/null)"
 case "$VER_OV" in 0.5.1[7-9]|0.5.[2-9]*) ok "@openviking/dsh-memory-plugin = $VER_OV (peer cho phép 0.2.x)";;
   *) bad "@openviking/dsh-memory-plugin = $VER_OV (0.5.16 trở xuống chặn 0.2.x — hãy nâng lên >=0.5.19)";; esac
@@ -107,7 +108,7 @@ head_ "7. Ba plugin cục bộ: bản DSH nạp có khớp code trong workspace 
 # pnpm COPY (không symlink) các dep file:, và giữ bản copy trong cache của nó.
 # Nếu mục này báo BẢN SAO CŨ thì mọi thay đổi bạn sửa trong workspace đều KHÔNG
 # được DSH chạy — không có cảnh báo nào khác. Sửa: bash tools/sync-local-plugins.sh --fix
-for p in dsh-decide dsh-vibe-guard dsh-loop-guard; do
+for p in dsh-decide dsh-vibe-guard dsh-loop-guard dsh-tool-name-normalize; do
   src="$WS/$p"; dst="$PROFILE/node_modules/$p"
   if [ -L "$dst" ] && [ "$(readlink "$dst")" = "$src" ]; then
     ok "$p: symlink trỏ về workspace"
