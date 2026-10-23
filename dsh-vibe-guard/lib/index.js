@@ -1,3 +1,4 @@
+import { registerTodoProgress } from './todo-progress.js';
 import { createUserMessage } from '@deepseek-ai/dsh-llm';
 import {
   compileConfig,
@@ -14,7 +15,7 @@ import {
 } from './policy.js';
 
 export const name = 'dsh-vibe-guard';
-export const inject = ['tools'];
+export const inject = ['tools', 'sessionProjections'];
 
 const SOURCE = Object.freeze({
   kind: 'vibe-guard',
@@ -33,6 +34,8 @@ export function apply(ctx, rawConfig) {
   const off = env !== undefined && env.DSH_VIBE_GUARD === 'off';
   const cfg = compileConfig({ ...(rawConfig ?? {}), ...(off ? { enabled: false } : {}) });
   if (!cfg.enabled) return;
+
+  registerTodoProgress(ctx);
 
   const fallback = createState();
   const perAgent = new WeakMap();
