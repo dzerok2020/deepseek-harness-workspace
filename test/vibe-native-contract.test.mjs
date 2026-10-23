@@ -23,6 +23,23 @@ test('playbook covers six task types and five operating priorities', () => {
   assert.match(playbook, /không nới sandbox/);
 });
 
+test('continuity guidance preserves one carrier and checks effects before resuming', () => {
+  const playbook = read('docs/vibe-native-playbook.md');
+  for (const requirement of [
+    '6. Giữ tiến độ và phục hồi',
+    'long-task-continuation',
+    'một bản ghi công việc',
+    'yêu cầu gốc',
+    'git status',
+    'job_output',
+    'không tự chạy lại',
+    'preflight_compress_failed',
+    'chưa verify end-to-end',
+  ]) {
+    assert.ok(playbook.includes(requirement), requirement);
+  }
+});
+
 test('old evaluation guide explicitly yields to approved native workflow', () => {
   assert.match(read('docs/harness-eval-guide.md'), /không còn là điều kiện tiên quyết/);
 });
