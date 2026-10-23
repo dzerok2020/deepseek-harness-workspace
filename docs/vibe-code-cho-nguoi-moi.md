@@ -1,8 +1,8 @@
 # Vibe Code Cho Người Mới — Hệ Thống Của Bạn (bản tối ưu)
 
-> Viết riêng cho bạn ngày 06/10/2026, dựa trên video *「如何使用 AI 写代码」* + cẩm nang
-> *Quy Trình Vibe Coding Thực Chiến* + trạng thái thật của hệ thống DeepSeek Harness này
-> (đã kiểm chứng từng mục trên máy, không phải lý thuyết).
+> Viết riêng cho bạn ngày 06/10/2026, cập nhật hiện trạng ngày 24/10/2026, dựa trên video
+> *「如何使用 AI 写代码」* + cẩm nang *Quy Trình Vibe Coding Thực Chiến* + trạng thái đã
+> đọc trên máy phiên này (không lấy số liệu từ báo cáo 05/10).
 
 ---
 
@@ -11,8 +11,8 @@
 | Thành phần | Việc nó làm giúp bạn | Khi nào dùng |
 |---|---|---|
 | Skill `four-phase-build` | Điều phối trọn quy trình 4 pha lấy **nguyên văn từ video bạn xem** | Bắt đầu dự án mới |
-| Skill `four-phase-env-setup` → `product-plan` → `tech-plan` → `implement` | Từng bước: Git+AGENTS.md → MVP → Tech → Code+test | Được gọi tự động khi đi theo quy trình |
-| Plugin `dsh-vibe-guard` (đang bật) | Chặn lệnh phá huỷ (`git push --force`, `rm -rf ~`…) và **ép AI chạy test thật đạt rồi mới được báo "xong"** | Luôn chạy ngầm |
+| Skill `four-phase-env-setup` → `four-phase-product-plan` → `four-phase-tech-plan` → `four-phase-implement` | Từng bước: Git+AGENTS.md → MVP → Tech → Code+test | Được gọi tự động khi đi theo quy trình |
+| Plugin `dsh-vibe-guard` (có trong danh sách bundle) | Có luật nhận diện một số lệnh nguy hiểm và nhắc kiểm chứng. Phát hiện lệch tên tool `ops_bash` và payload event của claim-gate; **không bảo đảm phủ mọi công cụ hoặc ngăn mọi câu báo xong** | Hỗ trợ kỷ luật, không thay thế quyền host, review và test thật |
 | Skill `webapp-testing` + plugin `browser-skill` | AI tự mở app, bấm thử, chụp màn hình — "Chrome plugin" mà video nhắc | Bước 4 (tự test) |
 | Skill `prompt-intake` | Hiểu tiếng Việt thô, viết tắt, không dấu — không cần viết prompt chuẩn | Mọi lúc |
 | Skill `handoff` / `retro` / `code-review` | Lưu tiến độ giữa chừng, tổng kết buổi làm, soi lại code | Khi phiên dài / kết buổi |
@@ -20,7 +20,53 @@
 | CLI `graphify` (gói `graphifyy`) | Vẽ đồ thị hàm/file từ mã nguồn. Không cần AI: `graphify explain "tên"` hoặc `graphify god-nodes`. Muốn đặt tên cụm thì OmniRoute local: `OPENAI_BASE_URL=http://127.0.0.1:20128/v1 OPENAI_API_KEY=local OPENAI_MODEL=b-ai/qwen3.8-flash graphify label <thư-mục> --backend=openai --model=b-ai/qwen3.8-flash` | Khi code đã nhiều, muốn biết hàm nào nối với hàm nào |
 | Skill `ponytail` | Bắt AI sửa ít nhất có thể, không thêm thư viện cho vài dòng code | Mọi lần viết hoặc sửa code |
 
-**Kết luận:** hệ thống đã đáp ứng đủ quy trình 5 bước. Việc của bạn chỉ là đi đúng lộ trình và giữ vai trò **người nghiệm thu cuối cùng**.
+**Kết luận (24/10/2026):** quy trình 5 bước vẫn dùng được. Hệ thống **chưa** phối hợp “hoàn hảo”: nhiều kho nhớ và nhiều skill cùng một việc vẫn sống cạnh nhau; claim-gate chưa vào Git. Việc của bạn là đi đúng lộ trình, giữ vai **người nghiệm thu cuối cùng**, và không tin câu "đã xong" nếu chưa thấy lệnh test đạt.
+
+### 1b. Các mảnh phối hợp thế nào (đã đọc trên máy phiên này)
+
+**Skill** là tờ hướng dẫn AI tự mở khi câu bạn gõ khớp mô tả. **Plugin** là phần cài vào DSH, đăng ký công cụ hoặc luật. **Agent** là phiên làm việc; preset `standard` là bộ công cụ mặc định.
+
+Đã đối chiếu, không lấy số từ báo cáo 05/10:
+
+| Việc kiểm | Kết quả phiên này |
+|---|---|
+| Runtime DSH và gói nạp skill | Cùng `0.2.1-rc.2` (lỗi shadow `0.1.1` của báo cáo cũ không còn) |
+| Skill trên đĩa | 89 thư mục `~/.dsh/skills` + 3 thư mục `~/.agents/skills` |
+| Bundle trong profile `web` | 38 tên, gồm `dsh-vibe-guard`, `dsh-loop-guard`, `dsh-prompt-intake` |
+| Claim-gate | Có trong `dsh-vibe-guard/lib/policy.js` và `lib/index.js`, kèm test chưa theo dõi Git — **chưa commit** |
+
+Chỗ còn lệch, và cách xử lý ổn định (không gỡ plugin trong phiên này):
+
+1. **Nhiều kho nhớ cùng lúc** (mnemon, OpenViking, Hindsight, StrataGate, furongjun). Chúng không đè tool của nhau, nhưng AI dễ ghi nhầm chỗ. Luật: một bài học chỉ ghi **một** kho đúng giao thức của kho đó; trạng thái tạm của task không vào bộ nhớ dài hạn.
+2. **Nhiều skill cùng một việc** (kế hoạch, debug, review, TDD). Không xoá. Khi hai skill gần nhau, chọn cái có câu "use X instead" trong mô tả. Người mới chỉ cần gõ việc; đừng gọi tên skill.
+3. **Claim-gate còn là thay đổi đang làm dở.** Commit chỉ lưu lịch sử, không chứng minh plugin đúng hoặc đã nạp. Cần kiểm tra adapter với event thật của host, test tích hợp, rồi restart và thử trong phiên mới. Không commit toàn thư mục đang dirty khi chưa review từng thay đổi.
+4. Sau mỗi lần cài plugin hoặc restart có thể chạy `bash tools/dsh-health.sh` để sàng lọc. Tuy nhiên script có thể gọi kiểm tra dịch vụ/model; không coi là hoàn toàn offline, không có tác dụng phụ hay không tốn quota. Đọc script trước khi dùng. Health xanh không chứng minh mọi plugin phối hợp đúng.
+
+### 1c. Cách phối hợp ổn định — ít đầu mối, có bằng chứng
+
+Luồng chuẩn: **Bạn chốt mục tiêu → agent chính chọn skill → tool/plugin thực thi → test kiểm tra → agent chính tổng hợp → bạn nghiệm thu.** Không bật mọi skill và agent cho mọi việc.
+
+- **Một người điều phối:** agent chính chịu trách nhiệm cuối. Việc nhỏ làm trực tiếp; chỉ giao agent phụ các phần độc lập. Mỗi phần có đầu vào, phạm vi file, tiêu chí đạt và kết quả bàn giao. Không cho hai agent cùng sửa một file; agent chính phải đọc diff và chạy kiểm tra liên quan trước khi nhận kết quả.
+- **Một quy trình chính:** dự án mới dùng họ `four-phase-*`; bug dùng `systematic-debugging`; triển khai theo plan đã duyệt. Có nhiều skill tương tự không tự động là lỗi. Chọn theo catalog của phiên, đừng suy ra mọi thư mục skill đều được nạp hoặc mọi tên viết tắt đều gọi được.
+- **Một nơi ghi cho mỗi loại thông tin:** hợp đồng dự án ở tài liệu/Git; tiến độ tạm ở một bản bàn giao; bài học lâu dài chọn đúng một cơ chế memory theo giao thức. Không sao chép cùng kết luận vào mọi kho. Memory là lịch sử tham khảo, không thắng yêu cầu hiện tại hoặc code thực tế.
+- **Phân biệt bốn trạng thái:** có mã trên đĩa → có trong cấu hình → đã nạp trong tiến trình → đã chạy đúng ca kiểm chứng. Không nhảy từ trạng thái đầu sang trạng thái cuối. Các thư mục `dsh-append-guard`, `dsh-eval-gate`, `dsh-artifact-review` được phát hiện là prototype cục bộ, chưa có trong danh sách bundle profile đã kiểm; không tính là hàng rào đang hoạt động.
+- **Không retry mù:** lưu lỗi nguyên văn và exit code; xác định thao tác đã chạy chưa. Cùng lỗi/cùng đầu vào thì tìm nguyên nhân trước lần thử tiếp. Khi bị từ chối quyền, dừng đường đó, không đổi tool để né. `approval=never` nghĩa là không hỏi cấp quyền, không phải cho phép mọi thao tác.
+- **Phiên dài:** một mục tiêu, một bảng tiến độ và một bản bàn giao khi cần. Khi agent báo hoàn thành, nhận kết quả rồi tiếp tục phần còn mở; không tự chạy lại toàn tác vụ chỉ vì có thông báo trùng.
+
+### 1d. Ưu tiên cải thiện hệ thống, không cài thêm theo cảm giác
+
+| Ưu tiên | Việc cần làm | Bằng chứng trước khi coi là ổn |
+|---|---|---|
+| P0 — đúng hợp đồng | Kiểm tra claim-gate với cấu trúc event thật của DSH; kiểm tra khóa session của loop-guard | Test adapter bằng payload host thật, test liên tiếp hai phiên và hai lượt; không steer lặp hoặc bỏ sót |
+| P1 — kiểm chứng xuyên lớp | Thử file edit → test fail → test pass → kết lượt; thử agent phụ bàn giao và lỗi tool | Log cho thấy đúng phiên/agent, đúng kết quả; không coi test không liên quan là nghiệm thu |
+| P1 — dễ phục hồi | Giữ hướng dẫn bàn giao và ngân sách context đúng route/model | Tiếp tục được việc đang dở; khi lỗi nén phải ghi rõ phần chưa verify, không tăng context suy đoán |
+| P2 — tối ưu có đo | Chọn vài tác vụ thật làm baseline, đổi một yếu tố rồi so lại | So chất lượng, an toàn, thời gian và token trong cùng điều kiện; chưa có số đo thì không tuyên bố nhanh/rẻ hơn |
+
+Hai điểm điều hướng cần chỉnh ở tài liệu nguồn: tên skill `product-plan`/`tech-plan` trong AGENTS phải hiểu và sửa thành `four-phase-product-plan`/`four-phase-tech-plan`; câu trong playbook “skill không được nhắc thì coi như không tồn tại” không nên phủ nhận catalog động. Catalog và công cụ mở skill của phiên mới xác nhận skill nào gọi được. Đây là phát hiện, chưa sửa hai tài liệu nguồn trong lần này.
+
+Với agent, ưu tiên native subagent (agent phụ do DSH quản lý) cho phần việc độc lập. Agency chỉ dùng chuyên gia đã bật. Conductor chạy CLI bên ngoài: phải xem `dryRun` và có cho phép riêng trước khi thực thi; không mặc định nó thừa hưởng giới hạn quyền/độ sâu của native agent. Không cần dùng cả ba cho một việc.
+
+Đây là **đề xuất**, chưa phải các bản vá runtime đã triển khai. Không tự gỡ plugin, đổi model, bật prototype hoặc restart phiên của bạn trong lần cập nhật tài liệu này.
 
 ---
 
@@ -45,7 +91,7 @@ Mở **phiên mới** (để não AI sạch), gõ: **"Đọc docs/product-plan.m
 
 ### Bước 4 — Triển khai (AI tự test)
 Gõ: **"Triển khai."**
-→ AI đọc 2 file plan, code từng lát nhỏ, mỗi lát: viết test → chạy test → commit. Plugin vibe-guard không cho AI nói "xong" khi chưa có lệnh test **đạt**. Bạn sẽ thấy bảng tiến độ từng lát.
+→ AI đọc 2 file plan, code từng lát nhỏ, mỗi lát: viết test → chạy test → commit. Yêu cầu AI đưa lệnh kiểm tra, kết quả và commit; không coi lời nhắc của vibe-guard là bằng chứng test **đạt**. Bạn sẽ thấy bảng tiến độ từng lát.
 
 ### Bước 5 — Nghiệm thu bằng tay (phần của BẠN)
 Chạy app thật (`npm start`…), thử như người dùng bình thường. Gặp lỗi → **paste nguyên văn thông báo lỗi** vào chat kèm mô tả hành vi sai ("bị lỗi rồi: khi bấm nút X thì không có gì xảy ra, log: ..."). Nhờ có Git, AI sửa không phá tính năng cũ.
@@ -125,12 +171,34 @@ Quy trình 5 bước ở trên là cho **dự án mới**. Khi dự án đã ch�
 
 ---
 
-## 6. 4 lỗi người mới hay mắc — và hệ thống này đã chắn giúp bạn
+## 6. 4 lỗi người mới cần tự kiểm soát
 
-1. **One-shot prompting** → Hệ thống: quy trình 4 bước buộc chốt MVP trước khi code.
-2. **Tin AI "tôi đã xong"** → vibe-guard **không cho đóng phiên** khi chưa có lệnh test đạt (bạn đã thấy nó hoạt động ở lượt trước).
-3. **Sợ lệnh phá huỷ** → vibe-guard chặn trước `git push --force`, `reset --hard`, `rm -rf`…
-4. **Gõ prompt sai chính tả lo AI hiểu nhầm** → skill `prompt-intake` + luật ngôn ngữ trong AGENTS.md hiểu tiếng Việt thô, không bắt lỗi.
+1. **Một câu rồi chờ app hoàn chỉnh:** thay bằng các mốc MVP → kỹ thuật → từng lát → nghiệm thu. Một yêu cầu ngắn vẫn tốt nếu AI làm rõ mục tiêu, không tự đoán cả sản phẩm.
+2. **Tin câu “đã xong”:** đọc lệnh, exit code, số test và phạm vi kiểm tra. Test xanh không chứng minh không còn bug; screenshot không chứng minh nút bấm hoạt động. Guard chỉ hỗ trợ, không thay bằng chứng.
+3. **Cho chạy lệnh nguy hiểm vì nghĩ đã có guard:** kiểm tra đường dẫn/phạm vi trước xoá, không tự force-push, không đưa credential vào chat. Phát hiện thiếu bao phủ `ops_bash` nên không coi vibe-guard là hàng rào đầy đủ.
+4. **Cố học thuộc mọi skill:** chỉ nói mục tiêu, hành vi mong đợi và điều không được thay đổi bằng tiếng Việt tự nhiên. Khi AI hỏi lựa chọn, đọc đánh đổi trước khi chọn; đừng duyệt mặc định nếu chưa hiểu.
+
+### Mẫu yêu cầu và mẫu nghiệm thu
+
+```text
+Tôi muốn: ...
+Đang ở dự án/thư mục: ...
+Hành vi mong đợi: ...
+Không được thay đổi: ...
+Trước khi sửa hãy xem Git và nêu phạm vi.
+Làm từng lát nhỏ; báo lệnh kiểm tra, kết quả, phần chưa verify và commit.
+Không tự cài/gỡ plugin, đổi model hoặc triển khai ngoài phạm vi này.
+```
+
+Trước khi chấp nhận, hỏi: **“Yêu cầu nào đã được kiểm bằng test nào? Có phần nào chưa chạy thật? Tôi cần thử thao tác nào?”** Với UI: cần ảnh thật desktop/mobile và kiểm tra thao tác, không chỉ ảnh đẹp. Với tài liệu: kiểm tra lệnh, tên skill và mâu thuẫn nội dung; không cần giả lập test code cho thay đổi chỉ có chữ.
+
+### Phạm vi kiểm tra ngày 24/10/2026
+
+Đã đọc cấu hình, nguồn guard, catalog skill và chạy kiểm tra local. Test workspace: `node --test test/` báo **162 pass, 0 fail**; vibe-guard: **46 pass, 0 fail**; loop-guard: **21 pass, 0 fail**. Hai bộ Python offline: Hindsight **11 test OK**, orchestration **9 test OK**. Các kết quả này kiểm chứng tài sản test tương ứng, **không phải** chứng nhận tích hợp toàn hệ.
+
+Nguồn cần sửa ưu tiên: `dsh-vibe-guard/lib/index.js:110–116` đọc `event.message` trong khi host phát message dưới `event.data.message`; `dsh-vibe-guard/lib/policy.js:174–192,263–297` không nhận diện mặc định `ops_bash`. Test policy hiện tại không bao phủ đủ đường adapter này. Khóa session của loop-guard còn cần xác minh tích hợp; không gọi đó là bug đã tái hiện.
+
+**Chưa verify:** toàn bộ tổ hợp plugin đang nạp trong tiến trình hiện tại, hành vi guard xuyên `ops_*`/agent phụ, phục hồi qua lỗi context thật, mọi expert/provider/browser đăng nhập, và hiệu quả chất lượng/token/chi phí. Không thể hứa “phối hợp hoàn hảo”; đích thực tế là lỗi được phát hiện, khoanh vùng, phục hồi và có test bảo vệ.
 
 ---
 
