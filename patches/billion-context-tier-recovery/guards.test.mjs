@@ -1,0 +1,13 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import {patch,OWNER,HASH} from './generate.mjs';
+import crypto from 'node:crypto';
+const source=fs.readFileSync(OWNER,'utf8');
+test('installed owner hash remains the pinned unmodified original',()=>assert.equal(crypto.createHash('sha256').update(source).digest('hex'),HASH));
+test('changed owner refuses generation',()=>assert.throws(()=>patch(source+'\n'),/SHA256 mismatch/));
+test('candidate keeps one preflight owner and cannot patch twice',()=>{const candidate=patch(source);assert.equal(candidate.split('async function preflightCompress(').length,2);assert.throws(()=>patch(candidate),/SHA256 mismatch/)});
+test('CLI refuses installed runtime output and all paths outside directory',()=>{for(const output of [OWNER,path.resolve('outside.js')]){const r=spawnSync(process.execPath,['patches/billion-context-tier-recovery/generate.mjs',output],{encoding:'utf8'});assert.notEqual(r.status,0);assert.match(r.stderr,/Output must be directly inside candidate directory/)}});
+test('CLI refuses overwriting any existing artifact',()=>{const r=spawnSync(process.execPath,['patches/billion-context-tier-recovery/generate.mjs','patches/billion-context-tier-recovery/guards.test.mjs'],{encoding:'utf8'});assert.notEqual(r.status,0);assert.match(r.stderr,/EEXIST/)});
