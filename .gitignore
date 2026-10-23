@@ -1,5 +1,8 @@
 # Rác tạm & môi trường — không bao giờ commit
 node_modules/
+.dsh-browser-smoke/
+/tools/__pycache__/
+/test/__pycache__/
 .laya-venv/
 
 # Log và file tạm của công cụ
