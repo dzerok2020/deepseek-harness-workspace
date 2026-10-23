@@ -8,6 +8,7 @@ node_modules/
 # Log và file tạm của công cụ
 *.log
 .dsh-vision-router/
+graphify-out/
 
 # File probe/thử nghiệm của harness
 .bai-*.json

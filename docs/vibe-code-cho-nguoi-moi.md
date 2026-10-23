@@ -17,6 +17,8 @@
 | Skill `prompt-intake` | Hiểu tiếng Việt thô, viết tắt, không dấu — không cần viết prompt chuẩn | Mọi lúc |
 | Skill `handoff` / `retro` / `code-review` | Lưu tiến độ giữa chừng, tổng kết buổi làm, soi lại code | Khi phiên dài / kết buổi |
 | Git, Node, Python, Playwright | Đã cài và chạy được trên máy này | Bước 1 & 4 |
+| CLI `graphify` (gói `graphifyy`) | Vẽ đồ thị hàm/file từ mã nguồn, không cần AI. Hỏi: `graphify explain "tên"` hoặc `graphify god-nodes` | Khi code đã nhiều, muốn biết hàm nào nối với hàm nào |
+| Skill `ponytail` | Bắt AI sửa ít nhất có thể, không thêm thư viện cho vài dòng code | Mọi lần viết hoặc sửa code |
 
 **Kết luận:** hệ thống đã đáp ứng đủ quy trình 5 bước. Việc của bạn chỉ là đi đúng lộ trình và giữ vai trò **người nghiệm thu cuối cùng**.
 
