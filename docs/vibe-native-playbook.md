@@ -45,9 +45,17 @@ Khi có bài học tái sử dụng: ghi điều kiện áp dụng, nguyên nhâ
 
 ## 4. Luật bất biến và hướng dẫn theo việc
 
+Tách hai lớp, không viết chung một đoạn:
+
+- **Cách làm** (tool, thứ tự, khi nào dừng): mục 1, 2, 5 và 6. Đây là hướng dẫn agent.
+- **Kiến thức nghề** (hợp đồng sản phẩm người dùng đã chốt): `docs/product-plan.md` và design contract của repo đó. Harness được đổi cách làm, không được đổi hình dạng sản phẩm đã yêu cầu.
+
+Luật bất biến:
+
 - Quyền: không nới sandbox, approval hoặc chuyển credential vào shell của AI để vượt cơ chế lọc.
 - Bằng chứng: giữ Definition of Done trong AGENTS.md; plugin guard hiện có không phải bảo đảm hiểu mọi loại test hoặc chất lượng tác vụ.
-- Ngữ cảnh: nạp skill đúng nhánh ở mục 1, đọc tài liệu liên quan khi cần; không chép toàn bộ playbook vào mọi phản hồi.
+- Ngữ cảnh: chữ luôn bật (AGENTS.md, luật, bộ nhớ) chỉ giữ cò. Cò là tên skill được gọi khi khớp việc; nội dung skill chỉ nạp lúc cần. Skill không được nhắc tên trong chữ luôn bật thì coi như không tồn tại — đừng dựa vào nó.
+- Không sửa lõi harness nếu chưa chỉ được một chỗ trong trajectory (chuỗi hành động vừa chạy) chứng minh sửa đó đổi hành vi. Không có bằng chứng thì giữ nguyên.
 - Phạm vi: playbook chỉ áp dụng workspace này; dự án khác cần hợp đồng riêng, không tự sửa global profile.
 
 ## 5. Điều phối tiết kiệm — hoàn thành việc, không tạo thêm vòng

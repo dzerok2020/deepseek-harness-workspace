@@ -21,6 +21,10 @@ test('playbook covers six task types and five operating priorities', () => {
   assert.match(playbook, /chưa đo/);
   assert.match(playbook, /không tự ghi memory/);
   assert.match(playbook, /không nới sandbox/);
+  assert.match(playbook, /chữ luôn bật/);
+  assert.match(playbook, /coi như không tồn tại/);
+  assert.match(playbook, /trajectory/);
+  assert.match(playbook, /không được đổi hình dạng sản phẩm/);
 });
 
 test('continuity guidance preserves one carrier and checks effects before resuming', () => {
