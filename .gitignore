@@ -32,3 +32,19 @@ video_analysis/asrvenv/
 # Repo lồng riêng của bạn (có remote GitHub: dzerok2020/dsh-decide)
 # Muốn đưa vào repo này thì dùng: git submodule add <url> dsh-decide
 /dsh-decide/
+
+# Repo lồng: shallow clone của casualsnek/waydroid_script (233MB, có venv/) — không đưa vào repo này
+/waydroid_script/
+
+# Kết quả phân tích tạm theo AGENTS.md §5 — không commit, chỉ là scratch local
+vibe-analysis/
+
+# Eval run artifacts của dsh-prompt-intake (catalog/discovery/verification/lock sinh ra khi chạy eval)
+dsh-prompt-intake/eval/runs/
+
+# Bundle sinh ra + log red/green của billion-context tier-recovery — README nói rõ chỉ
+# generator/harness/tests là deliverable, các file này là local scratch
+patches/billion-context-tier-recovery/candidate-index.js
+patches/billion-context-tier-recovery/candidate.patch
+patches/billion-context-tier-recovery/red.txt
+patches/billion-context-tier-recovery/green.txt
