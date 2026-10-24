@@ -1,0 +1,11 @@
+{
+  "name": "dsh-eval-gate",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "G4 eval gate for DeepSeek Harness: every change must ship a must-change sentinel (proof the new behaviour exists) and a must-keep sentinel (proof the old behaviour survives). Refuses to let a turn stop on silent regression.",
+  "main": "lib/index.js",
+  "files": ["lib", "cordis.patch.yml", "README.md"],
+  "scripts": { "test": "node --test test/" },
+  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }
+}
