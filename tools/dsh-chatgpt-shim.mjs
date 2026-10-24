@@ -28,9 +28,13 @@
 //   CGW_SHIM_PORT   default 17842
 //   CGW_CWD         default $DSH_WORKSPACE or process.cwd()
 //   CGW_MODELS      comma-separated model ids; default = verified catalog
-//   CGW_BRIDGE_MODE "browser-only" (default) or "full"; must match the bridge's
-//                   own mode in ~/.codex-chatgpt-web/config.json or the envelope
-//                   shape will be wrong for it.
+//   CGW_BRIDGE_MODE "auto" (default) reads the bridge's own mode from /healthz at
+//                   startup; "browser-only" or "full" pin it. The envelope shape
+//                   must match the bridge's mode in ~/.codex-chatgpt-web/config.json:
+//                   a journal-activated bridge (mode "full") rejects browser-only
+//                   turns with "ChatGPT web turn is missing cwd in trusted Codex
+//                   environment context" (reproduced 2026-10-25), which is exactly
+//                   what the old hard-coded browser-only default caused.
 
 import http from "node:http";
 import { createHash, randomUUID } from "node:crypto";
@@ -334,8 +338,8 @@ export function createServer({ bridgeUrl, cwd, models, mode = "browser-only" }) 
 export function loadConfig(env = process.env) {
   const cwd = env.CGW_CWD || env.DSH_WORKSPACE || process.cwd();
   const models = env.CGW_MODELS ? env.CGW_MODELS.split(",").map((m) => m.trim()).filter(Boolean) : [...DEFAULT_MODELS];
-  const mode = env.CGW_BRIDGE_MODE || "browser-only";
-  if (mode !== "browser-only" && mode !== "full") throw new Error(`invalid CGW_BRIDGE_MODE ${JSON.stringify(mode)}; use "browser-only" or "full"`);
+  const mode = env.CGW_BRIDGE_MODE || "auto";
+  if (!["auto", "browser-only", "full"].includes(mode)) throw new Error(`invalid CGW_BRIDGE_MODE ${JSON.stringify(mode)}; use "auto", "browser-only" or "full"`);
   return {
     bridgeUrl: env.CGW_BRIDGE_URL || "http://127.0.0.1:17841",
     port: Number(env.CGW_SHIM_PORT || 17842),
@@ -346,10 +350,25 @@ export function loadConfig(env = process.env) {
   };
 }
 
+export async function resolveBridgeMode(bridgeUrl, fetchImpl = fetch) {
+  try {
+    const res = await fetchImpl(`${bridgeUrl.replace(/\/$/, "")}/healthz`);
+    if (!res.ok) return null;
+    const body = await res.json();
+    return body?.mode === "browser-only" || body?.mode === "full" ? body.mode : null;
+  } catch {
+    return null;
+  }
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
   const cfg = loadConfig();
   const cwd = resolveWorkspaceCwd(null, cfg.allowedRoots, cfg.cwd);
-  createServer({ bridgeUrl: cfg.bridgeUrl, cwd, models: cfg.models, mode: cfg.mode }).listen(cfg.port, "127.0.0.1", () => {
-    console.log(`dsh-chatgpt-shim on http://127.0.0.1:${cfg.port} -> ${cfg.bridgeUrl} (cwd ${cwd}, mode ${cfg.mode})`);
+  const mode = cfg.mode === "auto" ? (await resolveBridgeMode(cfg.bridgeUrl)) ?? "browser-only" : cfg.mode;
+  if (cfg.mode === "auto" && mode === "browser-only") {
+    console.warn(`bridge mode unknown at ${cfg.bridgeUrl}/healthz; assuming browser-only`);
+  }
+  createServer({ bridgeUrl: cfg.bridgeUrl, cwd, models: cfg.models, mode }).listen(cfg.port, "127.0.0.1", () => {
+    console.log(`dsh-chatgpt-shim on http://127.0.0.1:${cfg.port} -> ${cfg.bridgeUrl} (cwd ${cwd}, mode ${mode})`);
   });
 }

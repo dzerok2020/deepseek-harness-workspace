@@ -17,6 +17,7 @@ import {
   listModels,
   loadConfig,
   normalizeInput,
+  resolveBridgeMode,
   resolveWorkspaceCwd,
   withEnvironmentContext,
 } from "../tools/dsh-chatgpt-shim.mjs";
@@ -244,7 +245,7 @@ test("loadConfig defaults to the local bridge and the process workspace", () => 
   assert.equal(cfg.port, 17842);
   assert.equal(cfg.cwd, "/w");
   assert.deepEqual(cfg.allowedRoots, ["/w"]);
-  assert.equal(cfg.mode, "browser-only", "the verified mode is the default");
+  assert.equal(cfg.mode, "auto", "the bridge's own mode is read at startup, not guessed");
   const custom = loadConfig({ CGW_BRIDGE_URL: "http://h:1/", CGW_SHIM_PORT: "9", CGW_CWD: "/a", CGW_ALLOWED_ROOTS: "/a:/b", CGW_MODELS: "chatgpt-web/x, chatgpt-web/y" });
   assert.equal(custom.port, 9);
   assert.deepEqual(custom.allowedRoots, ["/a", "/b"]);
@@ -254,6 +255,20 @@ test("loadConfig defaults to the local bridge and the process workspace", () => 
 
 test("loadConfig rejects a mode the bridge cannot have", () => {
   assert.throws(() => loadConfig({ CGW_BRIDGE_MODE: "half" }), /invalid CGW_BRIDGE_MODE/);
+});
+
+test("resolveBridgeMode mirrors the bridge's own mode and never guesses", async () => {
+  const calls = [];
+  const health = (body, ok = true) => async (url) => {
+    calls.push(url);
+    return { ok, json: async () => body };
+  };
+  assert.equal(await resolveBridgeMode("http://b:1", health({ mode: "full" })), "full");
+  assert.equal(await resolveBridgeMode("http://b:1/", health({ mode: "browser-only" })), "browser-only");
+  assert.equal(await resolveBridgeMode("http://b:1", health({ mode: "half" })), null, "an unknown mode is not adopted");
+  assert.equal(await resolveBridgeMode("http://b:1", health({ mode: "full" }, false)), null);
+  assert.equal(await resolveBridgeMode("http://b:1", async () => { throw new Error("bridge down"); }), null);
+  assert.equal(calls[0], "http://b:1/healthz");
 });
 
 test("server reuses prompt_cache_key as the bridge thread id", async (t) => {
