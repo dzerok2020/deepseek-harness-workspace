@@ -128,7 +128,7 @@ export function shouldRefresh(cfg, eventType, event) {
   if (!cfg || cfg.enabled === false) return false;
   if (typeof eventType !== 'string' || eventType === '') return false;
   if (!Array.isArray(cfg.refreshEvents) || !cfg.refreshEvents.includes(eventType)) return false;
-  if (eventType === 'user/message' && isInjectedMessage(event?.data ?? event)) return false;
+  if (eventType === 'user/message' && isInjectedMessage(event?.data?.message ?? event?.data ?? event)) return false;
   return true;
 }
 

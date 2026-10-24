@@ -113,6 +113,76 @@ test('a blocked shell write cannot create verification debt', async () => {
   assert.equal(steers.length, 0);
 });
 
+test('OPS commands share edit, verification and irreversible gates', async () => {
+  const { ctx, handlers, guards } = makeCtx();
+  apply(ctx, {});
+  assert.equal(typeof guards[0]({ name: 'ops_bash', arguments: { command: 'git reset --hard' } }), 'string');
+  assert.equal(typeof guards[0]({ name: 'ops_bash', arguments: { script_path: 'opaque.sh' } }), 'string');
+  const { agent, steers } = makeAgent();
+  await feed(handlers, { name: 'ops_bash', arguments: { command: 'echo changed > a.txt' }, agent }, { kind: 'foreground', status: 'completed', exitCode: 0 });
+  await handlers.get('agent/turn-stopping')({ agent });
+  assert.equal(steers.length, 1);
+});
+
+for (const result of [
+  { kind: 'foreground', status: 'failed', exitCode: 1 },
+  { failure: { code: 'INVALID_ARGUMENT' } },
+  { kind: 'background', jobId: 'j1' },
+  { kind: 'promoted', jobId: 'j2' },
+  { status: 'pending' },
+  { kind: 'foreground', status: 'completed', exitCode: null },
+]) test(`structured OPS ${JSON.stringify(result)} is not passing evidence`, async () => {
+  const { ctx, handlers } = makeCtx();
+  apply(ctx, { shellTools: ['ops_bash'] });
+  const { agent, steers } = makeAgent();
+  await feed(handlers, { name: 'write', agent }, {});
+  await feed(handlers, { name: 'ops_bash', arguments: { command: 'node --test test/' }, agent }, result);
+  await handlers.get('agent/turn-stopping')({ agent });
+  assert.equal(steers.length, 1);
+});
+
+test('host session event binds only its live agent and bounds repeated claim steering', async () => {
+  const { ctx, handlers } = makeCtx();
+  const parent = makeAgent(); parent.agent.id = 'parent';
+  const child = makeAgent(); child.agent.id = 'child';
+  ctx.agents = { get(id) { return id === 'parent' ? parent.agent : id === 'child' ? child.agent : undefined; } };
+  apply(ctx, { maxPerSession: 2 });
+  await feed(handlers, { name: 'write', agent: parent.agent }, {});
+  const claim = { type: 'assistant/message', data: { message: { content: [{ type: 'text', text: 'Done. Fixed.' }] } } };
+  handlers.get('session/event')({ id: 'child' }, claim);
+  handlers.get('session/event')({ id: 'unknown' }, claim);
+  for (let i = 0; i < 5; i++) handlers.get('session/event')({ id: 'parent' }, claim);
+  assert.equal(parent.steers.length, 1);
+  assert.equal(child.steers.length, 0);
+  await feed(handlers, { name: 'write', agent: parent.agent }, {});
+  handlers.get('session/event')({ id: 'parent' }, claim);
+  await handlers.get('agent/turn-stopping')({ agent: parent.agent });
+  assert.equal(parent.steers.length, 2);
+});
+
+test('claim gate steers independently when verifyGate is disabled', async () => {
+  const { ctx, handlers } = makeCtx();
+  const { agent, steers } = makeAgent();
+  agent.id = 'parent';
+  ctx.agents = { get(id) { return id === agent.id ? agent : undefined; } };
+  apply(ctx, { claimGate: true, verifyGate: false });
+  await feed(handlers, { name: 'write', agent }, {});
+  await handlers.get('agent/turn-stopping')({ agent });
+  assert.equal(steers.length, 0);
+  const claim = { type: 'assistant/message', data: { message: { content: [{ type: 'text', text: 'Done. Fixed.' }] } } };
+  for (let i = 0; i < 5; i++) handlers.get('session/event')({ id: 'parent' }, claim);
+  assert.equal(steers.length, 1);
+});
+
+test('successful OPS foreground verification clears only its agent debt', async () => {
+  const { ctx, handlers } = makeCtx(); apply(ctx, {});
+  const a = makeAgent(), b = makeAgent();
+  for (const { agent } of [a, b]) await feed(handlers, { name: 'write', agent }, {});
+  await feed(handlers, { name: 'ops_bash', arguments: { command: 'node --test test/' }, agent: a.agent }, { isError: false, value: { kind: 'foreground', status: 'completed', exitCode: 0 } });
+  for (const { agent } of [a, b]) await handlers.get('agent/turn-stopping')({ agent });
+  assert.equal(a.steers.length, 0); assert.equal(b.steers.length, 1);
+});
+
 test('DSH_VIBE_GUARD=off disables everything', () => {
   const { ctx, guards, handlers } = makeCtx();
   process.env.DSH_VIBE_GUARD = 'off';

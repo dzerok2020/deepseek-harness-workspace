@@ -130,10 +130,46 @@ const DEFAULTS_IRREVERSIBLE = [
   }
 ];
 
+/**
+ * Completion claims: wording that asserts the work is finished or correct.
+ * Deliberately conservative - it matches assertions, never questions or plans
+ * (those are screened out again in detectUnverifiedClaim).
+ */
+export const DEFAULTS_CLAIM = Object.freeze([
+  // English
+  "\\b(?:all\\s+)?(?:done|finished|complete[d]?)\\b",
+  "\\b(?:it|this|that|everything)\\s+(?:now\\s+)?(?:works|worked)\\b",
+  "\\b(?:tests?|checks?|build|suite)\\s+(?:all\\s+)?(?:pass(?:es|ed|ing)?|are\\s+green|is\\s+green)\\b",
+  "\\ball\\s+(?:\\d+\\s+)?(?:tests?|checks?)\\s+pass\\b",
+  "\\bfixed\\b",
+  "\\bresolved\\b",
+  "\\bimplemented\\b",
+  "\\bready\\s+to\\s+(?:ship|merge|use)\\b",
+  "\\bverified\\b",
+  // Vietnamese — no \\b around accented letters: JavaScript treats only
+  // [A-Za-z0-9_] as word characters, so a boundary next to "đ"/"ã" never matches.
+  "đã\\s+(?:xong|làm\\s+xong|sửa(?:\\s+xong)?|chạy\\s+(?:được|ổn))",
+  "đã\\s+[^.!?\\n]{0,30}?\\s+xong",
+  "hoàn\\s+thành|hoàn\\s+tất",
+  "xong\\s+rồi",
+  "(?:test|kiểm\\s+thử)\\s+(?:đã\\s+)?(?:pass|đạt|xanh)",
+  "chạy\\s+ổn\\s+định"
+]);
+
+/** Wording that makes a sentence a question or a plan rather than a completed claim. */
+const CLAIM_EXEMPT = Object.freeze([
+  /[?？]\s*$/,
+  /\b(?:should|shall|can|could|would|will|might|may|need\s+to|have\s+to|plan\s+to|going\s+to)\b/i,
+  /(?:có\s+nên|sẽ|định|phải\s+làm|nên\s+làm|cần\s+làm)/i,
+  /\b(?:if|unless|whether|suppose|assuming)\b/i,
+  /(?:nếu|liệu|giả\s+sử)/i
+]);
+
 export const DEFAULTS = Object.freeze({
   enabled: true,
   verifyGate: true,
   irreversibleGate: true,
+  claimGate: true,
   maxPerSession: 3,
   editTools: Object.freeze([
     "write", "write_file", "writefile", "edit", "edit_file", "editfile", "create_file", "createfile",
@@ -141,7 +177,7 @@ export const DEFAULTS = Object.freeze({
     "str_replace_based_edit_tool", "strreplacebasededittool", "patch", "insert", "insert_content", "modify_file"
   ]),
   shellTools: Object.freeze([
-    "bash", "sh", "shell", "pwsh", "powershell", "cmd", "run_shell", "runshell",
+    "ops_bash", "bash", "sh", "shell", "pwsh", "powershell", "cmd", "run_shell", "runshell",
     "run_shell_command", "runshellcommand", "execute_command", "executecommand", "terminal", "run_command", "runcommand"
   ]),
   verifyPatterns: Object.freeze(DEFAULTS_VERIFY),
@@ -173,6 +209,8 @@ export function compileConfig(raw) {
     enabled: merged.enabled !== false,
     verifyGate: merged.verifyGate !== false,
     irreversibleGate: merged.irreversibleGate !== false,
+    claimGate: merged.claimGate !== false,
+    claimMessage: typeof merged.claimMessage === "string" && merged.claimMessage.length > 0 ? merged.claimMessage : null,
     maxPerSession: Number.isFinite(merged.maxPerSession) && merged.maxPerSession >= 0
       ? Math.floor(merged.maxPerSession)
       : DEFAULTS.maxPerSession,
@@ -181,6 +219,7 @@ export function compileConfig(raw) {
     gateMessage: typeof merged.gateMessage === "string" && merged.gateMessage.length > 0 ? merged.gateMessage : null,
     re: {
       verify: compileList(merged.verifyPatterns ?? DEFAULTS.verifyPatterns),
+      claim: compileList(merged.claimPatterns ?? DEFAULTS_CLAIM),
       editShell: compileList(merged.editShellPatterns ?? DEFAULTS.editShellPatterns),
       irreversible: rules.map((rule) => ({
         id: String(rule.id ?? "unnamed"),
@@ -226,6 +265,10 @@ export function classifyCall(call, cfg) {
   const args = call?.arguments ?? call?.args ?? {};
   if (cfg.editTools.includes(name)) return { kind: "edit", via: "tool", detail: describeTarget(args) };
   if (cfg.shellTools.includes(name)) {
+    // Opaque scripts cannot supply verification evidence without inspecting their contents.
+    if (typeof args.script_path === "string" && args.script_path.trim()) {
+      return { kind: "edit", via: "shell", detail: args.script_path, mayEditOnFailure: true };
+    }
     const command = extractCommand(args);
     if (command.length === 0) return { kind: "neutral", via: "none", detail: "" };
     // The last matching action determines whether the invocation ends with a check or a write.
@@ -249,7 +292,11 @@ export function findIrreversible(call, cfg) {
   if (!cfg.enabled || !cfg.irreversibleGate) return null;
   const name = normalizeName(call?.name ?? call?.toolName);
   if (!cfg.shellTools.includes(name)) return null;
-  const command = extractCommand(call?.arguments ?? call?.args ?? {});
+  const args = call?.arguments ?? call?.args ?? {};
+  if (typeof args.script_path === "string" && args.script_path.trim()) {
+    return { id: "opaque-script", why: "script_path contents are not inspected; use an explicit auditable command", command: args.script_path };
+  }
+  const command = extractCommand(args);
   if (command.length === 0) return null;
   if (cfg.re.allow.some((re) => re.test(command))) return null;
   for (const rule of cfg.re.irreversible) {
@@ -270,7 +317,11 @@ export function createState() {
     lastVerifyDetail: "",
     lastForcedForEditAt: -1,
     sessionForced: 0,
-    denials: []
+    denials: [],
+    claimsBlocked: 0,
+    lastClaimAt: -1,
+    lastClaimForEditAt: -1,
+    lastClaimPhrase: ""
   };
 }
 
@@ -365,6 +416,88 @@ export function irreversibleDenial(info) {
   ].join("\n");
 }
 
+/* ------------------------------------------------------------------------- *
+ * G1 — claim gate: catch "done / fixed / đã xong" wording when the batch has
+ * no passing verification recorded yet.
+ * ------------------------------------------------------------------------- */
+
+/** True when the current turn has at least one change and no passing check after it. */
+function unverifiedChange(state) {
+  if (!state || typeof state !== "object") return false;
+  if (!(state.edits > 0)) return false;
+  return !(state.lastVerifyAt > state.lastEditAt && state.lastVerifyOk === true);
+}
+
+/** Plan / question wording is not a completion claim. */
+function exemptSentence(sentence) {
+  for (const re of CLAIM_EXEMPT) {
+    if (re.test(sentence)) return true;
+  }
+  return false;
+}
+
+/**
+ * Split assistant text into sentence-ish units; regexes are evaluated per unit so
+ * a plan sentence elsewhere in the message does not hide a real claim.
+ */
+function sentencesOf(text) {
+  return String(text)
+    .split(/(?<=[.!?。！？\n])\s+|(?<=\.\.\.)\s+/)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+}
+
+/**
+ * Return null when the message may pass, or { phrase, matched, reason } when an
+ * unsupported completion claim was found.
+ */
+export function detectUnverifiedClaim(text, state, cfg) {
+  if (typeof text !== "string" || text.length === 0) return null;
+  if (!cfg || cfg.enabled === false || cfg.claimGate === false) return null;
+  if (!unverifiedChange(state)) return null;
+  const patterns = Array.isArray(cfg.re?.claim) ? cfg.re.claim : [];
+  if (patterns.length === 0) return null;
+
+  for (const sentence of sentencesOf(text)) {
+    if (exemptSentence(sentence)) continue;
+    for (const re of patterns) {
+      if (!re.test(sentence)) continue;
+      return {
+        phrase: sentence,
+        matched: re.source,
+        reason: state.lastVerifyAt > state.lastEditAt && state.lastVerifyOk === false
+          ? "last-verification-failed"
+          : "no-verification"
+      };
+    }
+  }
+  return null;
+}
+
+export function noteClaimBlocked(state, info) {
+  if (!state || typeof state !== "object") return state;
+  state.claimsBlocked += 1;
+  state.lastClaimAt = state.seq;
+  state.lastClaimPhrase = info?.phrase ?? "";
+  return state;
+}
+
+export function buildClaimGateMessage(info, cfg) {
+  if (cfg?.claimMessage) return cfg.claimMessage;
+  const why = info?.reason === "last-verification-failed"
+    ? `the only check recorded for this turn FAILED (${info?.lastVerifyDetail || "command unknown"})`
+    : "no check was run after the last change in this turn";
+  const quoted = info?.phrase ? ` You wrote: "${info.phrase.trim()}"` : "";
+  return [
+    `[claim-gate] Your last message claims completion, but ${why}.${quoted}`,
+    "That claim is not supported by evidence yet. Before saying it is done:",
+    "1) run the narrowest command that would fail if your change is wrong (tests / lint / typecheck / build for the files you touched);",
+    "2) report the exact command and its result in your next message;",
+    "3) if the change genuinely cannot be verified here, say so explicitly, name the file(s), and explain why.",
+    "Nếu thay đổi thực sự không thể kiểm chứng ở đây, hãy nói rõ điều đó, nêu tên file và lý do; đừng tuyên bố hoàn thành khi chưa có bằng chứng."
+  ].join("\n");
+}
+
 /** Compact, always-complete view of guard state, used by the model-facing guard_status tool. */
 export function summarize(state, cfg) {
   const s = state ?? createState();
@@ -373,6 +506,9 @@ export function summarize(state, cfg) {
     enabled: cfg.enabled,
     verifyGate: cfg.verifyGate,
     irreversibleGate: cfg.irreversibleGate,
+    claimGate: cfg.claimGate,
+    claimsBlocked: s.claimsBlocked,
+    lastClaim: s.lastClaimPhrase,
     edits: s.edits,
     verificationsPassed: s.verifies,
     lastVerificationPassed: s.lastVerifyOk === true,

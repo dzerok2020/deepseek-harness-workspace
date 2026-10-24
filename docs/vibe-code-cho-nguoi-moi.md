@@ -12,7 +12,7 @@
 |---|---|---|
 | Skill `four-phase-build` | Điều phối trọn quy trình 4 pha lấy **nguyên văn từ video bạn xem** | Bắt đầu dự án mới |
 | Skill `four-phase-env-setup` → `four-phase-product-plan` → `four-phase-tech-plan` → `four-phase-implement` | Từng bước: Git+AGENTS.md → MVP → Tech → Code+test | Được gọi tự động khi đi theo quy trình |
-| Plugin `dsh-vibe-guard` (có trong danh sách bundle) | Có luật nhận diện một số lệnh nguy hiểm và nhắc kiểm chứng. Phát hiện lệch tên tool `ops_bash` và payload event của claim-gate; **không bảo đảm phủ mọi công cụ hoặc ngăn mọi câu báo xong** | Hỗ trợ kỷ luật, không thay thế quyền host, review và test thật |
+| Plugin `dsh-vibe-guard` (có trong danh sách bundle) | Có luật nhận diện một số lệnh nguy hiểm và nhắc kiểm chứng. Bản sửa cục bộ bổ sung `ops_bash` và nối claim-gate theo sự kiện host; **chưa xác nhận bản sửa đã nạp trong DSH đang chạy, không bảo đảm phủ mọi công cụ** | Hỗ trợ kỷ luật, không thay thế quyền host, review và test thật |
 | Skill `webapp-testing` + plugin `browser-skill` | AI tự mở app, bấm thử, chụp màn hình — "Chrome plugin" mà video nhắc | Bước 4 (tự test) |
 | Skill `prompt-intake` | Hiểu tiếng Việt thô, viết tắt, không dấu — không cần viết prompt chuẩn | Mọi lúc |
 | Skill `handoff` / `retro` / `code-review` | Lưu tiến độ giữa chừng, tổng kết buổi làm, soi lại code | Khi phiên dài / kết buổi |
@@ -20,7 +20,7 @@
 | CLI `graphify` (gói `graphifyy`) | Vẽ đồ thị hàm/file từ mã nguồn. Không cần AI: `graphify explain "tên"` hoặc `graphify god-nodes`. Muốn đặt tên cụm thì OmniRoute local: `OPENAI_BASE_URL=http://127.0.0.1:20128/v1 OPENAI_API_KEY=local OPENAI_MODEL=b-ai/qwen3.8-flash graphify label <thư-mục> --backend=openai --model=b-ai/qwen3.8-flash` | Khi code đã nhiều, muốn biết hàm nào nối với hàm nào |
 | Skill `ponytail` | Bắt AI sửa ít nhất có thể, không thêm thư viện cho vài dòng code | Mọi lần viết hoặc sửa code |
 
-**Kết luận (24/10/2026):** quy trình 5 bước vẫn dùng được. Hệ thống **chưa** phối hợp “hoàn hảo”: nhiều kho nhớ và nhiều skill cùng một việc vẫn sống cạnh nhau; claim-gate chưa vào Git. Việc của bạn là đi đúng lộ trình, giữ vai **người nghiệm thu cuối cùng**, và không tin câu "đã xong" nếu chưa thấy lệnh test đạt.
+**Kết luận (24/10/2026):** quy trình 5 bước vẫn dùng được. Hệ thống **chưa** phối hợp “hoàn hảo”: nhiều kho nhớ và nhiều skill cùng một việc vẫn sống cạnh nhau; các bản sửa guard cần phân biệt giữa mã cục bộ đã test và plugin đã nạp trong tiến trình. Việc của bạn là đi đúng lộ trình, giữ vai **người nghiệm thu cuối cùng**, và không tin câu "đã xong" nếu chưa thấy lệnh test đạt.
 
 ### 1b. Các mảnh phối hợp thế nào (đã đọc trên máy phiên này)
 
@@ -33,13 +33,13 @@
 | Runtime DSH và gói nạp skill | Cùng `0.2.1-rc.2` (lỗi shadow `0.1.1` của báo cáo cũ không còn) |
 | Skill trên đĩa | 89 thư mục `~/.dsh/skills` + 3 thư mục `~/.agents/skills` |
 | Bundle trong profile `web` | 38 tên, gồm `dsh-vibe-guard`, `dsh-loop-guard`, `dsh-prompt-intake` |
-| Claim-gate | Có trong `dsh-vibe-guard/lib/policy.js` và `lib/index.js`, kèm test chưa theo dõi Git — **chưa commit** |
+| Claim-gate | Adapter cục bộ dùng `event.data.message` và agent registry theo `session.id`; test parent/child và giới hạn nhắc lặp. Chưa chạy nghiệm thu trên tiến trình DSH sau restart |
 
 Chỗ còn lệch, và cách xử lý ổn định (không gỡ plugin trong phiên này):
 
 1. **Nhiều kho nhớ cùng lúc** (mnemon, OpenViking, Hindsight, StrataGate, furongjun). Chúng không đè tool của nhau, nhưng AI dễ ghi nhầm chỗ. Luật: một bài học chỉ ghi **một** kho đúng giao thức của kho đó; trạng thái tạm của task không vào bộ nhớ dài hạn.
 2. **Nhiều skill cùng một việc** (kế hoạch, debug, review, TDD). Không xoá. Khi hai skill gần nhau, chọn cái có câu "use X instead" trong mô tả. Người mới chỉ cần gõ việc; đừng gọi tên skill.
-3. **Claim-gate còn là thay đổi đang làm dở.** Commit chỉ lưu lịch sử, không chứng minh plugin đúng hoặc đã nạp. Cần kiểm tra adapter với event thật của host, test tích hợp, rồi restart và thử trong phiên mới. Không commit toàn thư mục đang dirty khi chưa review từng thay đổi.
+3. **Guard cần kiểm chứng ở hai tầng.** Bản sửa cục bộ đã thêm kiểm thử theo cấu trúc sự kiện host cho claim-gate và tách nội dung memory của parent/child theo `agent.id`. Test mô phỏng này không chứng minh plugin đang chạy đã cập nhật, cũng không chứng minh mọi kho memory tách dữ liệu lưu trữ. Sau restart cần thử trong phiên mới. Commit chỉ lưu lịch sử; không thay cho nghiệm thu.
 4. Sau mỗi lần cài plugin hoặc restart có thể chạy `bash tools/dsh-health.sh` để sàng lọc. Tuy nhiên script có thể gọi kiểm tra dịch vụ/model; không coi là hoàn toàn offline, không có tác dụng phụ hay không tốn quota. Đọc script trước khi dùng. Health xanh không chứng minh mọi plugin phối hợp đúng.
 
 ### 1c. Cách phối hợp ổn định — ít đầu mối, có bằng chứng
@@ -66,7 +66,11 @@ Hai điểm điều hướng cần chỉnh ở tài liệu nguồn: tên skill `
 
 Với agent, ưu tiên native subagent (agent phụ do DSH quản lý) cho phần việc độc lập. Agency chỉ dùng chuyên gia đã bật. Conductor chạy CLI bên ngoài: phải xem `dryRun` và có cho phép riêng trước khi thực thi; không mặc định nó thừa hưởng giới hạn quyền/độ sâu của native agent. Không cần dùng cả ba cho một việc.
 
-Đây là **đề xuất**, chưa phải các bản vá runtime đã triển khai. Không tự gỡ plugin, đổi model, bật prototype hoặc restart phiên của bạn trong lần cập nhật tài liệu này.
+**Trạng thái bản sửa cục bộ:** đã bổ sung nhận diện `ops_bash`, kiểm tra kết quả host trong `result.value`, đọc nội dung `script_path` trước khi phân loại; claim-gate lấy message/agent theo hợp đồng host và vẫn hoạt động khi riêng verify-gate bị tắt; loop-guard dùng `agent.id` để tách snapshot context của agent cha/con. Đây không phải cơ chế cô lập toàn bộ dữ liệu memory hay sandbox bảo mật. Claim-gate nhắc sửa một tuyên bố đã được ghi, không thu hồi câu trả lời đã hiển thị.
+
+**Bằng chứng kiểm tra ngày 24/10/2026:** lệnh `node --test dsh-vibe-guard/test/ dsh-loop-guard/test/ test/` đạt `tests 250`, `pass 250`, `fail 0`, exit code `0`. Bao gồm kiểm thử adapter host, kết quả OPS lỗi/background không được tính là test đạt, claim độc lập, snapshot parent/child và cấu trúc Markdown. Đây là test tự động cục bộ, **chưa verify** sau restart trên tiến trình DSH thật. Đọc script rồi chạy vẫn có giới hạn (file có thể đổi giữa hai thời điểm); guard nhận diện bằng mẫu, không phân tích được mọi cách viết lệnh shell.
+
+**Nghiệm thu tiếp theo sau khi bạn chủ động restart DSH:** mở phiên thử riêng; yêu cầu sửa một file tạm, chạy test cố ý fail rồi sửa để pass; kiểm tra không báo đạt khi fail, không nhắc lặp khi đã pass; chạy hai agent với nội dung context khác nhau để kiểm tra không lẫn snapshot. Không thử lệnh phá dữ liệu thật. Chưa tự gỡ plugin, đổi model, bật prototype hoặc restart phiên của bạn.
 
 ---
 

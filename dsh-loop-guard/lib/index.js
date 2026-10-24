@@ -145,7 +145,9 @@ export function apply(ctx, rawConfig) {
   ctx.on('system-prompt/assemble', async (assembly, context, next) => {
     let session;
     try {
-      session = context?.agent?.session;
+      // assembleContextFor(agent) supplies { agent, scope: agent }; agent.id is session.id.
+      session = context?.agent;
+      if (sessionIdOf(session) === '') return next();
       // Trường hợp plugin khác đã bơm context TRƯỚC khi tới lượt ta.
       freezeAssembly(assembly, session);
     } catch (error) {
