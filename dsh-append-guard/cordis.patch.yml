@@ -1,0 +1,3 @@
+- insert:
+    - id: dsh-append-guard
+      name: 'dsh-append-guard'
