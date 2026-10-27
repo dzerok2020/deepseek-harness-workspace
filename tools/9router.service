@@ -1,0 +1,27 @@
+# 9router local AI gateway — systemd user unit (mẫu, chưa cài).
+# Cài bằng: bash tools/9router-service-install.sh   (chạy ở terminal thật, KHÔNG qua DSH)
+#
+# Vì sao phải dùng systemd: mọi tiến trình do lệnh bash của DSH sinh ra đều bị dọn
+# khi lệnh đó kết thúc (bwrap --unshare-pid), nên không thể giữ 9router sống thường trực
+# từ trong phiên AI. systemd --user là "chủ" của tiến trình, giống omniroute.service.
+#
+# CÁCH LY: port 20129 (KHÔNG phải 20128 của OmniRoute/DSH), data riêng trong workspace.
+[Unit]
+Description=9router local AI gateway (127.0.0.1:20129, tách khỏi OmniRoute 20128)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/dzerok/Documents/deepseek-harness/default-workspace
+Environment=PATH=/home/dzerok/.local/share/mise/installs/node/26.8.2/bin:/usr/local/bin:/usr/bin:/bin
+# Data riêng: không dùng ~/.9router để không lẫn với cấu hình khác trong $HOME.
+Environment=DATA_DIR=/home/dzerok/Documents/deepseek-harness/default-workspace/9router-data
+ExecStart=/home/dzerok/.local/share/mise/installs/node/26.8.2/bin/node /home/dzerok/Documents/deepseek-harness/default-workspace/9router-app/node_modules/9router/cli.js --port 20129 --host 127.0.0.1 --no-browser --skip-update
+Restart=always
+RestartSec=3
+TimeoutStopSec=15
+KillMode=mixed
+
+[Install]
+WantedBy=default.target

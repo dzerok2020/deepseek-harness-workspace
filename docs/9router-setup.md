@@ -62,7 +62,76 @@ giết tiến trình đang chiếm port). Hai biến môi trường tuỳ chọn
 Dashboard: <http://127.0.0.1:20129/dashboard> → tự chuyển `/login`. Lần đầu tạo tài khoản admin
 ngay trên web (không có mật khẩu mặc định trong repo).
 
-## 5. Bằng chứng đã kiểm chứng (2026-10-27)
+### 4.1 Vì sao gõ `9router` trong terminal lại "command not found"
+
+Vì lúc cài **không dùng `npm install -g`** (mục 3): npm global và cache `~/.npm` đều read-only trong
+sandbox DSH. Binary thật chỉ nằm trong workspace:
+
+```
+9router-app/node_modules/.bin/9router  ->  ../9router/cli.js
+```
+
+Ba cách để có lệnh `9router` (chạy ở **terminal thật**, không qua DSH):
+
+**a) Shim trong `~/.local/bin` — nhanh nhất, không cài lại gì**
+
+```bash
+mkdir -p ~/.local/bin
+cat > ~/.local/bin/9router <<'EOF'
+#!/usr/bin/env bash
+export DATA_DIR=/home/dzerok/Documents/deepseek-harness/default-workspace/9router-data
+exec /home/dzerok/.local/share/mise/installs/node/26.8.2/bin/node \
+  /home/dzerok/Documents/deepseek-harness/default-workspace/9router-app/node_modules/9router/cli.js \
+  --port 20129 --host 127.0.0.1 "$@"
+EOF
+chmod +x ~/.local/bin/9router
+```
+
+Shim đã ghim `--port 20129` nên **không thể vô tình giành 20128** của OmniRoute.
+
+**b) Cài global thật** (terminal thật ghi được vào prefix của mise):
+
+```bash
+npm install -g 9router
+9router --port 20129 --host 127.0.0.1   # ĐỪNG chạy `9router` trần: mặc định là 20128
+```
+
+**c) Không dùng CLI nữa** — để systemd giữ service (mục 5), chỉ mở dashboard.
+
+> ⚠️ `9router --help` ghi `-H, --host <host>  Host to bind (default: 0.0.0.0)` và thực tế `ss` vẫn thấy
+> `LISTEN 0 511 0.0.0.0:20129` dù đã truyền `--host 127.0.0.1` → **dashboard lộ ra LAN**; chặn firewall
+> nếu máy dùng chung mạng (dashboard giữ API key provider).
+
+> ⚠️ **Giới hạn quan trọng (đã đo, 2026-10-27):** script này chỉ giữ 9router sống trong **lúc
+> lệnh bash còn chạy**. Ngay khi lệnh kết thúc, sandbox của DSH (`bwrap --unshare-pid`) dọn sạch
+> mọi tiến trình con — kể cả khi đã `setsid` + `nohup` (kiểm chứng: pid 9 có `PPID=1, SID=9`,
+> vẫn biến mất sau ≤ 5 giây). Vì vậy **muốn dùng thường trực thì dùng systemd ở mục 5**,
+> hoặc tự chạy script trong terminal của bạn.
+
+## 5. Chạy thường trực bằng systemd user (khuyến nghị)
+
+Máy này đã có `omniroute.service`, `hindsight-daemon.service`… đều là **systemd user unit** —
+9router đi cùng khuôn đó. Unit mẫu: [`tools/9router.service`](../tools/9router.service)
+(port 20129, `DATA_DIR` trong workspace, `Restart=always`).
+
+```bash
+cd /home/dzerok/Documents/deepseek-harness/default-workspace
+bash tools/9router-service-install.sh            # cài + enable + start + tự kiểm tra 20129 & 20128
+bash tools/9router-service-install.sh --status   # trạng thái + 2 cổng + HTTP
+bash tools/9router-service-install.sh --uninstall
+journalctl --user -u 9router.service -f          # log
+```
+
+**Phải chạy ở terminal thật, không qua DSH**: script ghi vào `~/.config/systemd/user/`, mà `$HOME`
+là read-only trong sandbox. Trong sandbox `systemctl --user` cũng không kết nối được bus
+(`Failed to connect to user scope bus via local transport: No data available`).
+
+Muốn 9router sống cả khi chưa đăng nhập (sau reboot): `sudo loginctl enable-linger $USER`.
+
+## 6. Bằng chứng đã kiểm chứng (2026-10-27)
+
+> Các số dưới đây đo **trong lúc lệnh bash còn chạy**. Đọc kèm mục 5 + mục 7: cùng một lệnh thì
+> 9router phục vụ HTTP thật, nhưng hết lệnh là tiến trình bị dọn.
 
 ```
 $ bash tools/9router-start.sh --status
@@ -89,22 +158,36 @@ $ ss -tln | grep -c ':20130 '           → 0   (port đã đóng)
 
 Log khởi động thật: `🚀 9router v0.5.111 / Server: http://127.0.0.1:20130 / ▲ Next.js 16.4.2`.
 
-## 6. Giới hạn đã biết
+## 7. Giới hạn đã biết
 
 - **Chưa cấu hình provider/API key nào** trong 9router — DB `9router-data/db/data.sqlite` còn trống,
   mới dừng ở mức "chạy được, mở được dashboard, tạo được tài khoản". Muốn dùng thật thì thêm key
   trong dashboard (Settings → Providers).
-- **PID namespace**: lệnh bash của DSH chạy trong `bwrap --unshare-pid`, nên tiến trình do một lệnh
-  bash khởi động **không nhìn thấy** từ lệnh bash khác (`pgrep`/`kill`/`pkill` đều không thấy), dù nó
-  vẫn phục vụ HTTP bình thường. Hệ quả: hãy chạy `start` và `stop` từ **cùng một nơi** (terminal của bạn).
-  Nếu instance đang chạy không có pidfile, `--stop` sẽ thử `pkill -f <đường dẫn cli.js tuyệt đối>`
-  (chỉ khớp đúng 9router này, không đụng tiến trình khác).
-- Instance đang chạy hiện tại được khởi động thủ công trước khi script hoàn thiện → chưa có pidfile;
-  dừng nó bằng `pkill -f "9router-app/node_modules/9router/cli.js"` rồi chạy lại script nếu muốn quản lý bằng pidfile.
+- **Tiến trình sinh ra trong lệnh bash của DSH không thể tin được** — đo 2026-10-27 thấy **hai** kiểu
+  hỏng, cả hai đều không dùng được cho service thường trực:
+  1. Bị dọn khi lệnh kết thúc: pid 9 (đã `setsid`, `PPID=1, SID=9`) biến mất trong ≤ 5 giây;
+     một instance chạy như background job của DSH sống lâu hơn nhưng bị `SIGKILL` (exit 137) khi job bị thu hồi.
+  2. **Sống dư (orphan) nhưng vô hình**: khởi động bằng `… &` trong một lệnh bị `SIGKILL` → tiến trình
+     con vẫn chạy, **vẫn listen cổng**, mà `ps`/`fuser`/`pkill` trong lệnh bash sau **không thấy**
+     (PID namespace riêng, network namespace dùng chung). Không dừng được từ trong DSH.
+  Kết luận: **đừng trông vào `tools/9router-start.sh` để có service thường trực.** Dùng systemd (mục 5),
+  hoặc chạy script trong terminal thật của bạn.
+- **9router bind `0.0.0.0`, không phải `127.0.0.1`** dù đã truyền `--host 127.0.0.1` (quan sát qua `ss`:
+  `LISTEN 0 511 0.0.0.0:20129`). Nghĩa là máy khác trong LAN có thể vào dashboard nếu firewall cho phép.
+  Dashboard này giữ API key của provider → nên chặn bằng firewall (`ufw deny 20129`) hoặc chỉ tin mạng nội bộ.
+- `systemctl --user` **không dùng được trong sandbox** (`Failed to connect to user scope bus via
+  local transport: No data available`) → việc cài unit phải do bạn chạy ở terminal ngoài.
+- Dọn một instance orphan (chạy ở terminal thật):
+  ```bash
+  ss -tlnp | grep 20129          # lấy PID đang giữ cổng
+  pgrep -af 9router/cli          # liệt kê cho chắc
+  kill <PID>                     # KHÔNG dùng pkill -f "…cli.js" ngay trong shell đang gõ lệnh đó
+  ```
 
-## 7. Gỡ
+## 8. Gỡ
 
 ```bash
-bash tools/9router-start.sh --stop
+bash tools/9router-service-install.sh --uninstall   # nếu đã cài systemd unit
+bash tools/9router-start.sh --stop                  # nếu đang chạy kiểu script
 rm -rf 9router-app 9router-data
 ```
