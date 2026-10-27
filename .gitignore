@@ -48,3 +48,7 @@ patches/billion-context-tier-recovery/candidate-index.js
 patches/billion-context-tier-recovery/candidate.patch
 patches/billion-context-tier-recovery/red.txt
 patches/billion-context-tier-recovery/green.txt
+
+# 9router: cài cục bộ trong workspace — node_modules 74MB + data chứa jwt-secret/sqlite, không commit
+/9router-app/
+/9router-data/
