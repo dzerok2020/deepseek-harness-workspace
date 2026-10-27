@@ -122,11 +122,30 @@ bash tools/9router-service-install.sh --uninstall
 journalctl --user -u 9router.service -f          # log
 ```
 
-**Phải chạy ở terminal thật, không qua DSH**: script ghi vào `~/.config/systemd/user/`, mà `$HOME`
-là read-only trong sandbox. Trong sandbox `systemctl --user` cũng không kết nối được bus
-(`Failed to connect to user scope bus via local transport: No data available`).
+**Trạng thái: ĐÃ CÀI THẬT** (2026-10-27 22:42, `9router@0.5.111`):
 
-Muốn 9router sống cả khi chưa đăng nhập (sau reboot): `sudo loginctl enable-linger $USER`.
+```
+$ systemctl --user is-enabled 9router.service   → enabled
+$ systemctl --user is-active  9router.service   → active
+Main PID: 164412 → restart → 164954 (systemd tự bật lại, PID đổi)
+CGroup: /user.slice/user-1000.slice/user@1000.service/app.slice/9router.service
+$ ss -tln | grep -E ':(20129|20128) '
+LISTEN 0 511 127.0.0.1:20129 0.0.0.0:*      ← 9router
+LISTEN 0 511 127.0.0.1:20128 0.0.0.0:*      ← OmniRoute, không bị đụng
+HTTP 20129: 200  (<title>9Router - AI Infrastructure Management</title>)
+HTTP 20128: 200
+$ loginctl show-user dzerok -p Linger → Linger=yes   (chạy được cả khi chưa login)
+```
+
+Vì systemd là "chủ" tiến trình (nằm trong `user@1000.service`), 9router **không còn phụ thuộc
+phiên DSH** — khác hẳn tiến trình do lệnh bash sinh ra (bị dọn khi lệnh xong).
+
+Ghi chú về sandbox: script phải được gọi với quyền ghi ra ngoài workspace (unit nằm ở
+`~/.config/systemd/user/`, `systemctl --user` cần bus). Trong phiên này đã chạy được bằng một lần
+cấp `danger-full-access`; nếu bạn chạy tay ở terminal thật thì không cần cấp gì cả.
+
+Muốn 9router sống cả khi chưa đăng nhập (sau reboot): `sudo loginctl enable-linger $USER`
+(máy này đã `Linger=yes`).
 
 ## 6. Bằng chứng đã kiểm chứng (2026-10-27)
 
