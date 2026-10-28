@@ -70,3 +70,10 @@ test('downstream appended messages and original batches preserved', async () => 
   const result = await run([a, b], { kind: 'enter', messages: [a, b, other] });
   assert.deepEqual(result.messages.slice(0, 3), [a, b, other]);
 });
+
+test('short policy stays compact and points to the full skill', async () => {
+  const { SHORT_POLICY } = await import('../lib/policy.js');
+  assert.ok(SHORT_POLICY.length < 600, `quá dài: ${SHORT_POLICY.length}`);
+  assert.match(SHORT_POLICY, /prompt-intake/);
+  assert.ok(!SHORT_POLICY.includes('\n'), 'phải là một dòng, không phải cả file');
+});

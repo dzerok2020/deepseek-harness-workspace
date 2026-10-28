@@ -13,7 +13,7 @@ import path from 'node:path';
 
 const HOME = os.homedir();
 const DSH = path.join(HOME, '.dsh');
-const LIMITS = { toolsBytes: 200_000, skillChars: 40_000, minHitRate: 75 };
+const LIMITS = { toolsBytes: 150_000, toolsCount: 120, skillChars: 30_000, minHitRate: 75 };
 
 function listSessions() {
   const root = path.join(DSH, 'sessions');
@@ -214,6 +214,7 @@ if (process.argv.includes('--sessions')) {
 if (process.argv.includes('--check')) {
   const problems = [];
   if (tools && tools.bytes > LIMITS.toolsBytes) problems.push(`tool schema ${kb(tools.bytes)} > ${kb(LIMITS.toolsBytes)}`);
+  if (tools && tools.count > LIMITS.toolsCount) problems.push(`${tools.count} tool > trần ${LIMITS.toolsCount} — plugin mới đang phình schema`);
   if (catalog.chars > LIMITS.skillChars) problems.push(`catalog skill ${catalog.chars} ký tự > ${LIMITS.skillChars}`);
   if (usage && usage.hitRate < LIMITS.minHitRate) problems.push(`cache hit hôm nay ${usage.hitRate.toFixed(1)}% < ${LIMITS.minHitRate}%`);
   // Hồi quy P0: nhắc 灵枢 đếm theo step ⇒ snapshot đổi mỗi step ⇒ đốt token.
