@@ -1,0 +1,12 @@
+{
+  "name": "dsh-tool-filter",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DSH plugin: scope-level tool allow/deny filter, used inside an agent preset to keep the tool schema small.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": { ".": "./lib/index.js", "./package.json": "./package.json" },
+  "files": ["lib"],
+  "license": "Apache-2.0",
+  "engines": { "node": ">=20" }
+}
