@@ -22,17 +22,21 @@ function num(value) {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0;
 }
 
-/** Token thật sự phải trả giá đầy đủ: input trừ phần đọc từ cache. */
+/**
+ * Token thật sự phải trả giá đầy đủ.
+ * dsh-llm khai báo `inputTokens` là input CHƯA cache (disjoint với
+ * cacheReadTokens), nên không trừ lần nữa — trừ sẽ ra 0 sai.
+ */
 export function freshTokens(usage) {
-  const input = num(usage?.inputTokens);
-  const cacheRead = num(usage?.cacheReadTokens);
-  return Math.max(0, input - cacheRead);
+  return num(usage?.inputTokens);
 }
 
 /** Tỉ lệ cache hit của một state (0..1); 0 khi chưa có token nào. */
 export function hitRate(state) {
-  const input = num(state?.inputTokens);
-  return input === 0 ? 0 : num(state?.cacheReadTokens) / input;
+  const cached = num(state?.cacheReadTokens);
+  const fresh = num(state?.fresh);
+  const total = cached + fresh;
+  return total === 0 ? 0 : cached / total;
 }
 
 export function createSession(sessionId) {

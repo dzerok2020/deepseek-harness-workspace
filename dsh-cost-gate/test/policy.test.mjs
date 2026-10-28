@@ -11,10 +11,10 @@ import {
   resetTurn,
 } from '../lib/policy.js';
 
-test('freshTokens trừ cache read khỏi input', () => {
-  assert.equal(freshTokens({ inputTokens: 100_000, cacheReadTokens: 70_000 }), 30_000);
+test('freshTokens = input chưa cache (dsh-llm khai báo disjoint)', () => {
+  assert.equal(freshTokens({ inputTokens: 100_000, cacheReadTokens: 70_000 }), 100_000);
   assert.equal(freshTokens({ inputTokens: 5_000 }), 5_000);
-  assert.equal(freshTokens({ inputTokens: 1_000, cacheReadTokens: 9_000 }), 0);
+  assert.equal(freshTokens({ inputTokens: 1_000, cacheReadTokens: 9_000 }), 1_000);
   assert.equal(freshTokens(undefined), 0);
 });
 
@@ -24,12 +24,12 @@ test('applyUsage cộng dồn turn và session, giữ hitRate', () => {
   applyUsage(state, { inputTokens: 100_000, cacheReadTokens: 80_000, outputTokens: 1_000 });
   applyUsage(state, { inputTokens: 50_000, cacheReadTokens: 40_000, outputTokens: 500 });
   assert.equal(state.turn, 1);
-  assert.equal(state.turnFresh, 30_000);
+  assert.equal(state.turnFresh, 150_000);
   assert.equal(state.turnOutput, 1_500);
-  assert.equal(state.fresh, 30_000);
+  assert.equal(state.fresh, 150_000);
   assert.equal(state.inputTokens, 150_000);
   assert.equal(state.cacheReadTokens, 120_000);
-  assert.ok(Math.abs(hitRate(state) - 0.8) < 1e-9);
+  assert.ok(Math.abs(hitRate(state) - 120_000 / 270_000) < 1e-9);
 });
 
 test('resetTurn reset bộ đếm turn nhưng giữ session', () => {
@@ -41,23 +41,23 @@ test('resetTurn reset bộ đếm turn nhưng giữ session', () => {
   assert.equal(state.steps, 0);
   assert.equal(state.turnFresh, 0);
   assert.equal(state.turnOutput, 0);
-  assert.equal(state.fresh, 10_000, 'session fresh phải được giữ');
+  assert.equal(state.fresh, 90_000, 'session fresh phải được giữ');
 });
 
 test('evaluate: ok, warn rồi block theo ngân sách turn', () => {
   const state = createSession('s1');
   resetTurn(state, 1);
   state.steps = 1;
-  applyUsage(state, { inputTokens: 100_000, cacheReadTokens: 100_000, outputTokens: 1_000 });
+  applyUsage(state, { inputTokens: 30_000, cacheReadTokens: 100_000, outputTokens: 1_000 });
   assert.equal(evaluate(state, DEFAULT_LIMITS).level, 'ok');
 
-  applyUsage(state, { inputTokens: 155_000, cacheReadTokens: 30_000, outputTokens: 10_000 });
+  applyUsage(state, { inputTokens: 100_000, cacheReadTokens: 30_000, outputTokens: 10_000 });
   const warned = evaluate(state, DEFAULT_LIMITS);
   assert.equal(warned.level, 'warn');
   assert.equal(warned.block, false);
   assert.ok(warned.turnFreshRatio >= DEFAULT_LIMITS.warnRatio);
 
-  applyUsage(state, { inputTokens: 60_000, cacheReadTokens: 0, outputTokens: 5_000 });
+  applyUsage(state, { inputTokens: 30_000, cacheReadTokens: 0, outputTokens: 5_000 });
   const blocked = evaluate(state, DEFAULT_LIMITS);
   assert.equal(blocked.level, 'block');
   assert.equal(blocked.block, true);

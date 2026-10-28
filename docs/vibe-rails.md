@@ -7,9 +7,9 @@ cho mọi thứ. Mục tiêu: **mỗi request chỉ trả tiền cho tool/skill 
 
 | Việc | Preset trong GUI | Tool | Model gợi ý | Ngân sách/turn |
 |---|---|---|---|---|
-| Soi code, audit, đo token | `Vibe / Audit` (id `code-audit`) | ~39 | model rẻ, reasoning thấp | 150K fresh |
-| Làm tính năng mới | `Vibe / Build` (id `vibe-build`) | ~45 | model chính | 150K fresh |
-| Sửa lỗi có tái hiện | `Vibe / Fix` (id `vibe-fix`) | ~45 | model chính | 150K fresh |
+| Soi code, audit, đo token | `Vibe / Audit` (id `code-audit`) | 16 row + 24 tool global | model rẻ, reasoning thấp | 150K fresh |
+| Làm tính năng mới | `Vibe / Build` (id `vibe-build`) | 16 row + 24 tool global | model chính | 150K fresh |
+| Sửa lỗi có tái hiện | `Vibe / Fix` (id `vibe-fix`) | 16 row + 24 tool global | model chính | 150K fresh |
 
 Không có cờ CLI chọn preset cho `dsh headless`; preset chọn ở màn hình chat
 (composer → agent preset). `standard` vẫn để nguyên cho việc cần đủ tool

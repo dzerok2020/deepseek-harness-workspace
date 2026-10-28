@@ -15,7 +15,7 @@ token-meter của host — rồi cộng dồn theo turn/session.
 
 | Chỉ số | Mặc định | Ý nghĩa |
 |---|---:|---|
-| `turnFreshTokens` | 150.000 | input trừ cache read, mỗi turn |
+| `turnFreshTokens` | 150.000 | input CHƯA cache (dsh-llm tách riêng cacheRead), mỗi turn |
 | `turnOutputTokens` | 15.000 | output, mỗi turn |
 | `sessionFreshTokens` | 3.000.000 | token mới, cả session |
 | `maxStepsPerTurn` | 60 | số request model, mỗi turn |
@@ -51,5 +51,5 @@ và `dsh.profile.bundles` có `dsh-cost-gate`. Restart DSH để plugin được
 node --test test/
 ```
 
-7 test cho phần luật thuần (`lib/policy.js`): fresh token, cộng dồn, reset
-turn, warn/block, giới hạn bước, giới hạn session, cảnh báo cache miss.
+10 test: 7 luật thuần (`lib/policy.js`) — fresh token, cộng dồn, reset
+turn, warn/block, giới hạn bước, giới hạn session, cảnh báo cache miss — và 3 wiring test hook thật.

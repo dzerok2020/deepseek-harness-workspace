@@ -233,6 +233,16 @@ else
   bad "ngân sách prompt vượt ngưỡng — xem dòng LỖI ở trên (đo bằng tools/prompt-budget.mjs)"
 fi
 
+head_ "14. Preset agent — cấu hình từng row có mount được không"
+# Bắt lỗi kiểu tool-subagent thiếu `provider` (Config required) làm cả preset
+# không chọn được trong GUI. Kiểm Config của từng plugin + resolve module.
+if node "$WS/tools/preset-check.mjs" >/tmp/preset-check.log 2>&1; then
+  ok "mọi row trong 3 preset Vibe khai đúng Config và resolve được"
+else
+  sed -n 1,20p /tmp/preset-check.log >&2
+  bad "preset hỏng cấu hình — xem dòng LỖI ở trên (tools/preset-check.mjs)"
+fi
+
 printf '\n\033[1mKẾT QUẢ:\033[0m %d đạt, %d lỗi, %d bỏ qua\n' "$PASS" "$FAIL" "$SKIP"
 if [ "$FAIL" -gt 0 ]; then echo "Có mục cần xử lý — xem các dòng LỖI ở trên."
 elif [ "$SKIP" -gt 0 ]; then printf 'Đạt mọi mục kiểm được ở đây; %d mục BỎ QUA vì sandbox agent không nhìn thấy (systemd bus/EROFS) — chạy lại từ terminal thường để phủ đủ.\n' "$SKIP"
