@@ -1,55 +1,46 @@
 # dsh-cost-gate
 
-Cổng chi phí theo turn cho DeepSeek Harness. Plugin thụ động: không thêm tool,
-không sửa prompt, chỉ đọc usage thật của từng request model và chặn bước kế
-tiếp khi turn vượt ngân sách.
+Đo usage thật qua `llm/stream`, cảnh báo chi phí và ngăn lời gọi tool thất bại lặp lại. **Không kết thúc turn chỉ vì vượt token hoặc số bước.**
 
-## Vì sao cần
+## Chính sách
 
-Mỗi bước agent = một request model = một lần đốt token. Session log
-(`assistant/message`) **không** mang usage, nên không thể đo bằng cách đọc lại
-log. Plugin bắt chunk `usage` ngay trên `llm/stream` — cùng nguồn với
-token-meter của host — rồi cộng dồn theo turn/session.
+- `turnFreshTokens`, `turnOutputTokens`, `sessionFreshTokens`, `maxStepsPerTurn`: chỉ cảnh báo. Chi phí cao không tự chứng minh công việc vô ích.
+- Sau ba lần **liên tiếp** cùng tool, cùng arguments và cùng kết quả `isError: true`, lần gọi giống tiếp theo không chạy tool body. Tool trả lỗi `ANTI_WASTE_REPEAT`, hướng dẫn đổi giả thuyết, lấy bằng chứng khác hoặc báo nhánh bị kẹt.
+- Không reject `agent/pre-step`; agent vẫn có thể tiếp tục công việc khác hoặc trả lời người dùng.
+- Tool thành công, đổi arguments, lỗi khác nhau hoặc turn mới phá chuỗi lặp. Các session độc lập.
+- `run_code` có bộ đếm wrapper riêng để tool lồng bên trong vẫn được kiểm tra. Kết quả song song không được dùng để kết luận vòng lặp tuần tự.
+- Hook `tools/execute` chạy trong đường dispatch chuẩn, sau admission/permission của host. Không mở rộng quyền, không bỏ qua sandbox hay yêu cầu xác nhận.
 
-## Ngân sách mặc định
+## Ngưỡng cảnh báo mặc định
 
-| Chỉ số | Mặc định | Ý nghĩa |
-|---|---:|---|
-| `turnFreshTokens` | 150.000 | input CHƯA cache (dsh-llm tách riêng cacheRead), mỗi turn |
-| `turnOutputTokens` | 60.000 | output (gồm reasoning), mỗi turn — **chỉ cảnh báo, không chặn** |
-| `sessionFreshTokens` | 3.000.000 | token mới, cả session |
-| `maxStepsPerTurn` | 60 | số request model, mỗi turn |
-| `warnRatio` | 0.8 | bắt đầu ghi cảnh báo |
-| `missFreshThreshold` | 50.000 | fresh input bị coi là cache miss đáng ngờ |
-| `consecutiveMissWarn` | 3 | số miss liên tiếp để cảnh báo |
+| Chỉ số | Mặc định |
+|---|---:|
+| `turnFreshTokens` | 150.000 |
+| `turnOutputTokens` | 60.000 |
+| `sessionFreshTokens` | 3.000.000 |
+| `maxStepsPerTurn` | 60 |
+| `warnRatio` | 0.8 |
+| `missFreshThreshold` | 50.000 |
+| `consecutiveMissWarn` | 3 |
 
-Vượt ngân sách: plugin trả `{ kind: 'reject' }` ở `agent/pre-step`; agent-loop
-kết thúc turn với lý do `blocked` **trước khi** gọi model thêm lần nữa.
+Fresh input và cache read được host khai báo riêng. Plugin giữ fingerprint dạng hash trong RAM, không ghi arguments hoặc nội dung lỗi vào status. Đối tượng không fingerprint được hoặc JSON trên 65.536 ký tự không được dùng làm bằng chứng lặp.
 
-Chỉ 3 mốc cứng mới chặn: `turnFreshTokens`, `sessionFreshTokens`,
-`maxStepsPerTurn`. Riêng `turnOutputTokens` là **soft-limit**: vượt chỉ ghi cảnh
-báo. Lý do (lỗi 28/10/2026): chặn theo output làm turn chết im lặng — agent đang
-giữa mạch suy luận, không kịp gọi `text` nên người dùng không nhận được chữ nào
-(3 preset Vibe xong việc mà màn hình trống, chỉ còn việc đã làm).
+## Điều khiển và giới hạn
 
-## Điều khiển
-
-- Tắt hẳn: `DSH_COST_GATE=off`.
-- Cho qua một lần (không tắt cổng): tạo file `~/.dsh/cost-gate-allow`, xoá file
-  để bật lại.
-- Xem trạng thái: `~/.dsh/cost-gate-status.json` — token từng session, hit rate,
-  turn bị chặn và lý do.
+- `DSH_COST_GATE=off`: tắt plugin.
+- `cost-gate-allow` là marker cũ; trường status `allowed` chỉ còn phản ánh marker tồn tại, không dùng để cấp quyền hoặc bypass bộ chống lặp mới.
+- Status ở `$DSH_HOME/cost-gate-status.json` (mặc định `~/.dsh/cost-gate-status.json`).
+- Đây là chống lặp **xác định**, không phải bộ đánh giá AI. Chưa nhận biết mọi dạng đọc lại, poll vô ích, đổi tên cùng một việc hoặc tool báo lỗi bằng text nhưng không đánh dấu `isError`.
+- Không bảo đảm mọi task hoàn tất: lỗi provider, cancellation, gate khác và thiếu quyền vẫn có thể dừng lượt. Không tự retry vô hạn hoặc tự restart DSH.
 
 ## Cài trong profile
-
-Profile `web` đã cài dạng bundle:
 
 ```bash
 cd ~/.dsh/profiles/web
 pnpm add file:/home/dzerok/Documents/deepseek-harness/default-workspace/dsh-cost-gate
 ```
 
-và `dsh.profile.bundles` có `dsh-cost-gate`. Restart DSH để plugin được nạp.
+Profile phải có bundle `dsh-cost-gate`. Cần restart DSH để tiến trình nạp bản mới; test trong workspace không chứng minh tiến trình đang chạy đã đổi.
 
 ## Test
 
@@ -57,5 +48,4 @@ và `dsh.profile.bundles` có `dsh-cost-gate`. Restart DSH để plugin được
 node --test test/
 ```
 
-10 test: 7 luật thuần (`lib/policy.js`) — fresh token, cộng dồn, reset
-turn, warn/block, giới hạn bước, giới hạn session, cảnh báo cache miss — và 3 wiring test hook thật.
+Bộ test kiểm tra cảnh báo không hard-stop, reset turn/session, lỗi lặp, đọc/test thành công, PTC lồng, lỗi khác nhau và dispatch song song. Mock hook không thay thế kiểm thử đầu-cuối trên profile đang chạy.

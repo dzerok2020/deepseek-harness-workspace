@@ -30,7 +30,7 @@ function harness(config) {
   return { usage, step };
 }
 
-test('vượt ngân sách turn thì bước kế tiếp bị reject', async () => {
+test('vượt ngân sách turn thì bước kế tiếp vẫn được admit', async () => {
   const { usage, step } = harness({
     turnFreshTokens: 1_000,
     turnOutputTokens: 500,
@@ -42,7 +42,7 @@ test('vượt ngân sách turn thì bước kế tiếp bị reject', async () =
   assert.equal((await step('s1', 1, 2)).kind, 'enter');
   await usage('s1', { inputTokens: 700, cacheReadTokens: 0, outputTokens: 10 });
   const decision = await step('s1', 1, 3);
-  assert.equal(decision.kind, 'reject');
+  assert.equal(decision.kind, 'enter');
 });
 
 test('turn mới reset bộ đếm turn nhưng giữ session', async () => {
@@ -54,7 +54,7 @@ test('turn mới reset bộ đếm turn nhưng giữ session', async () => {
   });
   await step('s2', 1, 1);
   await usage('s2', { inputTokens: 1_200, cacheReadTokens: 0, outputTokens: 10 });
-  assert.equal((await step('s2', 1, 2)).kind, 'reject');
+  assert.equal((await step('s2', 1, 2)).kind, 'enter');
   // Turn 2 mở lại: bộ đếm turn về 0 nên được đi tiếp.
   assert.equal((await step('s2', 2, 1)).kind, 'enter');
 });

@@ -44,7 +44,7 @@ test('resetTurn reset bộ đếm turn nhưng giữ session', () => {
   assert.equal(state.fresh, 90_000, 'session fresh phải được giữ');
 });
 
-test('evaluate: ok, warn rồi block theo ngân sách turn', () => {
+test('evaluate: ok rồi warn, không block theo ngân sách turn', () => {
   const state = createSession('s1');
   resetTurn(state, 1);
   state.steps = 1;
@@ -59,21 +59,25 @@ test('evaluate: ok, warn rồi block theo ngân sách turn', () => {
 
   applyUsage(state, { inputTokens: 30_000, cacheReadTokens: 0, outputTokens: 5_000 });
   const blocked = evaluate(state, DEFAULT_LIMITS);
-  assert.equal(blocked.level, 'block');
-  assert.equal(blocked.block, true);
+  assert.equal(blocked.level, 'warn');
+  assert.equal(blocked.block, false);
   assert.ok(blocked.reasons.includes('turn-fresh'));
 });
 
-test('evaluate: chặn theo số bước và ngân sách session', () => {
+test('evaluate: chỉ cảnh báo theo số bước và ngân sách session', () => {
   const state = createSession('s1');
   resetTurn(state, 1);
   state.steps = DEFAULT_LIMITS.maxStepsPerTurn;
   assert.ok(evaluate(state, DEFAULT_LIMITS).reasons.includes('steps'));
+  assert.equal(evaluate(state, DEFAULT_LIMITS).block, false);
+  assert.equal(evaluate(state, DEFAULT_LIMITS).level, 'warn');
 
   const session = createSession('s2');
   resetTurn(session, 1);
   applyUsage(session, { inputTokens: DEFAULT_LIMITS.sessionFreshTokens, cacheReadTokens: 0, outputTokens: 0 });
   assert.ok(evaluate(session, DEFAULT_LIMITS).reasons.includes('session-fresh'));
+  assert.equal(evaluate(session, DEFAULT_LIMITS).block, false);
+  assert.equal(evaluate(session, DEFAULT_LIMITS).level, 'warn');
 });
 
 // Lỗi 28/10/2026: 3 preset Vibe xong việc mà không có text nào — cost-gate chặn

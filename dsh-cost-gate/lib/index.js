@@ -1,18 +1,14 @@
 // dsh-cost-gate — điểm vào plugin.
 //
-// Vai trò: mỗi bước agent là một request model, tức một lần đốt token. Plugin
-// này cộng usage THẬT từ chunk `usage` của `llm/stream` (không đọc lại session
-// log, vì assistant/message không mang usage), rồi chặn bước kế tiếp bằng
-// `agent/pre-step` khi turn/session vượt ngân sách. Chặn = trả
-// `{ kind: 'reject' }`; agent-loop kết thúc turn với lý do `blocked` thay vì
-// gọi model thêm lần nữa.
+// Usage thresholds are warnings, not task completion evidence.
+// Only proven serial tool failures are gated; the agent turn stays open.
 //
 // Không import package nào của DSH: chỉ dùng hook chung, tránh lỗi phân giải
 // module khi chạy từ workspace (giống dsh-loop-guard).
 //
-// Tắt tạm: DSH_COST_GATE=off. Cho qua một lần: tạo file
-// $DSH_HOME/cost-gate-allow (xoá file để bật lại cổng).
+// Tắt tạm: DSH_COST_GATE=off. Không dùng cost-gate-allow để bỏ qua quyền host.
 
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import {
@@ -34,6 +30,23 @@ const STATUS_FILENAME = 'cost-gate-status.json';
 const ALLOW_FILENAME = 'cost-gate-allow';
 const STATUS_MIN_INTERVAL_MS = 2000;
 const MAX_SESSIONS = 20;
+const REPEAT_FAILURE_LIMIT = 3;
+
+// Canonical JSON makes object key order immaterial. Keep only hashes in memory.
+function fingerprint(value) {
+  try {
+    const text = JSON.stringify(value, (_key, item) => {
+      if (item && typeof item === 'object' && !Array.isArray(item)) {
+        return Object.fromEntries(Object.keys(item).sort().map((key) => [key, item[key]]));
+      }
+      return item;
+    });
+    if (typeof text !== 'string' || text.length > 65_536) return undefined;
+    return createHash('sha256').update(text).digest('hex');
+  } catch {
+    return undefined;
+  }
+}
 
 function dshHome() {
   const explicit = process.env.DSH_HOME;
@@ -154,7 +167,56 @@ export function apply(ctx, config = {}) {
     })();
   });
 
-  // Cổng chặn: chạy trước mỗi bước, sau khi system prompt đã assemble.
+  // The canonical tool-body middleware runs AFTER host permission/admission gates.
+  // Reject only a serial duplicate after three identical structured failures.
+  // Do not terminate the agent turn: it must explain/replan or work on another branch.
+  ctx.on('tools/execute', async (exec, next) => {
+    const session = sessionOf(exec?.agent?.id ?? exec?.agent?.session?.id);
+    if (!session || exec?.signal?.aborted) return next();
+    // PTC run_code awaits nested dispatch: parent and leaf calls are not peers.
+    const wrapper = exec.name === 'run_code';
+    const state = wrapper ? (session.wrapperTools ??= {}) : session;
+    const leafGeneration = session.toolGeneration;
+    const concurrent = (state.activeTools ?? 0) > 0;
+    if (concurrent) state.repetition = undefined;
+    const call = fingerprint([exec.name, exec.arguments]);
+    const previous = state.repetition;
+    if (call && previous?.call === call && previous.count >= REPEAT_FAILURE_LIMIT) {
+      return {
+        isError: true,
+        content: [{ type: 'text', text: 'ANTI_WASTE_REPEAT: three identical calls returned the same error. This duplicate tool body was not executed. Change the hypothesis/arguments, obtain new evidence with another tool, or report the stuck branch and remaining work to the user. Do not repeat this call or bypass permissions.' }],
+      };
+    }
+    const generation = state.toolGeneration = (state.toolGeneration ?? 0) + 1;
+    const turn = session.turn;
+    let result;
+    state.activeTools = (state.activeTools ?? 0) + 1;
+    try {
+      result = await next();
+    } catch (error) {
+      if (state.toolGeneration === generation) state.repetition = undefined;
+      throw error;
+    } finally {
+      state.activeTools -= 1;
+    }
+    // Concurrent/out-of-order results are not sufficient proof of a serial loop.
+    if (concurrent || state.toolGeneration !== generation || session.turn !== turn) return result;
+    if (wrapper && session.toolGeneration !== leafGeneration) {
+      state.repetition = undefined;
+      return result;
+    }
+    const failure = result?.isError === true ? fingerprint([result.error, result.content]) : undefined;
+    state.repetition = call && failure ? {
+      call, failure,
+      count: previous?.call === call && previous.failure === failure ? previous.count + 1 : 1,
+    } : undefined;
+    if (state.repetition?.count === REPEAT_FAILURE_LIMIT) {
+      log.warn('dsh-cost-gate: repeated identical tool failure; change strategy before retrying');
+    }
+    return result;
+  });
+
+  // Usage thresholds warn only; expensive work is not necessarily waste.
   ctx.on('agent/pre-step', async (payload, next) => {
     const agent = payload?.agent;
     const state = sessionOf(agent?.id ?? agent?.session?.id);
@@ -177,25 +239,6 @@ export function apply(ctx, config = {}) {
       }
       const miss = missWarning(state, limits);
       if (miss !== null && verdict.level === 'warn') log.warn(`dsh-cost-gate: ${miss}`);
-    }
-
-    if (verdict.block && !allowed()) {
-      state.blocked = {
-        at: new Date().toISOString(),
-        reasons: verdict.reasons,
-        turn: state.turn,
-        steps: state.steps,
-        turnFresh: state.turnFresh,
-        turnOutput: state.turnOutput,
-        sessionFresh: state.fresh,
-      };
-      writeStatus(true);
-      log.warn(
-        `dsh-cost-gate: chặn turn ${state.turn} (${verdict.reasons.join(', ')}); ` +
-          `tạo ${join('%DSH_HOME%', ALLOW_FILENAME)} để cho qua một lần`,
-      );
-      // Không gọi next(): bước này không được admit, turn kết thúc với `blocked`.
-      return { kind: 'reject' };
     }
 
     writeStatus();

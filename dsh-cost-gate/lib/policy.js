@@ -69,6 +69,9 @@ export function resetTurn(state, turn) {
   state.misses = 0;
   state.warnStreak = 0;
   state.blocked = null;
+  state.repetition = undefined;
+  state.wrapperTools = undefined;
+  state.toolGeneration = (state.toolGeneration ?? 0) + 1;
   state.updatedAt = new Date().toISOString();
   return state;
 }
@@ -106,11 +109,11 @@ export function evaluate(state, limits = DEFAULT_LIMITS) {
   // Output chỉ cảnh báo (soft-limit): nếu chặn ở đây, turn kết thúc với `blocked`
   // và người dùng không nhận được một chữ nào — đúng lỗi 3 preset Vibe ngày 28/10.
   const reasons = turnOutputRatio >= 1 ? [...hard, 'turn-output'] : hard;
-  const block = hard.length > 0;
-  const warn = !block && Math.max(turnFreshRatio, turnOutputRatio, sessionRatio) >= limits.warnRatio;
+  // Cost alone is not evidence of waste: never terminate unfinished work.
+  const warn = Math.max(turnFreshRatio, turnOutputRatio, sessionRatio, stepsRatio) >= limits.warnRatio;
   return {
-    level: block ? 'block' : warn ? 'warn' : 'ok',
-    block,
+    level: warn ? 'warn' : 'ok',
+    block: false,
     reasons,
     turnFreshRatio,
     turnOutputRatio,
