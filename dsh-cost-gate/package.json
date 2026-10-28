@@ -1,9 +1,9 @@
 {
   "name": "dsh-cost-gate",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
-  "description": "Cổng chi phí theo turn: đo usage thật từ llm/stream, chặn bước kế tiếp khi turn vượt ngân sách token, ghi trạng thái ra $DSH_HOME/cost-gate-status.json.",
+  "description": "Cảnh báo usage thật theo turn/session; chặn tool thất bại lặp lại, không hard-stop theo ngân sách token.",
   "main": "lib/index.js",
   "exports": {
     ".": "./lib/index.js",
