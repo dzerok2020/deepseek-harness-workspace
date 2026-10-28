@@ -1,6 +1,8 @@
 # Ba đường ray vibe coding
 
-Từ 2026-10-28, DSH có 3 preset theo loại việc thay vì dùng `standard` (118 tool)
+Từ 2026-10-28, DSH có 3 preset theo loại việc thay vì dùng `standard` (118 tool).
+Ba preset dùng **cùng bộ tool**; khác nhau ở persona (luật làm việc) và cách chọn skill/model,
+nên chọn theo *việc đang làm*, không theo tool.
 cho mọi thứ. Mục tiêu: **mỗi request chỉ trả tiền cho tool/skill thật sự cần**.
 
 ## Chọn ray
