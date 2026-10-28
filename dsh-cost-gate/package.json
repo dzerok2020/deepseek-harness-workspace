@@ -1,0 +1,28 @@
+{
+  "name": "dsh-cost-gate",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Cổng chi phí theo turn: đo usage thật từ llm/stream, chặn bước kế tiếp khi turn vượt ngân sách token, ghi trạng thái ra $DSH_HOME/cost-gate-status.json.",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./policy": "./lib/policy.js"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}
