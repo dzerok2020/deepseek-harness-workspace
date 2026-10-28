@@ -1,0 +1,5 @@
+
+> threeui-compat-verification@1.0.0 test
+> node tests/build.mjs
+
+PASS build/provenance compatibility assertions; upstream warning reproduced, fixed build has no undefined-import warning. Bundle-size warning remains visible.

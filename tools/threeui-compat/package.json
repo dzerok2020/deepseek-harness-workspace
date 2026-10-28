@@ -1,0 +1,23 @@
+{
+  "name": "threeui-compat-verification",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "test": "node tests/build.mjs",
+    "test:browser": "python3 tests/browser.py",
+    "dev": "vite --host 127.0.0.1 --port 5207 --strictPort",
+    "preview": "vite preview --host 127.0.0.1 --port 5207 --strictPort"
+  },
+  "dependencies": {
+    "@designcodeio/threeui": "1.2.0",
+    "three": "0.186.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "vite": "8.3.5",
+    "@vitejs/plugin-react": "6.1.2"
+  }
+}

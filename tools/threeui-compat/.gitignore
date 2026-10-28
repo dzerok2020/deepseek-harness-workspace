@@ -1,0 +1,5 @@
+node_modules/
+dist/
+dist-baseline/
+.venv/
+__pycache__/

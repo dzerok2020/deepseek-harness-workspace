@@ -1,0 +1,706 @@
+{
+  "url": "http://127.0.0.1:5207/?q=low&post=0&shadow=0&dpr=1",
+  "devices": {
+    "desktop": {
+      "results": {
+        "shader": {
+          "motion": {
+            "meanAbsoluteDelta": 7.024877441544108,
+            "changedPixelFraction": 0.41984452401119066
+          },
+          "mounted": {
+            "raf": 1,
+            "ticks": 206,
+            "resize": 1,
+            "intersection": 1,
+            "gl": 1,
+            "canvases": 1,
+            "iframes": 0
+          },
+          "unmounted": {
+            "raf": 0,
+            "ticks": 215,
+            "resize": 0,
+            "intersection": 0,
+            "gl": 1,
+            "canvases": 0,
+            "iframes": 0
+          },
+          "threeMoreCycles": [
+            {
+              "raf": 0,
+              "ticks": 237,
+              "resize": 0,
+              "intersection": 0,
+              "gl": 2,
+              "canvases": 0,
+              "iframes": 0
+            },
+            {
+              "raf": 0,
+              "ticks": 260,
+              "resize": 0,
+              "intersection": 0,
+              "gl": 3,
+              "canvases": 0,
+              "iframes": 0
+            },
+            {
+              "raf": 0,
+              "ticks": 283,
+              "resize": 0,
+              "intersection": 0,
+              "gl": 4,
+              "canvases": 0,
+              "iframes": 0
+            }
+          ]
+        },
+        "scene": {
+          "motion": {
+            "meanAbsoluteDelta": 2.0654885654885655,
+            "changedPixelFraction": 0.6055061471728138
+          },
+          "mounted": {
+            "raf": 1,
+            "ticks": 340,
+            "resize": 1,
+            "intersection": 1,
+            "gl": 5,
+            "canvases": 1,
+            "iframes": 0
+          },
+          "unmounted": {
+            "raf": 0,
+            "ticks": 349,
+            "resize": 0,
+            "intersection": 0,
+            "gl": 5,
+            "canvases": 0,
+            "iframes": 0
+          },
+          "threeMoreCycles": [
+            {
+              "raf": 0,
+              "ticks": 365,
+              "resize": 0,
+              "intersection": 0,
+              "gl": 6,
+              "canvases": 0,
+              "iframes": 0
+            },
+            {
+              "raf": 0,
+              "ticks": 381,
+              "resize": 0,
+              "intersection": 0,
+              "gl": 7,
+              "canvases": 0,
+              "iframes": 0
+            },
+            {
+              "raf": 0,
+              "ticks": 397,
+              "resize": 0,
+              "intersection": 0,
+              "gl": 8,
+              "canvases": 0,
+              "iframes": 0
+            }
+          ]
+        },
+        "interaction": {
+          "title": "Component Preview",
+          "canvas": 0,
+          "buttons": 1,
+          "motion": {
+            "meanAbsoluteDelta": 0.0,
+            "changedPixelFraction": 0.0
+          },
+          "buttonTexts": [
+            "\n\n  \n    Demo Lesson\n  \n  \n  [style*=\"--border-gradient\"]::before {\n    content: \"\";\n    position: absolute;\n    inset: 0;\n    padding: 1px;\n    border-radius: var(--border-radius-before, inherit);\n    -webkit-mask: linear-gradient(#fff 0 0) content-box,\n      linear-gradient(#fff 0 0);\n    -webkit-mask-composite: xor;\n    mask-composite: exclude;\n    background: var(--border-gradient);\n    pointer-events: none;\n  }\n"
+          ],
+          "clicked": true,
+          "errors": [],
+          "failed": [],
+          "externalRequests": [
+            {
+              "url": "https://cdn.tailwindcss.com/",
+              "type": "script"
+            },
+            {
+              "url": "https://cdn.tailwindcss.com/3.4.17",
+              "type": "script"
+            }
+          ],
+          "afterUnmount": {
+            "raf": 0,
+            "ticks": 397,
+            "resize": 0,
+            "intersection": 0,
+            "gl": 8,
+            "canvases": 0,
+            "iframes": 0
+          }
+        },
+        "nebula": {
+          "title": "Julian Vance \u2014 Digital Craftsman",
+          "canvas": 1,
+          "buttons": 0,
+          "motion": {
+            "meanAbsoluteDelta": 5.94747685719908,
+            "changedPixelFraction": 0.7322787531120865
+          },
+          "buttonTexts": [],
+          "errors": [],
+          "failed": [],
+          "externalRequests": [
+            {
+              "url": "https://cdn.tailwindcss.com/",
+              "type": "script"
+            },
+            {
+              "url": "https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js",
+              "type": "script"
+            },
+            {
+              "url": "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js",
+              "type": "script"
+            },
+            {
+              "url": "https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js",
+              "type": "script"
+            },
+            {
+              "url": "https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js",
+              "type": "script"
+            },
+            {
+              "url": "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Newsreader:ital,opsz,wght@1,6..72,300;1,6..72,400&display=swap",
+              "type": "stylesheet"
+            },
+            {
+              "url": "https://cdn.tailwindcss.com/3.4.17",
+              "type": "script"
+            },
+            {
+              "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7.woff2",
+              "type": "font"
+            },
+            {
+              "url": "https://fonts.gstatic.com/s/newsreader/v26/cY9CfjOCX1hbuyalUrK439vCjohC.woff2",
+              "type": "font"
+            },
+            {
+              "url": "https://api.iconify.design/solar.json?icons=arrow-right-up-linear",
+              "type": "fetch"
+            },
+            {
+              "url": "https://api.iconify.design/solar.json?icons=arrow-right-linear",
+              "type": "fetch"
+            },
+            {
+              "url": "https://api.simplesvg.com/solar.json?icons=arrow-right-up-linear",
+              "type": "fetch"
+            },
+            {
+              "url": "https://api.simplesvg.com/solar.json?icons=arrow-right-linear",
+              "type": "fetch"
+            }
+          ],
+          "afterUnmount": {
+            "raf": 0,
+            "ticks": 397,
+            "resize": 0,
+            "intersection": 0,
+            "gl": 8,
+            "canvases": 0,
+            "iframes": 0
+          }
+        },
+        "reducedMotion": {
+          "raf": 0,
+          "ticks": 397,
+          "resize": 0,
+          "intersection": 0,
+          "gl": 8,
+          "canvases": 0,
+          "iframes": 0
+        }
+      },
+      "errors": [],
+      "warnings": [
+        "[.WebGL-0x293400193200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+        "[.WebGL-0x293400193200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+        "[.WebGL-0x293400193200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+        "[.WebGL-0x293400193200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)",
+        "THREE.WARNING: Multiple instances of Three.js being imported.",
+        "cdn.tailwindcss.com should not be used in production. To use Tailwind CSS in production, install it as a PostCSS plugin or use the Tailwind CLI: https://tailwindcss.com/docs/installation",
+        "cdn.tailwindcss.com should not be used in production. To use Tailwind CSS in production, install it as a PostCSS plugin or use the Tailwind CLI: https://tailwindcss.com/docs/installation"
+      ],
+      "externalRequests": [
+        {
+          "url": "https://cdn.tailwindcss.com/",
+          "type": "script"
+        },
+        {
+          "url": "https://cdn.tailwindcss.com/3.4.17",
+          "type": "script"
+        },
+        {
+          "url": "https://cdn.tailwindcss.com/",
+          "type": "script"
+        },
+        {
+          "url": "https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js",
+          "type": "script"
+        },
+        {
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js",
+          "type": "script"
+        },
+        {
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js",
+          "type": "script"
+        },
+        {
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js",
+          "type": "script"
+        },
+        {
+          "url": "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Newsreader:ital,opsz,wght@1,6..72,300;1,6..72,400&display=swap",
+          "type": "stylesheet"
+        },
+        {
+          "url": "https://cdn.tailwindcss.com/3.4.17",
+          "type": "script"
+        },
+        {
+          "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7.woff2",
+          "type": "font"
+        },
+        {
+          "url": "https://fonts.gstatic.com/s/newsreader/v26/cY9CfjOCX1hbuyalUrK439vCjohC.woff2",
+          "type": "font"
+        },
+        {
+          "url": "https://api.iconify.design/solar.json?icons=arrow-right-up-linear",
+          "type": "fetch"
+        },
+        {
+          "url": "https://api.iconify.design/solar.json?icons=arrow-right-linear",
+          "type": "fetch"
+        },
+        {
+          "url": "https://api.simplesvg.com/solar.json?icons=arrow-right-up-linear",
+          "type": "fetch"
+        },
+        {
+          "url": "https://api.simplesvg.com/solar.json?icons=arrow-right-linear",
+          "type": "fetch"
+        }
+      ],
+      "failedRequests": [],
+      "networkResponses": [
+        {
+          "url": "https://cdn.tailwindcss.com/",
+          "status": 302
+        },
+        {
+          "url": "https://cdn.tailwindcss.com/3.4.17",
+          "status": 200
+        },
+        {
+          "url": "https://cdn.tailwindcss.com/",
+          "status": 302
+        },
+        {
+          "url": "https://cdn.tailwindcss.com/3.4.17",
+          "status": 200
+        },
+        {
+          "url": "https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js",
+          "status": 200
+        },
+        {
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js",
+          "status": 200
+        },
+        {
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js",
+          "status": 200
+        },
+        {
+          "url": "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Newsreader:ital,opsz,wght@1,6..72,300;1,6..72,400&display=swap",
+          "status": 200
+        },
+        {
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js",
+          "status": 200
+        },
+        {
+          "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7.woff2",
+          "status": 200
+        },
+        {
+          "url": "https://fonts.gstatic.com/s/newsreader/v26/cY9CfjOCX1hbuyalUrK439vCjohC.woff2",
+          "status": 200
+        },
+        {
+          "url": "https://api.iconify.design/solar.json?icons=arrow-right-linear",
+          "status": 200
+        },
+        {
+          "url": "https://api.iconify.design/solar.json?icons=arrow-right-up-linear",
+          "status": 200
+        },
+        {
+          "url": "https://api.simplesvg.com/solar.json?icons=arrow-right-linear",
+          "status": 200
+        },
+        {
+          "url": "https://api.simplesvg.com/solar.json?icons=arrow-right-up-linear",
+          "status": 200
+        }
+      ]
+    },
+    "mobile": {
+      "results": {
+        "shader": {
+          "motion": {
+            "meanAbsoluteDelta": 4.334325782671477,
+            "changedPixelFraction": 0.3785121306814372
+          },
+          "mounted": {
+            "raf": 1,
+            "ticks": 254,
+            "resize": 1,
+            "intersection": 1,
+            "gl": 1,
+            "canvases": 1,
+            "iframes": 0
+          },
+          "unmounted": {
+            "raf": 0,
+            "ticks": 257,
+            "resize": 0,
+            "intersection": 0,
+            "gl": 1,
+            "canvases": 0,
+            "iframes": 0
+          },
+          "threeMoreCycles": [
+            {
+              "raf": 0,
+              "ticks": 278,
+              "resize": 0,
+              "intersection": 0,
+              "gl": 2,
+              "canvases": 0,
+              "iframes": 0
+            },
+            {
+              "raf": 0,
+              "ticks": 299,
+              "resize": 0,
+              "intersection": 0,
+              "gl": 3,
+              "canvases": 0,
+              "iframes": 0
+            },
+            {
+              "raf": 0,
+              "ticks": 320,
+              "resize": 0,
+              "intersection": 0,
+              "gl": 4,
+              "canvases": 0,
+              "iframes": 0
+            }
+          ]
+        },
+        "scene": {
+          "motion": {
+            "meanAbsoluteDelta": 1.518713481664275,
+            "changedPixelFraction": 0.5991912879041884
+          },
+          "mounted": {
+            "raf": 1,
+            "ticks": 382,
+            "resize": 1,
+            "intersection": 1,
+            "gl": 5,
+            "canvases": 1,
+            "iframes": 0
+          },
+          "unmounted": {
+            "raf": 0,
+            "ticks": 391,
+            "resize": 0,
+            "intersection": 0,
+            "gl": 5,
+            "canvases": 0,
+            "iframes": 0
+          },
+          "threeMoreCycles": [
+            {
+              "raf": 0,
+              "ticks": 407,
+              "resize": 0,
+              "intersection": 0,
+              "gl": 6,
+              "canvases": 0,
+              "iframes": 0
+            },
+            {
+              "raf": 0,
+              "ticks": 423,
+              "resize": 0,
+              "intersection": 0,
+              "gl": 7,
+              "canvases": 0,
+              "iframes": 0
+            },
+            {
+              "raf": 0,
+              "ticks": 439,
+              "resize": 0,
+              "intersection": 0,
+              "gl": 8,
+              "canvases": 0,
+              "iframes": 0
+            }
+          ]
+        },
+        "interaction": {
+          "title": "Component Preview",
+          "canvas": 0,
+          "buttons": 1,
+          "motion": {
+            "meanAbsoluteDelta": 0.0,
+            "changedPixelFraction": 0.0
+          },
+          "buttonTexts": [
+            "\n\n  \n    Demo Lesson\n  \n  \n  [style*=\"--border-gradient\"]::before {\n    content: \"\";\n    position: absolute;\n    inset: 0;\n    padding: 1px;\n    border-radius: var(--border-radius-before, inherit);\n    -webkit-mask: linear-gradient(#fff 0 0) content-box,\n      linear-gradient(#fff 0 0);\n    -webkit-mask-composite: xor;\n    mask-composite: exclude;\n    background: var(--border-gradient);\n    pointer-events: none;\n  }\n"
+          ],
+          "clicked": true,
+          "errors": [],
+          "failed": [],
+          "externalRequests": [
+            {
+              "url": "https://cdn.tailwindcss.com/",
+              "type": "script"
+            },
+            {
+              "url": "https://cdn.tailwindcss.com/3.4.17",
+              "type": "script"
+            }
+          ],
+          "afterUnmount": {
+            "raf": 0,
+            "ticks": 439,
+            "resize": 0,
+            "intersection": 0,
+            "gl": 8,
+            "canvases": 0,
+            "iframes": 0
+          }
+        },
+        "nebula": {
+          "title": "Julian Vance \u2014 Digital Craftsman",
+          "canvas": 1,
+          "buttons": 0,
+          "motion": {
+            "meanAbsoluteDelta": 9.15594642561771,
+            "changedPixelFraction": 0.9668535332537586
+          },
+          "buttonTexts": [],
+          "errors": [],
+          "failed": [],
+          "externalRequests": [
+            {
+              "url": "https://cdn.tailwindcss.com/",
+              "type": "script"
+            },
+            {
+              "url": "https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js",
+              "type": "script"
+            },
+            {
+              "url": "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js",
+              "type": "script"
+            },
+            {
+              "url": "https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js",
+              "type": "script"
+            },
+            {
+              "url": "https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js",
+              "type": "script"
+            },
+            {
+              "url": "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Newsreader:ital,opsz,wght@1,6..72,300;1,6..72,400&display=swap",
+              "type": "stylesheet"
+            },
+            {
+              "url": "https://cdn.tailwindcss.com/3.4.17",
+              "type": "script"
+            },
+            {
+              "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7.woff2",
+              "type": "font"
+            },
+            {
+              "url": "https://fonts.gstatic.com/s/newsreader/v26/cY9CfjOCX1hbuyalUrK439vCjohC.woff2",
+              "type": "font"
+            },
+            {
+              "url": "https://api.iconify.design/solar.json?icons=arrow-right-up-linear",
+              "type": "fetch"
+            },
+            {
+              "url": "https://api.iconify.design/solar.json?icons=arrow-right-linear",
+              "type": "fetch"
+            }
+          ],
+          "afterUnmount": {
+            "raf": 0,
+            "ticks": 439,
+            "resize": 0,
+            "intersection": 0,
+            "gl": 8,
+            "canvases": 0,
+            "iframes": 0
+          }
+        },
+        "reducedMotion": {
+          "raf": 0,
+          "ticks": 439,
+          "resize": 0,
+          "intersection": 0,
+          "gl": 8,
+          "canvases": 0,
+          "iframes": 0
+        }
+      },
+      "errors": [],
+      "warnings": [
+        "THREE.WARNING: Multiple instances of Three.js being imported.",
+        "cdn.tailwindcss.com should not be used in production. To use Tailwind CSS in production, install it as a PostCSS plugin or use the Tailwind CLI: https://tailwindcss.com/docs/installation",
+        "cdn.tailwindcss.com should not be used in production. To use Tailwind CSS in production, install it as a PostCSS plugin or use the Tailwind CLI: https://tailwindcss.com/docs/installation"
+      ],
+      "externalRequests": [
+        {
+          "url": "https://cdn.tailwindcss.com/",
+          "type": "script"
+        },
+        {
+          "url": "https://cdn.tailwindcss.com/3.4.17",
+          "type": "script"
+        },
+        {
+          "url": "https://cdn.tailwindcss.com/",
+          "type": "script"
+        },
+        {
+          "url": "https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js",
+          "type": "script"
+        },
+        {
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js",
+          "type": "script"
+        },
+        {
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js",
+          "type": "script"
+        },
+        {
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js",
+          "type": "script"
+        },
+        {
+          "url": "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Newsreader:ital,opsz,wght@1,6..72,300;1,6..72,400&display=swap",
+          "type": "stylesheet"
+        },
+        {
+          "url": "https://cdn.tailwindcss.com/3.4.17",
+          "type": "script"
+        },
+        {
+          "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7.woff2",
+          "type": "font"
+        },
+        {
+          "url": "https://fonts.gstatic.com/s/newsreader/v26/cY9CfjOCX1hbuyalUrK439vCjohC.woff2",
+          "type": "font"
+        },
+        {
+          "url": "https://api.iconify.design/solar.json?icons=arrow-right-up-linear",
+          "type": "fetch"
+        },
+        {
+          "url": "https://api.iconify.design/solar.json?icons=arrow-right-linear",
+          "type": "fetch"
+        }
+      ],
+      "failedRequests": [],
+      "networkResponses": [
+        {
+          "url": "https://cdn.tailwindcss.com/",
+          "status": 302
+        },
+        {
+          "url": "https://cdn.tailwindcss.com/3.4.17",
+          "status": 200
+        },
+        {
+          "url": "https://cdn.tailwindcss.com/",
+          "status": 302
+        },
+        {
+          "url": "https://cdn.tailwindcss.com/3.4.17",
+          "status": 200
+        },
+        {
+          "url": "https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js",
+          "status": 200
+        },
+        {
+          "url": "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Newsreader:ital,opsz,wght@1,6..72,300;1,6..72,400&display=swap",
+          "status": 200
+        },
+        {
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js",
+          "status": 200
+        },
+        {
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js",
+          "status": 200
+        },
+        {
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js",
+          "status": 200
+        },
+        {
+          "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7.woff2",
+          "status": 200
+        },
+        {
+          "url": "https://fonts.gstatic.com/s/newsreader/v26/cY9CfjOCX1hbuyalUrK439vCjohC.woff2",
+          "status": 200
+        },
+        {
+          "url": "https://api.iconify.design/solar.json?icons=arrow-right-up-linear",
+          "status": 200
+        },
+        {
+          "url": "https://api.iconify.design/solar.json?icons=arrow-right-linear",
+          "status": 200
+        }
+      ]
+    }
+  },
+  "limitations": [
+    "Software WebGL: low quality, postprocessing and shadows disabled using upstream scene options. Default high quality timed out taking a screenshot after shader repair."
+  ]
+}

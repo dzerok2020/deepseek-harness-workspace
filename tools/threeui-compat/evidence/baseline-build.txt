@@ -1,0 +1,28 @@
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 20 modules transformed.
+rendering chunks...
+computing gzip size...
+dist-baseline/baseline.html                  0.15 kB │ gzip:   0.14 kB
+dist-baseline/assets/baseline-CbVdTTDf.js  828.99 kB │ gzip: 226.26 kB
+
+✓ built in 581ms
+[33m[IMPORT_IS_UNDEFINED] [0mImport `LinearEncoding` will always be undefined because there is no matching export in 'node_modules/three/build/three.module.js'
+ -  in node_modules/@designcodeio/threeui/lib-dist/shaders/temple-night/templeNightRenderer.js at 36451..36467
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[33m[IMPORT_IS_UNDEFINED] [0mImport `sRGBEncoding` will always be undefined because there is no matching export in 'node_modules/three/build/three.module.js'
+ -  in node_modules/@designcodeio/threeui/lib-dist/shaders/temple-night/templeNightRenderer.js at 36470..36484
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `sRGBEncoding` will always be undefined because there is no matching export in 'node_modules/three/build/three.module.js'
+     [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m node_modules/@designcodeio/threeui/lib-dist/shaders/temple-night/templeNightRenderer.js:510:191 [38;5;246m][0m
+     [38;5;246m│[0m
+ [38;5;246m510 │[0m [38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249mr[0m[38;5;249me[0m[38;5;249mt[0m[38;5;249mu[0m[38;5;249mr[0m[38;5;249mn[0m[38;5;249m [0m[38;5;249mt[0m[38;5;249m.[0m[38;5;249mw[0m[38;5;249mr[0m[38;5;249ma[0m[38;5;249mp[0m[38;5;249mS[0m[38;5;249m [0m[38;5;249m=[0m[38;5;249m [0m[38;5;249mt[0m[38;5;249m.[0m[38;5;249mw[0m[38;5;249mr[0m[38;5;249ma[0m[38;5;249mp[0m[38;5;249mT[0m[38;5;249m [0m[38;5;249m=[0m[38;5;249m [0m[38;5;249ma[0m[38;5;249m.[0m[38;5;249mw[0m[38;5;249mr[0m[38;5;249ma[0m[38;5;249mp[0m[38;5;249m [0m[38;5;249m|[0m[38;5;249m|[0m[38;5;249m [0m[38;5;249mo[0m[38;5;249m.[0m[38;5;249mC[0m[38;5;249ml[0m[38;5;249ma[0m[38;5;249mm[0m[38;5;249mp[0m[38;5;249mT[0m[38;5;249mo[0m[38;5;249mE[0m[38;5;249md[0m[38;5;249mg[0m[38;5;249me[0m[38;5;249mW[0m[38;5;249mr[0m[38;5;249ma[0m[38;5;249mp[0m[38;5;249mp[0m[38;5;249mi[0m[38;5;249mn[0m[38;5;249mg[0m[38;5;249m,[0m[38;5;249m [0m[38;5;249ma[0m[38;5;249m.[0m[38;5;249mr[0m[38;5;249me[0m[38;5;249mp[0m[38;5;249me[0m[38;5;249ma[0m[38;5;249mt[0m[38;5;249m [0m[38;5;249m&[0m[38;5;249m&[0m[38;5;249m [0m[38;5;249mt[0m[38;5;249m.[0m[38;5;249mr[0m[38;5;249me[0m[38;5;249mp[0m[38;5;249me[0m[38;5;249ma[0m[38;5;249mt[0m[38;5;249m.[0m[38;5;249ms[0m[38;5;249me[0m[38;5;249mt[0m[38;5;249m([0m[38;5;249ma[0m[38;5;249m.[0m[38;5;249mr[0m[38;5;249me[0m[38;5;249mp[0m[38;5;249me[0m[38;5;249ma[0m[38;5;249mt[0m[38;5;249m[[0m[38;5;249m0[0m[38;5;249m][0m[38;5;249m,[0m[38;5;249m [0m[38;5;249ma[0m[38;5;249m.[0m[38;5;249mr[0m[38;5;249me[0m[38;5;249mp[0m[38;5;249me[0m[38;5;249ma[0m[38;5;249mt[0m[38;5;249m[[0m[38;5;249m1[0m[38;5;249m][0m[38;5;249m)[0m[38;5;249m,[0m[38;5;249m [0m[38;5;249mt[0m[38;5;249m.[0m[38;5;249ma[0m[38;5;249mn[0m[38;5;249mi[0m[38;5;249ms[0m[38;5;249mo[0m[38;5;249mt[0m[38;5;249mr[0m[38;5;249mo[0m[38;5;249mp[0m[38;5;249my[0m[38;5;249m [0m[38;5;249m=[0m[38;5;249m [0m[38;5;249mM[0m[38;5;249ma[0m[38;5;249mt[0m[38;5;249mh[0m[38;5;249m.[0m[38;5;249mm[0m[38;5;249mi[0m[38;5;249mn[0m[38;5;249m([0m[38;5;249ma[0m[38;5;249m.[0m[38;5;249ma[0m[38;5;249mn[0m[38;5;249mi[0m[38;5;249ms[0m[38;5;249mo[0m[38;5;249m [0m[38;5;249m|[0m[38;5;249m|[0m[38;5;249m [0m[38;5;249m8[0m[38;5;249m,[0m[38;5;249m [0m[38;5;249mZ[0m[38;5;249me[0m[38;5;249m)[0m[38;5;249m,[0m[38;5;249m [0m[38;5;249ma[0m[38;5;249m.[0m[38;5;249ms[0m[38;5;249mr[0m[38;5;249mg[0m[38;5;249mb[0m[38;5;249m [0m[38;5;249m![0m[38;5;249m=[0m[38;5;249m=[0m[38;5;249m [0m[38;5;249m![0m[38;5;249m1[0m[38;5;249m [0m[38;5;249m&[0m[38;5;249m&[0m[38;5;249m [0m[38;5;249m([0m[38;5;249mt[0m[38;5;249m.[0m[38;5;249me[0m[38;5;249mn[0m[38;5;249mc[0m[38;5;249mo[0m[38;5;249md[0m[38;5;249mi[0m[38;5;249mn[0m[38;5;249mg[0m[38;5;249m [0m[38;5;249m=[0m[38;5;249m [0mo.sRGBEncoding[38;5;249m)[0m[38;5;249m,[0m[38;5;249m [0m[38;5;249mt[0m[38;5;249m.[0m[38;5;249mn[0m[38;5;249me[0m[38;5;249me[0m[38;5;249md[0m[38;5;249ms[0m[38;5;249mU[0m[38;5;249mp[0m[38;5;249md[0m[38;5;249ma[0m[38;5;249mt[0m[38;5;249me[0m[38;5;249m [0m[38;5;249m=[0m[38;5;249m [0m[38;5;249m![0m[38;5;249m0[0m[38;5;249m,[0m[38;5;249m [0m[38;5;249mt[0m[38;5;249m;[0m
+ [38;5;240m    │[0m                                                                                                                                                                                               ───────┬──────  
+ [38;5;240m    │[0m                                                                                                                                                                                                      ╰──────── 
+[38;5;246m─────╯[0m
+

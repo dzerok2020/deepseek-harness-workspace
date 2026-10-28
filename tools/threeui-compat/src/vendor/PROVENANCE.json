@@ -1,0 +1,20 @@
+{
+  "package": "@designcodeio/threeui",
+  "version": "1.2.0",
+  "license": "MIT",
+  "files": [
+    {
+      "source": "lib-dist/shaders/temple-night/TempleNightScene.js",
+      "sha256": "fd87fddd99562a08260d9c416ee0ca99745dcbda98aa5df533f9c90c0f5df02d"
+    },
+    {
+      "source": "lib-dist/shaders/temple-night/templeNightRenderer.js",
+      "sha256": "1b4cc5da7bb2b77cf9fdf660811f50e785d886d342136a0ad669e14808624780"
+    }
+  ],
+  "changes": [
+    "Replace renderer.outputEncoding with outputColorSpace and LinearEncoding/sRGBEncoding with LinearSRGBColorSpace/SRGBColorSpace.",
+    "Replace CanvasTexture.encoding with colorSpace using SRGBColorSpace.",
+    "Declare and assign explicit vTempleUv varying in foliage vertex/fragment onBeforeCompile code; current Three.js no longer supplies legacy vUv for this MeshBasicMaterial map path."
+  ]
+}
