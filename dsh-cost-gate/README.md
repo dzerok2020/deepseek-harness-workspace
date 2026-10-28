@@ -16,7 +16,7 @@ token-meter của host — rồi cộng dồn theo turn/session.
 | Chỉ số | Mặc định | Ý nghĩa |
 |---|---:|---|
 | `turnFreshTokens` | 150.000 | input CHƯA cache (dsh-llm tách riêng cacheRead), mỗi turn |
-| `turnOutputTokens` | 15.000 | output, mỗi turn |
+| `turnOutputTokens` | 60.000 | output (gồm reasoning), mỗi turn — **chỉ cảnh báo, không chặn** |
 | `sessionFreshTokens` | 3.000.000 | token mới, cả session |
 | `maxStepsPerTurn` | 60 | số request model, mỗi turn |
 | `warnRatio` | 0.8 | bắt đầu ghi cảnh báo |
@@ -25,6 +25,12 @@ token-meter của host — rồi cộng dồn theo turn/session.
 
 Vượt ngân sách: plugin trả `{ kind: 'reject' }` ở `agent/pre-step`; agent-loop
 kết thúc turn với lý do `blocked` **trước khi** gọi model thêm lần nữa.
+
+Chỉ 3 mốc cứng mới chặn: `turnFreshTokens`, `sessionFreshTokens`,
+`maxStepsPerTurn`. Riêng `turnOutputTokens` là **soft-limit**: vượt chỉ ghi cảnh
+báo. Lý do (lỗi 28/10/2026): chặn theo output làm turn chết im lặng — agent đang
+giữa mạch suy luận, không kịp gọi `text` nên người dùng không nhận được chữ nào
+(3 preset Vibe xong việc mà màn hình trống, chỉ còn việc đã làm).
 
 ## Điều khiển
 

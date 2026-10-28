@@ -20,7 +20,10 @@ Không có cờ CLI chọn preset cho `dsh headless`; preset chọn ở màn hì
 ## Ngân sách
 
 Plugin `dsh-cost-gate` đo usage thật trên `llm/stream` và chặn bước kế tiếp khi
-turn vượt: 150K token mới, 15K output, 60 bước; session 3M token mới. Xem
+turn vượt **mốc cứng**: 150K token mới, 60 bước; session 3M token mới. Output
+(60K/turn, gồm reasoning) chỉ là **soft-limit — cảnh báo, không chặn**, vì chặn
+theo output làm turn kết thúc với `blocked` mà không kịp sinh chữ nào cho người
+dùng. Xem
 `~/.dsh/cost-gate-status.json`; tắt bằng `DSH_COST_GATE=off`; cho qua một lần
 bằng file `~/.dsh/cost-gate-allow`.
 

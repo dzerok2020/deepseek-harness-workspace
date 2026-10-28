@@ -76,11 +76,17 @@ test('evaluate: chặn theo số bước và ngân sách session', () => {
   assert.ok(evaluate(session, DEFAULT_LIMITS).reasons.includes('session-fresh'));
 });
 
-test('evaluate: output vượt ngân sách bị chặn', () => {
+// Lỗi 28/10/2026: 3 preset Vibe xong việc mà không có text nào — cost-gate chặn
+// turn ngay khi output (gồm cả reasoning) vượt ngân sách, nên agent không kịp viết
+// câu trả lời. Output phải là soft-limit: chỉ cảnh báo, không tự chặn turn.
+test('evaluate: output vượt ngân sách chỉ cảnh báo, không chặn turn', () => {
   const state = createSession('s1');
   resetTurn(state, 1);
   applyUsage(state, { inputTokens: 10_000, cacheReadTokens: 0, outputTokens: DEFAULT_LIMITS.turnOutputTokens });
-  assert.ok(evaluate(state, DEFAULT_LIMITS).reasons.includes('turn-output'));
+  const verdict = evaluate(state, DEFAULT_LIMITS);
+  assert.ok(verdict.reasons.includes('turn-output'));
+  assert.equal(verdict.block, false);
+  assert.equal(verdict.level, 'warn');
 });
 
 test('missWarning cảnh báo khi fresh lớn mà không có cache read', () => {

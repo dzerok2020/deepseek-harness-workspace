@@ -4,8 +4,11 @@
 export const DEFAULT_LIMITS = Object.freeze({
   /** Token "mới" (input trừ cache read) tối đa cho một turn. */
   turnFreshTokens: 150_000,
-  /** Output token tối đa cho một turn. */
-  turnOutputTokens: 15_000,
+  /**
+   * Output token (gồm cả reasoning) cho một turn. Chỉ là mốc CẢNH BÁO, không chặn:
+   * chặn theo output làm turn chết im lặng, agent không kịp viết câu trả lời.
+   */
+  turnOutputTokens: 60_000,
   /** Token mới tối đa cho cả session (nhiều turn). */
   sessionFreshTokens: 3_000_000,
   /** Số bước (một bước = một request model) tối đa cho một turn. */
@@ -96,12 +99,14 @@ export function evaluate(state, limits = DEFAULT_LIMITS) {
   const turnOutputRatio = state.turnOutput / limits.turnOutputTokens;
   const sessionRatio = state.fresh / limits.sessionFreshTokens;
   const stepsRatio = state.steps / limits.maxStepsPerTurn;
-  const reasons = [];
-  if (turnFreshRatio >= 1) reasons.push('turn-fresh');
-  if (turnOutputRatio >= 1) reasons.push('turn-output');
-  if (sessionRatio >= 1) reasons.push('session-fresh');
-  if (stepsRatio >= 1) reasons.push('steps');
-  const block = reasons.length > 0;
+  const hard = [];
+  if (turnFreshRatio >= 1) hard.push('turn-fresh');
+  if (sessionRatio >= 1) hard.push('session-fresh');
+  if (stepsRatio >= 1) hard.push('steps');
+  // Output chỉ cảnh báo (soft-limit): nếu chặn ở đây, turn kết thúc với `blocked`
+  // và người dùng không nhận được một chữ nào — đúng lỗi 3 preset Vibe ngày 28/10.
+  const reasons = turnOutputRatio >= 1 ? [...hard, 'turn-output'] : hard;
+  const block = hard.length > 0;
   const warn = !block && Math.max(turnFreshRatio, turnOutputRatio, sessionRatio) >= limits.warnRatio;
   return {
     level: block ? 'block' : warn ? 'warn' : 'ok',
