@@ -222,6 +222,17 @@ head_ "12. Chuỗi ChatGPT Web — kiểm chứng CHỨC NĂNG (không chỉ HTT
 if python3 "$WS/tools/orchestration-health.py"; then ok "shim + bridge + catalog đạt (chức năng)"
 else bad "chuỗi ChatGPT Web chưa đạt — pipeline sẽ fallback native; xem dòng LỖI ở trên"; fi
 
+head_ "13. Ngân sách prompt — có đang phình/đốt token không"
+# Đo phần cố định phải trả mỗi request (tool schema, catalog skill) + mật độ
+# snapshot runtime + nhắc 灵枢 trong LƯỢT HIỆN TẠI. Nhắc 灵枢 quay lại = patch
+# đếm lượt của dsh-memory đã bị ghi đè khi cài lại plugin (xem
+# vibe-analysis/2026-10-28-p0-fixes.md).
+if node "$WS/tools/prompt-budget.mjs" --check; then
+  ok "tool schema + catalog skill + snapshot + cache hit trong ngưỡng"
+else
+  bad "ngân sách prompt vượt ngưỡng — xem dòng LỖI ở trên (đo bằng tools/prompt-budget.mjs)"
+fi
+
 printf '\n\033[1mKẾT QUẢ:\033[0m %d đạt, %d lỗi, %d bỏ qua\n' "$PASS" "$FAIL" "$SKIP"
 if [ "$FAIL" -gt 0 ]; then echo "Có mục cần xử lý — xem các dòng LỖI ở trên."
 elif [ "$SKIP" -gt 0 ]; then printf 'Đạt mọi mục kiểm được ở đây; %d mục BỎ QUA vì sandbox agent không nhìn thấy (systemd bus/EROFS) — chạy lại từ terminal thường để phủ đủ.\n' "$SKIP"
