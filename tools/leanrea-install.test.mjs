@@ -102,6 +102,17 @@ await test('LeanRea advertises the short Vietnamese trigger with explicit read-o
   assert.ok(skill.includes('Generic urgency or "do it all" is not authorization.'));
 });
 
+await test('LeanRea controlled pipeline resources are synchronized and callable outside the workspace', async () => {
+  for (const relative of ['scripts/static_pipeline.py', 'scripts/public_https.py', 'references/static-pipeline.md']) {
+    assert.deepEqual(await readFile(join(dshHome, 'skills/leanrea', relative)), await readFile(new URL(relative, skillUrl)));
+  }
+  assert.ok(skill.includes('scripts/static_pipeline.py'));
+  assert.ok(skill.includes('references/static-pipeline.md'));
+  const help = execFileSync('python3', [join(dshHome, 'skills/leanrea/scripts/static_pipeline.py'), '--help'], { cwd: '/tmp', encoding: 'utf8' });
+  assert.ok(help.includes('--download'));
+  assert.ok(help.includes('--output-root'));
+});
+
 await test('LeanRea installation notes retain sources and valid Markdown structure', async () => {
   const notes = await readFile(new URL('docs/leanrea-install-notes.md', workspace), 'utf8');
   assert.equal((notes.match(/\]\(https:/g) || []).length, 26);
