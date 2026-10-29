@@ -129,9 +129,9 @@ Mức ưu tiên dưới đây là rủi ro vận hành trong phạm vi đã ch�
 
 ## Model budget theo nguồn — cập nhật sau yêu cầu bổ sung
 
-- [Policy](<tools/web-model-budgets.yml>) đã thêm 8 ID còn thiếu và sửa budget từng route; defaults và toàn bộ `cgw` giữ 128000/16384, model lạ vẫn fail closed. Không áp 1M/128K hàng loạt.
-- [Nguồn và bảng giới hạn](<docs/aegis/work/2026-10-29-dsh-audit/budget-sources.md>) phân biệt Codex OAuth 872000/128000 với BAI GPT 1050000/128000, GLM5.1 200000/128000 với GLM5.3 1000000/131072, và fallback vận hành với capacity đã xác nhận. Không chứng nhận upstream đã chấp nhận max context/output.
-- [Test catalog](<test/model-budgets-catalog.test.py>) RED 5 tests với 16 subcase failures + 1 error trước policy; GREEN 5/5, bao phủ cả 19 route trong profile. Các expectation Node/Python cũ được cập nhật theo pair context/output, không bỏ negative tests. Full regression mới: **639 Node + 53 Python pass**, exit 0.
+- [Policy](<../../../../tools/web-model-budgets.yml>) đã thêm 8 ID còn thiếu và sửa budget từng route; defaults và toàn bộ `cgw` giữ 128000/16384, model lạ vẫn fail closed. Không áp 1M/128K hàng loạt.
+- [Nguồn và bảng giới hạn](<budget-sources.md>) phân biệt Codex OAuth 872000/128000 với BAI GPT 1050000/128000, GLM5.1 200000/128000 với GLM5.3 1000000/131072, và fallback vận hành với capacity đã xác nhận. Không chứng nhận upstream đã chấp nhận max context/output.
+- [Test catalog](<../../../../test/model-budgets-catalog.test.py>) RED 5 tests với 16 subcase failures + 1 error trước policy; GREEN 5/5, bao phủ cả 19 route trong profile. Các expectation Node/Python cũ được cập nhật theo pair context/output, không bỏ negative tests. Full regression mới: **639 Node + 53 Python pass**, exit 0.
 - Preview repair chỉ trong RAM: `or` 19 models và `cgw` 6 models đều 0 budget errors sau repair; routing và model IDs giữ nguyên; byte của live profile không đổi. Không ghi config và không khai `--writer-stopped` khi GUI còn chạy.
 - Commit policy: `b09ebc7` — `fix: refresh per-route model budgets from local catalog`. Chưa áp live và chưa push.
 
@@ -155,6 +155,16 @@ Giữ lại toàn bộ cache khoảng 2,1 GiB vì có repo nghiên cứu, source
 Một số lệnh shell của lead và agents đã gửi trường `sandbox_permissions` trái yêu cầu không-set của phiên. Không thấy approval prompt hoặc mở rộng quyền thực tế; phần lớn là read/tests, nhưng đây vẫn là lỗi tuân thủ, không được mô tả quy trình là hoàn hảo. Không dùng lỗi đó để biện minh cho escalation hoặc thao tác destructive ngoài phạm vi.
 
 Review độc lập đã hoàn tất các nhóm small guards/publication/scaffolder, cleanup/shim, health/fixture và policy/operations; finding append-baseline và newline đã được tái hiện RED rồi sửa. Review budget bổ sung phát hiện doc ghi sai Qwen context và tên route fast: đã sửa về retained policy 128000/16384 và exact ID `cx/gpt-6.1-sol-fast`, đồng thời thêm coverage cả 19 route. Review source/offline không thay thế nghiệm thu runtime hoặc capacity upstream.
+
+## Bổ sung: sync Settings → reference
+
+Theo yêu cầu bổ sung, đã triển khai [CLI sync](../../../../tools/sync_model_budgets.py) với [hướng dẫn](../../../model-budget-sync.md). Settings là nguồn cấu hình vận hành; reference trong Git là snapshot được sync thủ công. Default preview không ghi; `--apply --expect <revision>` chỉ ghi reference. Không thay profile, routing, credential, model options hoặc restart DSH. Offline repair chiều ngược vẫn giữ nguyên guard writer-stopped.
+
+TDD ban đầu 12 test RED trước implementation; independent review phát hiện source alias và reference alias ở nhánh no-op, mỗi finding được tái hiện RED rồi sửa. [21 test sync](../../../../test/model-budget-sync.test.py) hiện bảo vệ cả alias/merge, key vắng mặt, exact ID, stale content/metadata/inode, symlink/hardlink, lock contention, replace failure, CLI/privacy và CRLF/Unicode.
+
+Full gate sau sửa cuối (`bash-4a4fbec097e046fb`, collected exit 0): **642/642 Node** trên 52 file, **74/74 Python** trên 6 suite; shell syntax và `git diff --check` exit 0. Log Node `/tmp/dsh-budget-sync-node-verified.log`. Đây là bằng chứng source/fixture, không phải nghiệm thu capacity upstream hoặc runtime activation.
+
+Preview Settings hiện tại: **27 changed fields, 24 decreases, applied=false**; profile và reference bytes đều unchanged. Chưa apply snapshot thật vì Settings vẫn có nhiều số cũ, sẽ hạ budget vừa tra cứu nếu nhập nguyên trạng. Cần chọn chủ ý giữ reference mới và cập nhật Settings trước, hoặc chấp nhận snapshot Settings cũ. Không tự chọn để che lỗi health; chưa push.
 
 ## Trạng thái tích hợp
 

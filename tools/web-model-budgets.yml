@@ -1,5 +1,7 @@
 # Portable budget overlay for the current web profile; contains no credentials.
-# Desired per-model operating policy, checked by tools/model_budgets.py.
+# Versioned operating reference, checked by tools/model_budgets.py.
+# Settings owns live configuration; explicit sync: python3 -B tools/sync_model_budgets.py.
+# Review preview before apply; docs/model-budget-sync.md explains the one-way flow.
 # Explicit routes refreshed from the 2026-10-29 OmniRoute UI/cached catalog.
 # Evidence and conservative exceptions: docs/aegis/work/2026-10-29-dsh-audit/budget-sources.md.
 # Advertised catalog capacity is NOT verified end-to-end request acceptance.

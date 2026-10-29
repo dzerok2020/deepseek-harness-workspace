@@ -5,11 +5,11 @@
 - Yêu cầu còn mở: áp budget an toàn, nghiệm thu runtime/health rồi push GitHub; người dùng đã chọn sửa budget trước push, cho phép tham khảo nguồn và không cần đo model.
 - Đã hoàn tất 16 commit sửa logic, mới nhất `b09ebc7` (budget), trên `master`; chưa push. Không còn source edits đang chạy. Tất cả required reviewer đã trả kết quả.
 - Full regression cuối: 52 Node files, **639 pass / 0 fail/cancel/skip**, exit 0; Python **53 pass** (16 + 17 + 4 + 11 + 5), exit 0. [Log Node](</tmp/dsh-audit-budget-node-final.log>).
-- [Nguồn budget](<docs/aegis/work/2026-10-29-dsh-audit/budget-sources.md>) đối chiếu per-route local catalog/adapter/cache, không inference; unknown model vẫn fail closed; defaults `or`/`cgw` 128000/16384 không đổi. Không coi fallback UI là upstream proof.
+- [Nguồn budget](<budget-sources.md>) đối chiếu per-route local catalog/adapter/cache, không inference; unknown model vẫn fail closed; defaults `or`/`cgw` 128000/16384 không đổi. Không coi fallback UI là upstream proof.
 - Preview RAM của live profile: 19 `or` + 6 `cgw`, sau repair 0 budget errors, routing/model IDs không đổi; live bytes không bị ghi. **Chưa áp live** vì GUI/profile writers đang chạy và repair guard yêu cầu dừng thật.
 - [Health thụ động mới nhất](</tmp/dsh-audit-budget-health.log>): **41 đạt, 1 lỗi, 2 bỏ qua**, exit 1; còn profile budget chưa áp. Runtime modules/overload trên đĩa chưa được chứng minh đã reload.
 - Cleanup đã xóa đúng 5 artifact regular/untracked đã kiểm chứng, tổng 262964 bytes; giữ sessions/memory/credentials/source/backups/cache và PID/log không rõ identity. Không chạy cleaner live.
-- [Báo cáo đầy đủ](<docs/aegis/work/2026-10-29-dsh-audit/report.md>) ghi scope/residual/process noncompliance. Các ghi chú bên dưới là lịch sử baseline, không phải việc cần chạy lại từ đầu.
+- [Báo cáo đầy đủ](<report.md>) ghi scope/residual/process noncompliance. Các ghi chú bên dưới là lịch sử baseline, không phải việc cần chạy lại từ đầu.
 
 ## Yêu cầu và giới hạn
 
@@ -42,7 +42,26 @@
 - `.cache/` chứa cả source/backups/research: KHÔNG xóa wholesale. Chưa cleanup dữ liệu thật. Git publication chỉ ignore local scratch/credential names; không chứng minh có secret đã lộ.
 - Lỗi quy trình: nhiều tool call truyền sandbox_permissions dù user cấm; không approval hay widening được cấp. Không coi đây là lý do được tiếp tục dùng field; source edits ưu tiên CAS không có field này.
 
-## Bước tiếp theo
+## Đồng bộ Settings → policy (yêu cầu bổ sung 2026-10-29)
+
+- Settings là nguồn cấu hình vận hành; policy trong Git là snapshot tham chiếu. Không thêm watcher hay tự ghi ngược profile.
+- Phạm vi: tái sử dụng parser/validator trong `tools/model_budgets.py`; thêm CLI preview/apply có revision guard, chỉ provider/model ID và các số budget; không sao chép URL, key, options hoặc payload.
+- TDD Route: strict. RED: 12 tests sync thất bại trước khi thêm implementation; log `/tmp/dsh-budget-sync-red.log`, exit 1.
+- Nghiệm thu: preview không ghi; apply đúng revision chỉ sửa policy; giữ model tham chiếu chưa cấu hình, thêm model mới đúng ID; từ chối budget thiếu/không hợp lệ và race; full regression, independent review, commit.
+- Nếu preview của profile hiện tại còn giá trị cũ làm hạ budget vừa tra cứu, dừng trước apply để người dùng chọn nguồn; không âm thầm ghi đè.
+- Goal kiểm tra gần nhất đang paused, revision 2; chưa push hoặc xác nhận runtime health đạt.
+
+## Kết quả công cụ sync (2026-10-29)
+
+- Implementation: [CLI sync](../../../../tools/sync_model_budgets.py), tái sử dụng span editor qua `repaired_text(text, policy=None)`. Chỉ sync explicit provider/model budgets vào Git reference, không ghi profile hoặc gọi model.
+- Review độc lập hoàn tất; hai finding source alias và policy alias ở no-op đã có RED trước sửa. Đã chặn alias ở cả hai đầu trước early return; escape-literal hypothesis được reviewer rút lại sau kiểm tra bytes, không phải bug.
+- Revision gồm content + identity/mode của cả hai file; kiểm tra hardlink, khóa reference, guarded atomic replace. Tests bổ sung budget key vắng mặt, merge keys, lock contention, CRLF/Unicode, metadata stale và CLI/privacy.
+- Full gate cuối: 52 file Node, 642 pass/0 fail; Python 16+17+4+11+5+21 = 74 pass; shell syntax và diff check exit 0. Log Node `/tmp/dsh-budget-sync-node-verified.log`; job `bash-4a4fbec097e046fb` đã collect exit 0.
+- Preview thật read-only: 27 changed fields, 24 decreases, `applied=false`; source/profile và policy bytes giữ nguyên. KHÔNG apply snapshot cũ chỉ để health xanh. Cần chủ ý của người dùng trước khi nhập các giá trị giảm này.
+- [Hướng dẫn sử dụng](../../../model-budget-sync.md): Save Settings → preview → review changes → apply với revision → preview lại. Đây không phải auto-sync hoặc hot-edit bằng script vào profile.
+- Hạng mục triển khai công cụ đã kiểm chứng; kích hoạt budget/runtime và push của goal audit gốc vẫn chờ. Giữ goal paused; không tự restart GUI. Last-check → replace vẫn là best-effort identity guard, không phải filesystem CAS.
+
+## Bước tiếp theo (kế hoạch offline trước yêu cầu sync)
 
 1. Phối hợp cửa sổ dừng/restart DSH với người dùng; không tự ngắt phiên hiện tại hoặc khai sai writer-stopped.
 2. Chỉ khi mọi DSH/GUI/profile writer đã dừng thật, chạy `bash tools/fix-cordis-budgets.sh --writer-stopped` từ workspace. Tool đọc policy mới, backup và chỉ sửa budget model hiện có; không sửa routing/credential. Không truyền flag này khi GUI còn hoạt động.

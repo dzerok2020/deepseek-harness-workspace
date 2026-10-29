@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Model-keyed operating policy shared by health and repair (requires PyYAML).
+"""Model-keyed operating reference shared by health and repair (requires PyYAML).
 
-The overlay is the desired configuration, not proof of upstream acceptance.
+Settings owns live configuration; sync_model_budgets.py updates this reference.
+Repair is an explicit reverse restore, not proof of upstream acceptance.
 """
 from pathlib import Path
 import argparse
@@ -106,10 +107,10 @@ def check_profile_budgets(path):
         return ['invalid budget profile: ' + type(error).__name__]
 
 
-def repaired_text(text):
+def repaired_text(text, policy=None):
     """Patch only budget value spans; retain comments, credentials and other rows."""
     providers = read_providers(text)
-    policy = load_policy()
+    policy = load_policy() if policy is None else policy
     names = providers.keys() & policy.keys()
     if not names:
         raise BudgetError('khong thay provider or/cgw trong profile')
