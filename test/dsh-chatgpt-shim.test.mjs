@@ -4,6 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
 import { once } from "node:events";
+import { spawnSync } from "node:child_process";
 
 import {
   DEFAULT_MODELS,
@@ -539,4 +540,231 @@ test("server routes a compaction request onto its own bridge thread", async (t) 
     ["dsh-pcache-r2", "dsh-pcache-r2-compaction"],
     "a background compaction prompt must not share the live user thread",
   );
+});
+
+async function boundaryFixture(t) {
+  let calls = 0;
+  const hosts = [];
+  const bridge = http.createServer((req, res) => {
+    calls += 1;
+    req.resume();
+    res.end("data: [DONE]\n\n");
+  });
+  bridge.listen(0, "127.0.0.1");
+  await once(bridge, "listening");
+  const shim = createServer({ bridgeUrl: `http://127.0.0.1:${bridge.address().port}`, cwd: CWD, models: [...DEFAULT_MODELS] });
+  shim.on("request", (req) => hosts.push(req.headers.host));
+  shim.listen(0, "127.0.0.1");
+  await once(shim, "listening");
+  t.after(() => {
+    shim.closeAllConnections();
+    bridge.closeAllConnections();
+    shim.close();
+    bridge.close();
+  });
+  return { base: `http://127.0.0.1:${shim.address().port}`, port: shim.address().port, calls: () => calls, hosts };
+}
+
+// Use raw HTTP and observe the wire header: fetch can normalize/drop Host overrides.
+function postWithHost(fixture, host) {
+  return new Promise((resolve, reject) => {
+    const req = http.request(`${fixture.base}/v1/responses`, {
+      method: "POST", headers: { host, "content-type": "application/json; charset=utf-8" },
+    }, (res) => {
+      let text = "";
+      res.setEncoding("utf8");
+      res.on("data", (chunk) => { text += chunk; });
+      res.on("end", () => resolve({ status: res.statusCode, text }));
+      res.on("error", reject);
+    });
+    req.on("error", reject);
+    req.end(JSON.stringify(dshRequest()));
+  });
+}
+
+test("boundary: Origin is rejected before an incomplete body or any upstream call", async (t) => {
+  const fixture = await boundaryFixture(t);
+  const status = await new Promise((resolve, reject) => {
+    const req = http.request(`${fixture.base}/v1/responses`, {
+      method: "POST",
+      headers: { origin: "https://attacker.invalid", "content-type": "text/plain", "content-length": "100" },
+    }, (res) => {
+      res.resume();
+      res.on("end", () => { req.destroy(); resolve(res.statusCode); });
+    });
+    req.on("error", reject);
+    req.setTimeout(500, () => req.destroy(new Error("boundary waited for the request body")));
+    req.flushHeaders();
+  });
+  assert.equal(status, 403);
+  assert.equal(fixture.calls(), 0);
+});
+
+test("boundary: all Origins and cross-site fetch metadata are rejected", async (t) => {
+  const fixture = await boundaryFixture(t);
+  for (const headers of [{ origin: "null" }, { origin: fixture.base }, { "sec-fetch-site": "cross-site" }]) {
+    const reply = await fetch(`${fixture.base}/v1/responses`, {
+      method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(dshRequest()),
+    });
+    assert.equal(reply.status, 403);
+    await reply.text();
+  }
+  assert.equal(fixture.calls(), 0);
+});
+
+test("boundary: POST requires application/json", async (t) => {
+  const fixture = await boundaryFixture(t);
+  for (const type of [undefined, "text/plain", "application/x-www-form-urlencoded"]) {
+    const reply = await fetch(`${fixture.base}/v1/responses`, {
+      method: "POST", headers: type ? { "content-type": type } : {}, body: JSON.stringify(dshRequest()),
+    });
+    assert.equal(reply.status, 415);
+    await reply.text();
+  }
+  assert.equal(fixture.calls(), 0);
+});
+
+test("boundary: response suffix routes are not forwarded", async (t) => {
+  const fixture = await boundaryFixture(t);
+  for (const suffix of ["/", "/extra", "-other"]) {
+    const reply = await fetch(`${fixture.base}/v1/responses${suffix}`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(dshRequest()),
+    });
+    assert.equal(reply.status, 404);
+    await reply.text();
+  }
+  assert.equal(fixture.calls(), 0);
+});
+
+test("boundary: Host must name this loopback listener", async (t) => {
+  const fixture = await boundaryFixture(t);
+  for (const host of ["attacker.invalid", "127.0.0.1.attacker.invalid", "localhost@attacker.invalid", "localhost:bad", `127.0.0.1:${fixture.port === 65535 ? 1 : fixture.port + 1}`]) {
+    const reply = await postWithHost(fixture, host);
+    assert.equal(fixture.hosts.at(-1), host, "the requested Host must reach the server unchanged");
+    assert.equal(reply.status, 403);
+  }
+  assert.equal(fixture.calls(), 0);
+});
+
+test("boundary: native local callers retain ephemeral-port and IPv6 Host compatibility without auth", async (t) => {
+  const fixture = await boundaryFixture(t);
+  for (const hostname of ["127.0.0.1", "localhost", "[::1]"]) {
+    const host = `${hostname}:${fixture.port}`;
+    const reply = await postWithHost(fixture, host);
+    assert.equal(fixture.hosts.at(-1), host, "the requested Host must reach the server unchanged");
+    assert.equal(reply.status, 200);
+    assert.equal(reply.text, "data: [DONE]\n\n");
+  }
+  assert.equal(fixture.calls(), 3);
+});
+
+// Crash regressions run in an isolated child so a missing stream/URL error
+// boundary fails an assertion rather than terminating this test worker.
+function shimChild(scenario) {
+  const result = spawnSync(process.execPath, ["--input-type=module", "--eval", `
+    import assert from "node:assert/strict";
+    import http from "node:http";
+    import { once } from "node:events";
+    import { createServer, DEFAULT_MODELS } from ${JSON.stringify(new URL("../tools/dsh-chatgpt-shim.mjs", import.meta.url).href)};
+    const nativeFetch = globalThis.fetch;
+    let mockFetch = () => { throw new Error("mock upstream not configured"); };
+    globalThis.fetch = (...args) => mockFetch(...args);
+    const shim = createServer({ bridgeUrl: "http://mock-upstream.invalid", cwd: "/tmp/ws", models: [...DEFAULT_MODELS] });
+    shim.listen(0, "127.0.0.1");
+    await once(shim, "listening");
+    const base = "http://127.0.0.1:" + shim.address().port;
+    const post = (extra = {}) => nativeFetch(base + "/v1/responses", {
+      method: "POST", headers: { "content-type": "application/json" }, body: ${JSON.stringify(JSON.stringify(dshRequest()))}, ...extra,
+    });
+    try {
+      ${scenario}
+    } finally {
+      shim.closeAllConnections();
+      await new Promise((resolve) => shim.close(resolve));
+    }
+  `], { encoding: "utf8", timeout: 5000 });
+  assert.equal(result.status, 0, `${result.error ?? ""}\n${result.stderr}\n${result.stdout}`);
+}
+
+test("boundary: malformed request targets return 400 and the server survives", () => {
+  shimChild(`
+    const status = await new Promise((resolve, reject) => {
+      const req = http.request({ hostname: "127.0.0.1", port: shim.address().port, path: "http://[" }, (res) => {
+        res.resume();
+        res.on("end", () => resolve(res.statusCode));
+      });
+      req.on("error", reject);
+      req.end();
+    });
+    assert.equal(status, 400);
+    assert.equal((await nativeFetch(base + "/healthz")).status, 200);
+  `);
+});
+
+test("boundary: upstream stream errors are contained and the next request succeeds", () => {
+  shimChild(`
+    let calls = 0;
+    mockFetch = async () => {
+      if (++calls > 1) return new Response("data: [DONE]\\n\\n");
+      return new Response(new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode("data: partial\\n\\n"));
+          setTimeout(() => controller.error(new Error("upstream stream failed")), 20);
+        },
+      }));
+    };
+    await assert.rejects(async () => { const reply = await post(); await reply.text(); });
+    assert.equal((await nativeFetch(base + "/healthz")).status, 200);
+    assert.equal(await (await post()).text(), "data: [DONE]\\n\\n");
+  `);
+});
+
+test("boundary: client disconnect aborts an upstream fetch awaiting headers", () => {
+  shimChild(`
+    const started = Promise.withResolvers();
+    const aborted = Promise.withResolvers();
+    mockFetch = (_url, { signal }) => {
+      started.resolve(signal);
+      return new Promise((_resolve, reject) => {
+        signal?.addEventListener("abort", () => { aborted.resolve(); reject(new Error("upstream aborted")); }, { once: true });
+      });
+    };
+    const req = http.request(base + "/v1/responses", { method: "POST", headers: { "content-type": "application/json" } });
+    req.on("error", () => {});
+    req.end(${JSON.stringify(JSON.stringify(dshRequest()))});
+    assert.ok(await started.promise, "upstream fetch must receive an AbortSignal");
+    req.destroy();
+    await aborted.promise;
+    assert.equal((await nativeFetch(base + "/healthz")).status, 200);
+    mockFetch = async () => new Response("data: [DONE]\\n\\n");
+    assert.equal(await (await post()).text(), "data: [DONE]\\n\\n");
+  `);
+});
+
+test("boundary: cancelling a response aborts upstream and cancels its stream", () => {
+  shimChild(`
+    const aborted = Promise.withResolvers();
+    const cancelled = Promise.withResolvers();
+    let upstreamSignal;
+    mockFetch = async (_url, { signal }) => {
+      upstreamSignal = signal;
+      signal?.addEventListener("abort", () => aborted.resolve(), { once: true });
+      return new Response(new ReadableStream({
+        start(controller) { controller.enqueue(new TextEncoder().encode("data: partial\\n\\n")); },
+        cancel() { cancelled.resolve(); },
+      }));
+    };
+    const client = new AbortController();
+    const reply = await post({ signal: client.signal });
+    const reader = reply.body.getReader();
+    await reader.read();
+    assert.ok(upstreamSignal, "upstream fetch must receive an AbortSignal");
+    client.abort();
+    await aborted.promise;
+    await cancelled.promise;
+    assert.equal(upstreamSignal.aborted, true);
+    assert.equal((await nativeFetch(base + "/healthz")).status, 200);
+    mockFetch = async () => new Response("data: [DONE]\\n\\n");
+    assert.equal(await (await post()).text(), "data: [DONE]\\n\\n");
+  `);
 });

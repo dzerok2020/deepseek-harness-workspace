@@ -46,6 +46,7 @@ import { createHash, randomUUID } from "node:crypto";
 // match. Both-non-native is the documented skip path in the bridge.
 const NON_NATIVE = (value) => `dsh-${value}`;
 import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 
 /** Bridge v6.1.9 verified model catalog. */
 export const DEFAULT_MODELS = Object.freeze([
@@ -291,15 +292,32 @@ function isCompactionRequest(input) {
 export function createServer({ bridgeUrl, cwd, models, mode = "browser-only" }) {
   const base = bridgeUrl.replace(/\/+$/, "");
   return http.createServer(async (req, res) => {
-    const url = new URL(req.url, "http://localhost");
+    // Browser/rebinding boundary, not authentication for other local processes.
+    const host = /^(?:localhost|127\.0\.0\.1|\[::1\])(?::(\d{1,5}))?$/i.exec(req.headers.host ?? "");
+    if (!host || Number(host[1] ?? 80) !== req.socket.localPort) {
+      return sendJson(res, 403, { error: { message: "Host must name this loopback listener", type: "invalid_request_error" } });
+    }
+    if (req.headers.origin !== undefined || req.headers["sec-fetch-site"] === "cross-site") {
+      return sendJson(res, 403, { error: { message: "browser-origin requests are not allowed", type: "invalid_request_error" } });
+    }
+    let url;
+    try {
+      if (!req.url.startsWith("/") || req.url.startsWith("//")) throw new Error("invalid request target");
+      url = new URL(req.url, "http://localhost");
+    } catch {
+      return sendJson(res, 400, { error: { message: "invalid request target", type: "invalid_request_error" } });
+    }
     if (req.method === "GET" && url.pathname === "/healthz") {
       return sendJson(res, 200, { status: "ok", service: "dsh-chatgpt-shim", bridge: base, cwd, models, mode });
     }
     if (req.method === "GET" && url.pathname === "/v1/models") {
       return sendJson(res, 200, buildModelsPayload(models));
     }
-    if (req.method !== "POST" || !url.pathname.startsWith("/v1/responses")) {
+    if (req.method !== "POST" || url.pathname !== "/v1/responses") {
       return sendJson(res, 404, { error: { message: `no route for ${req.method} ${url.pathname}`, type: "invalid_request_error" } });
+    }
+    if (req.headers["content-type"]?.split(";", 1)[0].trim().toLowerCase() !== "application/json") {
+      return sendJson(res, 415, { error: { message: "application/json is required", type: "invalid_request_error" } });
     }
     let body;
     try {
@@ -316,22 +334,32 @@ export function createServer({ bridgeUrl, cwd, models, mode = "browser-only" }) 
     } catch (err) {
       return sendJson(res, 400, { error: { message: String(err.message ?? err), type: "invalid_request_error" } });
     }
-    let upstream;
+    const controller = new AbortController();
+    const abortUpstream = () => { if (!res.writableFinished) controller.abort(); };
+    req.once("aborted", abortUpstream);
+    res.once("close", abortUpstream);
     try {
-      upstream = await fetch(`${base}${url.pathname}${url.search}`, {
+      if (req.aborted || res.destroyed) return;
+      const upstream = await fetch(`${base}${url.pathname}${url.search}`, {
         method: "POST",
         headers: { "content-type": "application/json", accept: req.headers.accept ?? "text/event-stream" },
         body: JSON.stringify(body),
+        signal: controller.signal,
       });
+      const headers = { "content-type": upstream.headers.get("content-type") ?? "text/event-stream", "cache-control": "no-cache" };
+      res.writeHead(upstream.status, headers);
+      if (!upstream.body) return res.end();
+      // Preserve upstream bytes; pipeline contains errors and cancels the source
+      // on downstream disconnect rather than leaving an unhandled stream error.
+      await pipeline(Readable.fromWeb(upstream.body), res);
     } catch (err) {
+      if (res.destroyed || controller.signal.aborted) return;
+      if (res.headersSent) return res.destroy();
       return sendJson(res, 502, { error: { message: `bridge unreachable at ${base}: ${String(err.message ?? err)}`, type: "api_error" } });
+    } finally {
+      req.off("aborted", abortUpstream);
+      res.off("close", abortUpstream);
     }
-    const headers = { "content-type": upstream.headers.get("content-type") ?? "text/event-stream", "cache-control": "no-cache" };
-    res.writeHead(upstream.status, headers);
-    if (!upstream.body) return res.end();
-    // Preserve upstream bytes, including errors: transport symptoms alone cannot
-    // establish a browser diagnosis or justify telling the user to reload a tab.
-    Readable.fromWeb(upstream.body).pipe(res);
   });
 }
 
