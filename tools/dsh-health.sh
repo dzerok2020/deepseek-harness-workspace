@@ -1,9 +1,26 @@
 #!/usr/bin/env bash
 # Kiểm tra sức khoẻ DeepSeek Harness + workspace này.
-# CHỈ ĐỌC — không sửa gì. Chạy: bash tools/dsh-health.sh
+# Mặc định không tái sinh config hoặc gọi LLM. Chạy: bash tools/dsh-health.sh
+# --refresh-config ghi lại cordis.yml; --functional gọi LLM (có thể tốn phí).
 #
 # Mục đích: sau mỗi lần restart DSH hoặc cài plugin, chạy 1 lệnh này để biết
 # hệ thống còn lành hay không, thay vì đoán.
+
+REFRESH_CONFIG=0; FUNCTIONAL=0
+usage() {
+  printf '%s\n' 'Chạy: bash tools/dsh-health.sh [--refresh-config] [--functional]' \
+    'Mặc định: đọc config đã sinh và kiểm tra thụ động; không tái sinh config, không gọi LLM.' \
+    '  --refresh-config  Nạp lại profile bằng --dump-config; ghi cordis.yml.' \
+    '  --functional      Kiểm chứng trích xuất Hindsight bằng LLM; có thể phát sinh chi phí.'
+}
+for arg in "$@"; do
+  case "$arg" in
+    --refresh-config) REFRESH_CONFIG=1 ;;
+    --functional) FUNCTIONAL=1 ;;
+    --help|-h) usage; exit 0 ;;
+    *) printf 'LỖI: tham số không hỗ trợ: %s\n' "$arg" >&2; usage >&2; exit 2 ;;
+  esac
+done
 
 PROFILE="${DSH_HOME:-$HOME/.dsh}/profiles/web"
 WS="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -40,31 +57,42 @@ head_ "1. DSH cài đặt được"
 if command -v dsh >/dev/null 2>&1; then ok "dsh có trong PATH ($(dsh --version 2>/dev/null | head -1))"
 else bad "không tìm thấy lệnh dsh trong PATH"; fi
 
-head_ "2. Profile nạp được toàn bộ bundle (không lỗi cấu hình)"
-DUMP_ERR="$(mktemp)"; DUMP_OUT="$(mktemp)"
-dsh --profile web --dump-config >"$DUMP_OUT" 2>"$DUMP_ERR" && DUMP_RC=0 || DUMP_RC=$?
-# --dump-config bắt buộc ghi cordis.yml từ patch; trong sandbox agent (ro-bind /)
-# nó chết EROFS — artifact môi trường, không phải hỏng cấu hình.
-if [ "$DUMP_RC" -ne 0 ] && grep -qE 'EROFS|read-only file system' "$DUMP_ERR"; then
-  skip "dsh --dump-config: phải ghi cordis.yml nên chết EROFS trong sandbox agent — chạy lại mục này từ terminal thường"
-elif [ "$DUMP_RC" -eq 0 ]; then
-  ok "dsh --dump-config chạy thành công ($(wc -l <"$DUMP_OUT") dòng)"
-  if [ -s "$DUMP_ERR" ]; then bad "có cảnh báo/lỗi ở stderr khi nạp profile:"; head -10 "$DUMP_ERR" | sed 's/^/       /'
-  else ok "stderr rỗng (không có cảnh báo khi nạp)"; fi
+head_ "2. Profile: config đã sinh và kiểm chứng nạp bundle"
+if [ "$REFRESH_CONFIG" -eq 1 ]; then
+  DUMP_ERR="$(mktemp)"; DUMP_OUT="$(mktemp)"
+  dsh --profile web --dump-config >"$DUMP_OUT" 2>"$DUMP_ERR" && DUMP_RC=0 || DUMP_RC=$?
+  # --dump-config ghi cordis.yml từ patch; EROFS là giới hạn môi trường.
+  if [ "$DUMP_RC" -ne 0 ] && grep -qE 'EROFS|read-only file system' "$DUMP_ERR"; then
+    skip "dsh --dump-config: phải ghi cordis.yml nên chết EROFS trong sandbox agent — chạy lại mục này từ terminal thường"
+  elif [ "$DUMP_RC" -eq 0 ]; then
+    ok "dsh --dump-config chạy thành công ($(wc -l <"$DUMP_OUT") dòng)"
+    if [ -s "$DUMP_ERR" ]; then bad "có cảnh báo/lỗi ở stderr khi nạp profile:"; head -10 "$DUMP_ERR" | sed 's/^/       /'
+    else ok "stderr rỗng (không có cảnh báo khi nạp)"; fi
+  else
+    bad "dsh --dump-config THẤT BẠI — đọc lỗi bên dưới"
+    head -20 "$DUMP_ERR" | sed 's/^/       /'
+  fi
+  rm -f "$DUMP_ERR" "$DUMP_OUT"
 else
-  bad "dsh --dump-config THẤT BẠI — đọc lỗi bên dưới"
-  head -20 "$DUMP_ERR" | sed 's/^/       /'
+  if [ -r "$PROFILE/cordis.yml" ]; then
+    if wc -l "$PROFILE/cordis.yml" >/dev/null; then ok "đọc được cordis.yml đã sinh (có thể cũ; không tái sinh)"
+    else bad "không đọc được cordis.yml đã sinh"; fi
+  else
+    skip "chưa có cordis.yml đọc được; không tự sinh config"
+  fi
+  skip "chưa kiểm chứng tái sinh/nạp bundle; --refresh-config sẽ ghi lại cordis.yml"
 fi
 
 head_ "3. Plugin chống lặp đã được cài"
-N="$(node -p "try{require('$PROFILE/package.json').dsh.profile.bundles.length}catch(e){-1}" 2>/dev/null)"
-[ "$N" != "-1" ] && ok "số bundle: $N" || bad "không đọc được package.json của profile"
+if N="$(node -p "try{require(process.argv[1]).dsh.profile.bundles.length}catch(e){-1}" "$PROFILE/package.json" 2>/dev/null)" && [[ "$N" =~ ^[0-9]+$ ]]; then
+  ok "số bundle: $N"
+else bad "không đọc được package.json của profile"; fi
 grep -qE "dsh-loop-guard" "$PROFILE/package.json" 2>/dev/null \
   && ok "dsh-loop-guard có trong danh sách bundle" \
   || bad "dsh-loop-guard CHƯA được cài (chạy: dsh plugin --profile web add file:$WS/dsh-loop-guard)"
 if [ -f "${DSH_HOME:-$HOME/.dsh}/loop-guard-status.json" ]; then
   ok "loop-guard đã chạy ít nhất 1 lần (có loop-guard-status.json)"
-  note "$(node -p "const s=require('${DSH_HOME:-$HOME/.dsh}/loop-guard-status.json');'enabled='+s.enabled+'  assemblies='+s.counters.assemblies+'  freezes='+s.counters.freezes+'  reinserts='+s.counters.reinserts+'  sessions đang giữ='+s.activeSessions" 2>/dev/null)"
+  note "$(node -p "const s=require(process.argv[1]);'enabled='+s.enabled+'  assemblies='+s.counters.assemblies+'  freezes='+s.counters.freezes+'  reinserts='+s.counters.reinserts+'  sessions đang giữ='+s.activeSessions" "${DSH_HOME:-$HOME/.dsh}/loop-guard-status.json" 2>/dev/null)"
 else
   note "loop-guard-status.json chưa có — bình thường nếu chưa restart DSH kể từ lúc cài."
   note "Sau khi restart, gửi 1 prompt bất kỳ rồi kiểm tra lại mục này."
@@ -77,10 +105,10 @@ NESTED="$(find "$PROFILE/node_modules" -maxdepth 5 -type d -path '*/node_modules
 if [ -z "$NESTED" ]; then ok "không có bản @deepseek-ai/* lồng trong node_modules"
 else bad "còn bản lồng (dễ làm runtime tắt cả row dùng gói đó):"; echo "$NESTED" | sed 's/^/       /'; fi
 RUNTIME_VER="$(dsh --version 2>/dev/null | head -1 | tr -d '[:space:]')"
-VER_SF="$(node -p "try{require('$PROFILE/node_modules/@deepseek-ai/dsh-skill-filesystem/package.json').version}catch(e){'THIẾU'}" 2>/dev/null)"
+VER_SF="$(node -p "try{require(process.argv[1]).version}catch(e){'THIẾU'}" "$PROFILE/node_modules/@deepseek-ai/dsh-skill-filesystem/package.json" 2>/dev/null)"
 if [ -n "$RUNTIME_VER" ] && [ "$VER_SF" = "$RUNTIME_VER" ]; then ok "@deepseek-ai/dsh-skill-filesystem = $VER_SF (khớp runtime $RUNTIME_VER)"
 else bad "@deepseek-ai/dsh-skill-filesystem = $VER_SF (nên khớp runtime ${RUNTIME_VER:-?})"; fi
-VER_OV="$(node -p "try{require('$PROFILE/node_modules/@openviking/dsh-memory-plugin/package.json').version}catch(e){'THIẾU'}" 2>/dev/null)"
+VER_OV="$(node -p "try{require(process.argv[1]).version}catch(e){'THIẾU'}" "$PROFILE/node_modules/@openviking/dsh-memory-plugin/package.json" 2>/dev/null)"
 case "$VER_OV" in 0.5.1[7-9]|0.5.[2-9]*) ok "@openviking/dsh-memory-plugin = $VER_OV (peer cho phép 0.2.x)";;
   *) bad "@openviking/dsh-memory-plugin = $VER_OV (0.5.16 trở xuống chặn 0.2.x — hãy nâng lên >=0.5.19)";; esac
 
@@ -179,11 +207,20 @@ if ss -ltn 2>/dev/null | grep -q '0\.0\.0\.0:9999'; then
   bad "control plane nghe trên 0.0.0.0:9999 mà KHÔNG có xác thực — cả LAN đọc được bộ nhớ (đặt HOSTNAME=127.0.0.1 trong unit)"
 else ok "control plane chỉ nghe trên loopback (không lộ bộ nhớ ra LAN)"; fi
 
-head_ "10b. Kiểm chứng chức năng bộ nhớ (gọi LLM thật, không lưu dữ liệu)"
-if python3 "$WS/tools/hindsight-health.py"; then
-  ok "Hindsight qua kiểm chứng chức năng và bảo vệ truy cập"
+head_ "10b. Kiểm chứng bộ nhớ (mặc định không gọi LLM)"
+if [ "$FUNCTIONAL" -eq 1 ]; then
+  if python3 "$WS/tools/hindsight-health.py" --functional; then
+    ok "Hindsight qua các kiểm tra không bị hoãn; xem trạng thái trích xuất LLM ở trên"
+  else
+    bad "Hindsight chưa qua kiểm chứng chức năng — /health=200 không đủ"
+  fi
 else
-  bad "Hindsight chưa qua kiểm chứng chức năng — /health=200 không đủ"
+  if python3 "$WS/tools/hindsight-health.py"; then
+    ok "Hindsight qua /health, loopback và quyền file (không gọi LLM)"
+  else
+    bad "Hindsight chưa qua kiểm tra thụ động /health, loopback hoặc quyền file"
+  fi
+  skip "chưa kiểm chứng trích xuất LLM; --functional có thể phát sinh chi phí (không lưu dữ liệu)"
 fi
 
 head_ "11. Dịch vụ OmniRoute + Headroom (chuỗi model của provider \`or\`)"
@@ -245,7 +282,6 @@ fi
 
 printf '\n\033[1mKẾT QUẢ:\033[0m %d đạt, %d lỗi, %d bỏ qua\n' "$PASS" "$FAIL" "$SKIP"
 if [ "$FAIL" -gt 0 ]; then echo "Có mục cần xử lý — xem các dòng LỖI ở trên."
-elif [ "$SKIP" -gt 0 ]; then printf 'Đạt mọi mục kiểm được ở đây; %d mục BỎ QUA vì sandbox agent không nhìn thấy (systemd bus/EROFS) — chạy lại từ terminal thường để phủ đủ.\n' "$SKIP"
+elif [ "$SKIP" -gt 0 ]; then printf 'Đạt các mục đã kiểm; %d mục BỎ QUA có chủ đích hoặc do giới hạn môi trường — xem từng dòng BỎ QUA, chưa phủ đủ.\n' "$SKIP"
 else echo "Các kiểm tra trong script đều đạt; không thay thế kiểm thử tải, UI hoặc nghiệm thu dự án thật."; fi
-rm -f "$DUMP_ERR" "$DUMP_OUT"
 exit $([ "$FAIL" -eq 0 ] && echo 0 || echo 1)

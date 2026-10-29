@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Read-only Hindsight functional and local-exposure checks (no stored memories)."""
+"""Passive Hindsight checks; --functional opts into an LLM call (no stored memories)."""
+import argparse
 import json
 from pathlib import Path
 import stat
@@ -73,7 +74,15 @@ def describe_error(error):
     return 'lỗi không xác định (không hiển thị payload)'
 
 
-def main():
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
+    functional = parser.add_mutually_exclusive_group()
+    functional.add_argument('--functional', action='store_true',
+                            help='call the extraction LLM (may incur provider costs; no stored memories)')
+    functional.add_argument('--skip-functional', action='store_false', dest='functional',
+                            help='compatibility alias for the passive default')
+    parser.set_defaults(functional=False)
+    args = parser.parse_args(argv)
     failures = []
     deferred = False
     stage = 'bảo vệ truy cập'
@@ -88,20 +97,21 @@ def main():
         stage = 'kết nối'
         with urllib.request.urlopen('http://127.0.0.1:9077/health', timeout=10):
             pass
-        stage = 'trích xuất LLM'
-        bank = urllib.parse.quote('coding-agent::default-workspace', safe='')
-        request = urllib.request.Request(
-            'http://127.0.0.1:9077/v1/default/banks/' + bank + '/memories/dry-run-extract',
-            data=json.dumps({
-                'content': 'The diagnostic sample project uses port 45678.',
-                'strategy': 'document',
-            }).encode(),
-            headers={'Content-Type': 'application/json'},
-        )
-        with urllib.request.urlopen(request, timeout=60) as response:
-            extracted = json.load(response)
-        if not validate_extraction(extracted):
-            failures.append('trích xuất không trả về fact chứa giá trị thử 45678')
+        if args.functional:
+            stage = 'trích xuất LLM'
+            bank = urllib.parse.quote('coding-agent::default-workspace', safe='')
+            request = urllib.request.Request(
+                'http://127.0.0.1:9077/v1/default/banks/' + bank + '/memories/dry-run-extract',
+                data=json.dumps({
+                    'content': 'The diagnostic sample project uses port 45678.',
+                    'strategy': 'document',
+                }).encode(),
+                headers={'Content-Type': 'application/json'},
+            )
+            with urllib.request.urlopen(request, timeout=60) as response:
+                extracted = json.load(response)
+            if not validate_extraction(extracted):
+                failures.append('trích xuất không trả về fact chứa giá trị thử 45678')
     except Exception as error:
         # Never print remote payloads or credential values.
         if stage == 'trích xuất LLM' and provider_quota_deferred(error):
@@ -113,8 +123,12 @@ def main():
             error.close()
     for failure in failures:
         print('LỖI:', failure)
+    if not args.functional:
+        print('BỎ QUA: trích xuất LLM; dùng --functional để kiểm chứng (có thể phát sinh chi phí)')
     if not failures:
-        if deferred:
+        if not args.functional:
+            print('ĐẠT: /health, loopback và quyền file (kiểm tra thụ động, không gọi LLM)')
+        elif deferred:
             print(
                 'ĐẠT (một phần): loopback và quyền file; trích xuất LLM hoãn vì '
                 'provider tạm hết quota — không phải lỗi bộ nhớ cục bộ'

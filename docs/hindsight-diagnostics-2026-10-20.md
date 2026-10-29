@@ -2,6 +2,8 @@
 
 ## Phạm vi
 
+**Cập nhật 2026-10-29:** đây là biên bản hành vi cũ. Hiện công cụ mặc định chỉ kiểm tra thụ động (quyền file, listener và GET `/health`); phải thêm `--functional` mới gọi LLM qua `memories/dry-run-extract`, có thể phát sinh chi phí. `--skip-functional` vẫn là alias cho chế độ thụ động. Các kết quả thực tế bên dưới thuộc phiên 2026-10-20, không phải lần kiểm chứng mới.
+
 Công cụ `tools/hindsight-health.py` kiểm tra quyền file và địa chỉ nghe cục bộ, sau đó gọi `/health` và endpoint `memories/dry-run-extract` với ví dụ tổng hợp chứa port 45678. Không ghi mẫu vào bộ nhớ, không đổi model, service hoặc cơ sở dữ liệu.
 
 Lỗi được gắn với bước bảo vệ truy cập, kết nối hoặc trích xuất LLM. HTTP được phân nhóm xác thực/quyền truy cập, endpoint/phương thức, giới hạn lượt gọi, timeout, dịch vụ/upstream và yêu cầu bị từ chối. Không in URL lỗi, response body, thông tin xác thực hoặc nội dung bộ nhớ.
