@@ -103,10 +103,21 @@ export function stripCgwAdvisory(text) {
 }
 
 function bridgeUp() {
-  const res = spawnSync("curl", ["-s", "--max-time", "4", SHIM_HEALTH], { encoding: "utf8" });
-  if (res.status !== 0 || !res.stdout) return false;
+  // Match orchestration-health.py: a live shim alone does not prove that a
+  // browser can accept this pipeline's model. Fail closed to native fallback.
+  const getJSON = (url) => {
+    const res = spawnSync("curl", ["--fail", "--silent", "--max-time", "4", url], { encoding: "utf8" });
+    if (res.status !== 0 || !res.stdout) throw new Error("readiness endpoint unavailable");
+    return JSON.parse(res.stdout);
+  };
   try {
-    return JSON.parse(res.stdout).status === "ok";
+    const shim = getJSON(SHIM_HEALTH);
+    if (shim?.status !== "ok" || shim.mode !== "browser-only" ||
+        typeof shim.bridge !== "string" || !/^https?:\/\//.test(shim.bridge)) return false;
+    const bridge = getJSON(shim.bridge.replace(/\/+$/, "") + "/healthz");
+    if (bridge?.accepting_turns !== true) return false;
+    const catalog = getJSON(SHIM_HEALTH.replace(/\/healthz$/, "/v1/models"));
+    return Array.isArray(catalog?.data) && catalog.data.some((entry) => entry?.id === CGW_MODEL);
   } catch {
     return false;
   }
