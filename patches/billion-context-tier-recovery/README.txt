@@ -18,50 +18,67 @@ sách ký tự/token và dành trước toàn bộ số lượt gọi cần thi�
 một lần sau khi tất cả chunk thành công. Cancellation, summary thất bại, kết quả
 ghép quá dài hoặc apply bị từ chối không được âm thầm cắt bỏ nội dung nguồn.
 
-Owner và SHA256 chính xác được pin trong generate.mjs. SHA256 là dấu vân tay của
-file để tránh vá nhầm bundle. Bundle khác bị từ chối; đây không phải source patch
-có thể dùng tùy ý cho phiên bản upstream khác.
+SHA256 gốc 104502cb11fa98e205f61ba9cc0dde8d3d03b57d8330bfcbafe84f8d130ed2d9
+được pin trong original.mjs. Loader chung giải nén original-index.js.gz và kiểm
+hash trước khi generator, harness hoặc guards dùng nguồn. Fixture là bundle
+0.1.204 chưa sửa, không lấy bundle/package version từ installed runtime đang đổi.
+OWNER chỉ còn là đường dẫn output bị cấm. Bundle khác bị từ chối; không repin để
+chạy trên phiên bản upstream mới.
 
 3. File nào là nguồn được duy trì?
 
-- generate.mjs: kiểm tra owner/hash và sinh candidate riêng, không ghi đè runtime.
+- original.mjs: loader/hash chung; chỉ đọc fixture cố định cạnh module.
+- original-index.js.gz: bản gốc 0.1.204, gzip deterministic level 9, mtime 0;
+  1.227.183 byte, giải nén thành 5.248.857 byte. Hash/nguồn offline trong
+  original.provenance.json; kiểm tra nguồn trước khi ghi fixture bằng flag wx.
+- LICENSE.original.txt: TOÀN BỘ license gốc, gồm Additional Term — Attribution
+  on Product Surfaces và phần tiếng Trung; không thay bằng nhãn MIT đơn thuần.
+- generate.mjs: kiểm tra hash và sinh candidate riêng, không ghi đè runtime.
 - harness.mjs: chạy phần preflight/splitter được trích xuất trong môi trường VM.
-- recovery.test.mjs: các kịch bản khôi phục và lỗi gốc.
-- guards.test.mjs, review.test.mjs: các ràng buộc và trường hợp hồi quy bổ sung.
-- README.txt: hướng dẫn này.
+- recovery.test.mjs: mặc định patch(original) trong bộ nhớ; ORIGINAL=1 tái hiện gốc.
+- guards.test.mjs, original.test.mjs, review.test.mjs: pin, license, CLI và hồi quy.
+- README.txt: hướng dẫn này. Fixture này dùng billion-context:
+  https://github.com/ranxianglei/billion-context; các nghĩa vụ attribution upstream
+  đầy đủ nằm trong LICENSE.original.txt.
 
 Full generated bundle, candidate.patch và log red/green là scratch local (kết quả
 tạm), không phải nguồn chuẩn để chỉnh sửa hoặc bằng chứng triển khai production.
 
 4. Chạy kiểm chứng offline
 
-Chạy từ thư mục gốc workspace, với Node.js và bundle owner đúng phiên bản mà
-generate.mjs yêu cầu. Không chạy lệnh update/restart DSH để kiểm chứng candidate.
+Chạy từ thư mục gốc workspace với Node.js; không cần installed owner đúng phiên
+bản. Fixture, provenance và license được giữ trong repo; không tải mạng, không
+đổi package/config, không update/restart DSH để kiểm chứng candidate.
+
+Mặc định — toàn bộ candidate suite phải GREEN, không cần sinh file:
+
+  node --test patches/billion-context-tier-recovery/*.test.mjs
 
 Bước A — tái hiện lỗi gốc, EXPECTED NONZERO EXIT (test đỏ có chủ đích):
 
-  node --test --test-name-pattern='full preflight recovers' patches/billion-context-tier-recovery/recovery.test.mjs
+  ORIGINAL=1 node --test --test-name-pattern='full preflight recovers' patches/billion-context-tier-recovery/recovery.test.mjs
 
-Nếu test không đỏ, đừng kết luận bản vá đã hiệu quả: có thể owner hoặc baseline
-đã đổi. Đọc assertion và kiểm tra môi trường trước khi tiếp tục.
+Nếu test không đỏ, đừng kết luận bản vá đã hiệu quả: kiểm tra fixture/hash và
+assertion trước khi tiếp tục. ORIGINAL=1 chỉ dùng để tái hiện lỗi, không phải
+chế độ chạy toàn suite mặc định.
 
-Bước B — sinh output mới; đường dẫn output PHẢI chưa tồn tại:
+Bước B (tùy chọn) — sinh output mới; đường dẫn output PHẢI chưa tồn tại:
 
   node patches/billion-context-tier-recovery/generate.mjs patches/billion-context-tier-recovery/candidate-check.js
 
-Nếu báo sai hash/owner, dừng: không bỏ qua pin hoặc vá thẳng bundle đang cài.
+Nếu báo sai hash, dừng: không bỏ qua pin hoặc vá thẳng bundle đang cài.
 Nếu output đã tồn tại, chọn tên output mới rồi dùng cùng tên ở bước C; không xóa
 mù file cũ để ép generator chạy. Output mới là file tạm, không git add bundle.
 
 Bước C — chạy cùng bộ test trên candidate vừa sinh:
 
-  CANDIDATE=patches/billion-context-tier-recovery/candidate-check.js node --test patches/billion-context-tier-recovery/recovery.test.mjs patches/billion-context-tier-recovery/guards.test.mjs patches/billion-context-tier-recovery/review.test.mjs
+  CANDIDATE=patches/billion-context-tier-recovery/candidate-check.js node --test patches/billion-context-tier-recovery/*.test.mjs
 
 Bước D — hồi quy workspace:
 
   node --test test/
 
-Ghi lại lệnh, exit code, số pass/fail và owner/hash khi báo cáo. Một lần test xanh
+Ghi lại lệnh, exit code, số pass/fail và fixture/hash khi báo cáo. Một lần test xanh
 không đủ để tuyên bố đã sửa runtime production.
 
 5. Bằng chứng này chứng minh gì — và chưa chứng minh gì?

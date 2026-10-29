@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {fixture,original} from './harness.mjs';
-const source=process.env.CANDIDATE?fs.readFileSync(process.env.CANDIDATE,'utf8'):original;
+import {patch} from './generate.mjs';
+const source=process.env.CANDIDATE?fs.readFileSync(process.env.CANDIDATE,'utf8'):process.env.ORIGINAL==='1'?original:patch(original);
 const unchanged=f=>JSON.stringify(f.session.state);
 
 test('full preflight recovers oversized active summary pair using bounded subcalls',async()=>{

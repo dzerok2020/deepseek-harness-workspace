@@ -1,0 +1,26 @@
+{
+  "package": "billion-context",
+  "version": "0.1.204",
+  "purpose": "Offline unmodified original for candidate generation and regression tests; never an installed-runtime replacement.",
+  "source": {
+    "packagePath": "dist/index.js",
+    "localStorePath": "/home/dzerok/.local/share/pnpm/store/v10/files/1e/295e6b21b708c18c6176443b0036cd3ea9450ceb4e8a4d501340299b97b7a7e0718d277edc9aa76e0f1dc23c469ac35094ed672dac73d39e8556e31951b6eb-exec",
+    "bytes": 5248857,
+    "sha256": "104502cb11fa98e205f61ba9cc0dde8d3d03b57d8330bfcbafe84f8d130ed2d9"
+  },
+  "gzip": {
+    "file": "original-index.js.gz",
+    "generator": "node:zlib.gzipSync(originalBytes, {level: 9, mtime: 0})",
+    "headerHex": "1f8b0800000000000203",
+    "bytes": 1227183,
+    "sha256": "1b2adf72b07894b03ae1ddd5cf2de749c4ce20ae02828f4e802ed5dfcc5f2dd0"
+  },
+  "license": {
+    "file": "LICENSE.original.txt",
+    "localStorePath": "/home/dzerok/.local/share/pnpm/store/v10/files/d7/9838d93b81339e25531fcfff0970c780aec828f9792d2bd8071fe42bd0f39ae6a3df6813fc22bcdc4db423ac447136824ccab713e890c5d960054151b58a2e",
+    "bytes": 2652,
+    "sha256": "f27574cd3f4b0b4877da2869953945d66d76a665e7ebb9320a5e87aa76f7ab58",
+    "terms": "Full upstream MIT License plus Additional Term — Attribution on Product Surfaces, including its Chinese text."
+  },
+  "provenance": "Copied offline from the approved immutable local pnpm store object after exact SHA256 verification. Package/version identity and the unchanged source hash are the audit pin; no moving installed bundle, package metadata, network, repin or runtime application is used."
+}

@@ -1,12 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import crypto from 'node:crypto';
+import {OWNER,HASH,loadOriginal,verifyOriginal} from './original.mjs';
+export {OWNER,HASH};
 import {fileURLToPath} from 'node:url';
 const root=path.dirname(fileURLToPath(import.meta.url));
-export const OWNER='/home/dzerok/.dsh/profiles/web/node_modules/billion-context/dist/index.js';
-export const HASH='104502cb11fa98e205f61ba9cc0dde8d3d03b57d8330bfcbafe84f8d130ed2d9';
 export function patch(source){
- if(crypto.createHash('sha256').update(source).digest('hex')!==HASH)throw Error('Owner SHA256 mismatch; refusing candidate generation');
+ verifyOriginal(source);
  const replace=(oldText,newText)=>{if(source.split(oldText).length!==2)throw Error('Exact anchor missing or non-unique: '+oldText.slice(0,100));source=source.replace(oldText,newText)};
  // Retain the original fitting-span preference. Only the rejected oversized pair gets a fallback.
  replace('if(cLast<0){poolProblems.push(`tier-${pool.tier}: no two-block span stayed under the ${TIER_DISTILL_SOURCE_CHAR_BUDGET.toLocaleString("en-US")}-character source budget`);continue}',
@@ -17,10 +16,8 @@ export function patch(source){
  return source;
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
- const pkg=JSON.parse(fs.readFileSync(path.join(path.dirname(OWNER),'../package.json'),'utf8'));
- if(pkg.name!=='billion-context'||pkg.version!=='0.1.204')throw Error('Expected billion-context 0.1.204');
  const output=path.resolve(process.argv[2]??path.join(root,'candidate-index.js'));
  if(path.dirname(output)!==root||output===OWNER)throw Error('Output must be directly inside candidate directory');
- fs.writeFileSync(output,patch(fs.readFileSync(OWNER,'utf8')),{flag:'wx'});
+ fs.writeFileSync(output,patch(loadOriginal()),{flag:'wx'});
  console.log('Workspace candidate generated: '+output);
 }

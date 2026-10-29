@@ -1,6 +1,6 @@
-import fs from 'node:fs';
+import {loadOriginal} from './original.mjs';
 import vm from 'node:vm';
-export const owner='/home/dzerok/.dsh/profiles/web/node_modules/billion-context/dist/index.js';
+export {OWNER as owner} from './original.mjs';
 export function extract(source,name,end){const start=source.indexOf(`function ${name}(`);if(start<0)throw Error(name);return source.slice(start,source.indexOf(end,start));}
 export function fixture(source,{size=40000,gap='',reply,limit=18000,maxSummary=10000,tokenScale=4,aborted=false,refuse=false,noShrink=false,wireOverhead=0,maxCalls=16}={}){
  const calls=[],logs=[],applies=[];
@@ -21,4 +21,4 @@ export function fixture(source,{size=40000,gap='',reply,limit=18000,maxSummary=1
  const deps={session,core,wireOverhead,config:{modelContextLimit:limit,compress:{minCompressRange:0,maxSummaryLength:maxSummary,minSummaryLength:100},preserveRecentMessages:2,tiers:{enabled:true}},externalSummary:{stats:{calls:0,attempts:0}},prompts:{tier2DistillRules:'TIER2',tier3CondenseRules:'TIER3'},url:'offline',model:'fake',log:(level,text)=>logs.push({level,text}),signal:{aborted}};
  return {calls,logs,applies,session,signal:deps.signal,run:()=>context.preflightCompress(deps,messages)};
 }
-export const original=fs.readFileSync(owner,'utf8');
+export const original=loadOriginal();
