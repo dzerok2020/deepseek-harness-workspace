@@ -224,6 +224,7 @@ export function compileConfig(raw) {
       irreversible: rules.map((rule) => ({
         id: String(rule.id ?? "unnamed"),
         why: String(rule.why ?? ""),
+        git: rules === DEFAULTS_IRREVERSIBLE && String(rule.id).startsWith("git-"),
         re: compileOne(rule.pattern ?? rule.re)
       })),
       allow: compileList(merged.allowPatterns ?? DEFAULTS.allowPatterns)
@@ -255,6 +256,79 @@ function describeTarget(args) {
   return "";
 }
 
+/** Extract literal executable positions, not shell expansion or a shell sandbox. */
+function executableCommands(command, depth = 0, offset = 0) {
+  const commands = [];
+  let words = [];
+  const finish = () => {
+    let start = 0;
+    while (start < words.length) {
+      const value = words[start].value;
+      const executableName = value.slice(value.lastIndexOf("/") + 1);
+      if (/^(?:[A-Za-z_][A-Za-z0-9_]*=|if$|then$|elif$|else$|do$|!$|\{$)/.test(value)) {
+        start += 1;
+        continue;
+      }
+      if (!/^(?:env|command|exec|npx|time)$/.test(executableName)) break;
+      const wrapper = executableName;
+      start += 1;
+      while (words[start]?.value.startsWith("-")) {
+        const option = words[start++].value;
+        if (option === "--") break;
+        if (/^(?:--help|--version)$/.test(option) ||
+            (wrapper === "command" && /^(?:-v|-V)$/.test(option)) ||
+            (wrapper === "npx" && /^(?:-c|--call)$/.test(option))) {
+          // Reporting a command or passing shell text is not literal verification evidence.
+          start = words.length;
+          break;
+        }
+        if ((wrapper === "env" && /^(?:-u|--unset|-C|--chdir)$/.test(option)) ||
+            (wrapper === "exec" && option === "-a") ||
+            (wrapper === "npx" && /^(?:-p|--package)$/.test(option))) start += 1;
+      }
+    }
+    if (start < words.length && !/\s/.test(words[start].value)) {
+      const executable = words.slice(start);
+      const name = executable[0].value.split("/").pop();
+      if (/^(?:sh|bash|dash|zsh)$/.test(name) && depth < 3) {
+        for (let i = 1; executable[i]?.value.startsWith("-"); i += 1) {
+          if (/^-[^-]*c/.test(executable[i].value) && executable[i + 1]) {
+            const body = executable[i + 1];
+            commands.push(...executableCommands(body.value, depth + 1, body.at));
+            break;
+          }
+        }
+      } else commands.push(executable);
+    }
+    words = [];
+  };
+  // A comment starts a token; # inside an unquoted word is just part of that word.
+  const tokens = /#[^\n]*|(?:[^\s;&|()<>'"\\]|\\[\s\S]|"(?:\\[\s\S]|[^"\\])*"|'[^']*')+|&&|\|\||[;&|\n()]/g;
+  for (const match of command.matchAll(tokens)) {
+    const raw = match[0];
+    if (raw.startsWith("#")) continue;
+    if (/^(?:&&|\|\||[;&|\n()])$/.test(raw)) { finish(); continue; }
+    const value = raw.replace(/\\[\s\S]|"(?:\\[\s\S]|[^"\\])*"|'[^']*'/g, (part) =>
+      part[0] === "\\" ? part.slice(1) : part[0] === "'" ? part.slice(1, -1) :
+        part.slice(1, -1).replace(/\\([$`"\\\n])/g, "$1"));
+    words.push({ value, at: offset + match.index });
+  }
+  finish();
+  return commands;
+}
+
+/** Git's global options precede the subcommand and must not hide its destructive form. */
+function gitCommand(words) {
+  if (words[0]?.value.split("/").pop() !== "git") return null;
+  let start = 1;
+  while (words[start]?.value.startsWith("-")) {
+    const option = words[start++].value;
+    if (option === "--") break;
+    if (/^(?:-C|-c|--git-dir|--work-tree|--namespace|--config-env|--super-prefix)$/.test(option)) start += 1;
+  }
+  return ["git", ...words.slice(start).map((word) => word.value)].join(" ");
+}
+
 /**
  * Classify one tool call as an edit (the world changed), a verification (the change was
  * checked), or neither. Nothing here trusts the model's prose: only the tool name and the
@@ -277,7 +351,12 @@ export function classifyCall(call, cfg) {
     const lastMatchAt = (rules) => Math.max(-1, ...rules.flatMap((re) =>
       [...command.matchAll(new RegExp(re.source, re.flags.includes("g") ? re.flags : `${re.flags}g`))]
         .map((match) => match.index)));
-    const lastVerifyAt = lastMatchAt(cfg.re.verify);
+    const lastVerifyAt = Math.max(-1, ...executableCommands(command).filter((words) => {
+      const executable = words.map((word) => word.value).join(" ");
+      const basename = [words[0].value.split("/").pop(), ...words.slice(1).map((word) => word.value)].join(" ");
+      return cfg.re.verify.some((re) => [executable, basename].some((value) =>
+        new RegExp(re.source, re.flags).exec(value)?.index === 0));
+    }).map((words) => words[0].at));
     const lastEditAt = lastMatchAt(cfg.re.editShell);
     const mayEditOnFailure = lastEditAt >= 0 && !/^\s*false\s*&&/.test(command);
     if (lastEditAt >= 0 && lastEditAt >= lastVerifyAt) return { kind: "edit", via: "shell", detail: firstLine(command), mayEditOnFailure };
@@ -299,8 +378,12 @@ export function findIrreversible(call, cfg) {
   const command = extractCommand(args);
   if (command.length === 0) return null;
   if (cfg.re.allow.some((re) => re.test(command))) return null;
+  const gitCommands = executableCommands(command).map(gitCommand).filter((value) => value !== null);
   for (const rule of cfg.re.irreversible) {
-    if (rule.re.test(command)) return { id: rule.id, why: rule.why, command: firstLine(command) };
+    const candidates = rule.git ? gitCommands : [command];
+    if (candidates.some((candidate) => rule.git ? rule.re.exec(candidate)?.index === 0 : rule.re.test(candidate))) {
+      return { id: rule.id, why: rule.why, command: firstLine(command) };
+    }
   }
   return null;
 }

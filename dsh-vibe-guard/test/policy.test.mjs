@@ -25,6 +25,81 @@ test("verification commands are recognised in any case", () => {
   }
 });
 
+for (const command of [
+  "printf '%s\\n' 'node --test'",
+  'echo "npm test"',
+  'printf "%s\\n" node --test',
+  'echo ok # node --test',
+  '# npm test\nprintf done',
+  "TEST_COMMAND='node --test' printf done",
+  'node -e "console.log(\'node --test\')"',
+]) {
+  test(`verification text is not executable evidence: ${command}`, () => {
+    const s = createState();
+    noteCall(s, { kind: 'edit', detail: 'src/a.ts' }, true);
+    const verdict = classifyCall({ name: 'bash', arguments: { command } }, cfg);
+    assert.equal(verdict.kind, 'neutral');
+    noteCall(s, verdict, true);
+    assert.ok(shouldForceVerify(s, cfg), 'printing/commenting a test must leave verification debt');
+  });
+}
+
+test('actual verification remains valid through wrappers, environment and conditionals', () => {
+  for (const command of [
+    'node --test',
+    'NODE_ENV=test node --test',
+    'env NODE_ENV=test node --test',
+    'command node --test',
+    'npx --no-install vitest run',
+    'if true; then node --test; fi',
+    'true && node --test',
+    'false || node --test',
+    'node --test && printf done',
+  ]) {
+    const s = createState();
+    noteCall(s, { kind: 'edit' }, true);
+    const verdict = classifyCall({ name: 'bash', arguments: { command } }, cfg);
+    assert.equal(verdict.kind, 'verify', command);
+    noteCall(s, verdict, true);
+    assert.equal(shouldForceVerify(s, cfg), null, command);
+  }
+});
+
+test('literal shell verification wrappers preserve executable positions', () => {
+  for (const command of [
+    'bash -lc "node --test"',
+    'sh -c "env NODE_ENV=test node --test"',
+    'exec -c node --test',
+    'time node --test',
+  ]) {
+    assert.equal(classifyCall({ name: 'bash', arguments: { command } }, cfg).kind, 'verify', command);
+  }
+  for (const command of [
+    'bash -lc "printf \'%s\\n\' \'node --test\'"',
+    'sh -c "echo ok # node --test"',
+    'command -v node --test',
+  ]) {
+    assert.equal(classifyCall({ name: 'bash', arguments: { command } }, cfg).kind, 'neutral', command);
+  }
+});
+
+test('executable pathnames preserve verification and Git wrappers', () => {
+  for (const command of [
+    '/usr/bin/node --test',
+    '/usr/bin/env NODE_ENV=test /usr/bin/node --test',
+    '/bin/bash -lc "/usr/bin/node --test"',
+  ]) {
+    assert.equal(classifyCall({ name: 'bash', arguments: { command } }, cfg).kind, 'verify', command);
+  }
+  for (const command of [
+    '/usr/bin/git -C /tmp/project reset --hard',
+    '/usr/bin/env /usr/bin/git -C /tmp/project reset --hard',
+    '/bin/sh -c "git -C /tmp/project reset --hard"',
+  ]) {
+    assert.equal(findIrreversible({ name: 'bash', arguments: { command } }, cfg)?.id, 'git-reset-hard', command);
+  }
+});
+
 test("shell writes count as edits", () => {
   assert.equal(classifyCall({ name: "bash", arguments: { command: "echo hi > a.txt" } }, cfg).kind, "edit");
   assert.equal(classifyCall({ name: "bash", arguments: { command: "sed -i s/a/b/ f.txt" } }, cfg).kind, "edit");
@@ -79,6 +154,50 @@ test("irreversible commands are detected", () => {
     const hit = findIrreversible({ name: "bash", arguments: { command } }, cfg);
     assert.ok(hit, `expected a block for: ${command}`);
     assert.equal(hit.id, id, command);
+  }
+});
+
+for (const [command, id] of [
+  ['git reset --hard HEAD', 'git-reset-hard'],
+  ['git -C /tmp/project reset --hard HEAD', 'git-reset-hard'],
+  ['git -c core.autocrlf=false reset --hard', 'git-reset-hard'],
+  ['git --git-dir=/tmp/store reset --hard', 'git-reset-hard'],
+  ['git --git-dir /tmp/store reset --hard', 'git-reset-hard'],
+  ['git -C/tmp/project -ccore.autocrlf=false reset --hard', 'git-reset-hard'],
+  ['git -C "/tmp/project with spaces" -c core.autocrlf=false clean -fdx', 'git-clean-force'],
+  ['git --git-dir=/tmp/store push --force origin main', 'git-push-force'],
+  ['git -C /tmp/project checkout -- .', 'git-discard-all'],
+  ['git -c core.autocrlf=false restore .', 'git-discard-all'],
+  ['git --git-dir=/tmp/store filter-branch HEAD', 'git-history-rewrite'],
+  ['git -C /tmp/project push --mirror origin', 'git-history-rewrite'],
+  ['env GIT_OPTIONAL_LOCKS=0 git -C /tmp/project reset --hard', 'git-reset-hard'],
+  ['command git -C /tmp/project reset --hard', 'git-reset-hard'],
+]) {
+  test(`destructive Git is detected with global options: ${command}`, () => {
+    const hit = findIrreversible({ name: 'bash', arguments: { command } }, cfg);
+    assert.equal(hit?.id, id);
+  });
+}
+
+test('Git text in arguments and comments is not a destructive execution', () => {
+  for (const command of [
+    "printf '%s\\n' 'git reset --hard'",
+    'echo git reset --hard',
+    '# git reset --hard\nprintf done',
+    'echo ok # git clean -fdx',
+    "git -C /tmp/project log --grep='git reset --hard'",
+  ]) {
+    assert.equal(findIrreversible({ name: 'bash', arguments: { command } }, cfg), null, command);
+  }
+});
+
+test('ordinary Git global options do not become destructive', () => {
+  for (const command of [
+    'git -C /tmp/project status --short',
+    'git -c core.autocrlf=false push --force-with-lease origin topic',
+    'git --git-dir=/tmp/project/.git log --oneline',
+  ]) {
+    assert.equal(findIrreversible({ name: 'bash', arguments: { command } }, cfg), null, command);
   }
 });
 
