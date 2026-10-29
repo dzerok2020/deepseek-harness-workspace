@@ -78,7 +78,7 @@ function outlineOf(message) {
 
 /** An explicit `append: "intentional"` acknowledges the mutation for one call. */
 function declaredIntentional(exec) {
-  const args = exec?.args;
+  const args = exec?.arguments;
   if (args === null || typeof args !== 'object') return false;
   const flag = args.append ?? args.intent ?? args.mode;
   return flag === 'intentional' || flag === 'append';
@@ -120,14 +120,13 @@ export function apply(ctx, rawConfig) {
     if (!isGuardedMutation(toolName, cfg)) return downstream;
     if (result?.ok === false || result?.isError === true) return downstream;
     if (exec?.result?.ok === false || exec?.result?.isError === true) return downstream;
-    if (declaredIntentional(exec)) return downstream;
 
     const after = outlineOf(result) ?? outlineOf(exec?.result);
     if (after === undefined) return downstream;
 
     const before = Array.isArray(state.before) ? state.before : [];
-    if (before.length === 0) {
-      // First observation of this turn: remember the outline, nothing to judge yet.
+    if (declaredIntentional(exec) || before.length === 0) {
+      // Accepted intentional calls and first observations establish the next baseline.
       state.before = after.map((entry) => ({ ...entry }));
       return downstream;
     }

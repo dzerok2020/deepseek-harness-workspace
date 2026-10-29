@@ -5,6 +5,10 @@ import { apply, name as pluginName, inject } from '../lib/index.js';
 
 const passthrough = async () => ({ ok: true });
 
+function memoryResult(ids) {
+  return { output: JSON.stringify({ entries: ids.map((id) => ({ id })) }) };
+}
+
 function makeCtx() {
   const handlers = new Map();
   return {
@@ -16,7 +20,7 @@ function makeCtx() {
 }
 
 function makeExec({ tool = 'memory_remember', args = {}, agent = {}, result } = {}) {
-  return { name: tool, toolName: tool, args, agent, result };
+  return { name: tool, toolName: tool, arguments: args, agent, result };
 }
 
 function wire(config) {
@@ -105,7 +109,7 @@ test('a rewrite is flagged as blocking', async () => {
   assert.ok(steered[0].content[0].text.includes('rewrote existing memory'));
 });
 
-test('an explicit append:"intentional" argument exempts the call', async () => {
+test('canonical exec.arguments append:"intentional" exempts the call', async () => {
   const steered = [];
   const agent = makeAgent(steered);
   const { postExecute, turnStopping } = wire({});
@@ -127,6 +131,101 @@ test('an explicit append:"intentional" argument exempts the call', async () => {
 
   await turnStopping({ agent });
   assert.equal(steered.length, 0);
+});
+
+test('an intentional ToolResult advances the baseline for the next append only', async () => {
+  const steered = [];
+  const agent = makeAgent(steered);
+  const { postExecute, turnStopping } = wire({});
+
+  await postExecute(makeExec({ agent }), memoryResult(['a', 'c']), passthrough);
+  await postExecute(
+    makeExec({ agent, args: { append: 'intentional' } }),
+    memoryResult(['a', 'b', 'c']),
+    passthrough,
+  );
+  await postExecute(makeExec({ agent }), memoryResult(['a', 'b', 'c', 'd']), passthrough);
+
+  await turnStopping({ agent });
+  assert.equal(steered.length, 0, 'the third call appends to the accepted intentional snapshot');
+
+  // A quiet turn clears its outline, so observe it again before the later rewrite.
+  await postExecute(makeExec({ agent }), memoryResult(['a', 'b', 'c', 'd']), passthrough);
+  await postExecute(makeExec({ agent }), memoryResult(['a', 'b', 'c']), passthrough);
+
+  await turnStopping({ agent });
+  assert.equal(steered.length, 1, 'a later unmarked rewrite must still nudge');
+  assert.ok(steered[0].content[0].text.includes('rewrote existing memory'));
+});
+
+test('a first intentional ToolResult establishes the baseline without exempting the next call', async () => {
+  const steered = [];
+  const agent = makeAgent(steered);
+  const { postExecute, turnStopping } = wire({});
+
+  await postExecute(
+    makeExec({ agent, args: { append: 'intentional' } }),
+    memoryResult(['a', 'b', 'c']),
+    passthrough,
+  );
+  await postExecute(makeExec({ agent }), memoryResult(['a', 'c']), passthrough);
+
+  await turnStopping({ agent });
+  assert.equal(steered.length, 1, 'the very next unmarked rewrite must be judged');
+  assert.ok(steered[0].content[0].text.includes('rewrote existing memory'));
+});
+
+test('a failed intentional ToolResult does not advance the accepted baseline', async () => {
+  const steered = [];
+  const agent = makeAgent(steered);
+  const { postExecute, turnStopping } = wire({});
+
+  await postExecute(makeExec({ agent }), memoryResult(['a', 'c']), passthrough);
+  await postExecute(
+    makeExec({ agent, args: { append: 'intentional' } }),
+    { ...memoryResult(['a', 'b', 'c']), isError: true },
+    passthrough,
+  );
+  await postExecute(makeExec({ agent }), memoryResult(['a', 'c', 'd']), passthrough);
+
+  await turnStopping({ agent });
+  assert.equal(steered.length, 0, 'the next append must use the last successful snapshot');
+});
+
+test('an intentional ToolResult without an outline keeps the accepted baseline', async () => {
+  const steered = [];
+  const agent = makeAgent(steered);
+  const { postExecute, turnStopping } = wire({});
+
+  await postExecute(makeExec({ agent }), memoryResult(['a', 'c']), passthrough);
+  await postExecute(
+    makeExec({ agent, args: { append: 'intentional' } }),
+    { output: 'ok' },
+    passthrough,
+  );
+  await postExecute(makeExec({ agent }), memoryResult(['a']), passthrough);
+
+  await turnStopping({ agent });
+  assert.equal(steered.length, 1, 'a missing outline must not discard the previous snapshot');
+  assert.ok(steered[0].content[0].text.includes('rewrote existing memory'));
+});
+
+test('legacy exec.args cannot exempt a canonical host call', async () => {
+  const steered = [];
+  const agent = makeAgent(steered);
+  const { postExecute, turnStopping } = wire({});
+
+  await postExecute(
+    makeExec({ agent, result: { entries: [{ id: 'a' }, { id: 'c' }] } }),
+    passthrough(),
+    passthrough,
+  );
+  const exec = makeExec({ agent, result: { entries: [{ id: 'a' }, { id: 'b' }, { id: 'c' }] } });
+  exec.args = { append: 'intentional' };
+  await postExecute(exec, passthrough(), passthrough);
+
+  await turnStopping({ agent });
+  assert.equal(steered.length, 1, 'only canonical arguments can declare intentional mutation');
 });
 
 test('tools outside the memory list are never judged', async () => {
