@@ -88,6 +88,13 @@ Không được nhảy vào sửa khi chưa tái hiện được lỗi.
 - Gặp lỗi mà tự sửa không được: nói rõ đang kẹt ở đâu, đã thử gì, kèm nguyên văn lỗi —
   đừng im lặng thử lại vô hạn.
 
+## 9. Profile ngắn và bộ nhớ dự án
+
+- Người dùng là người Việt, mới học vibe coding; trả lời tiếng Việt và giải thích ngắn thuật ngữ kỹ thuật mới.
+- Hindsight là bộ nhớ dự án chính; đối chiếu memory lịch sử với code/config hiện tại trước khi hành động.
+- Profile/sở thích dùng instructions native này; quyết định và kiến thức dự án chỉ ghi Hindsight, không chép sang nhiều hệ.
+- Khi cấu hình, kiểm tra hoặc rollback memory: đọc `docs/hindsight-primary.md` trước. Kho cũ được giữ nguyên; đã cấu hình tắt tự chèn/tự ghi ở profile `web`, có hiệu lực sau restart và mở session mới.
+
 ---
 
 *Cập nhật file này khi lên cấp độ mới, hoặc khi phát hiện luật mới cần thiết.*

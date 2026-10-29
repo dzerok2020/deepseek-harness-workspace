@@ -1,0 +1,28 @@
+# Merge into the web profile patch; do not register Hindsight a second time.
+- id: mnemon
+  disabled: true
+- id: stratagate-memory
+  disabled: true
+- id: openviking-memory-runtime
+  disabled: true
+- id: hindsight
+  disabled: false
+- insert:
+    - id: openviking-tools-only
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: openviking
+        transport: stdio
+        command: /home/dzerok/.local/share/mise/installs/node/26.8.2/bin/node
+        args:
+          - /home/dzerok/.dsh/profiles/web/node_modules/@openviking/dsh-memory-plugin/servers/mcp-proxy.mjs
+        env:
+          ELECTRON_RUN_AS_NODE: '1'
+        toolCallTimeoutMs: 60000
+    - id: openviking-skills-only
+      name: '@deepseek-ai/dsh-skill-filesystem'
+      config:
+        providerName: openviking
+        includeDefaultRoots: false
+        bundledSkillDir: /home/dzerok/.dsh/profiles/web/node_modules/@openviking/dsh-memory-plugin/skills
+        watch: false

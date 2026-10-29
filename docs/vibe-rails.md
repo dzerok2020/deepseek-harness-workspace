@@ -9,12 +9,12 @@ tool/skill thật sự cần** — thay vì nạp cả 118 tool cho mọi thứ.
 
 | Việc | Preset trong GUI | Tool | Model gợi ý | Ngân sách/turn |
 |---|---|---|---|---|
-| Soi code, audit, đo token | `Vibe / Audit` (id `code-audit`) | 16 row + 26 tool global | model rẻ, reasoning thấp | 150K fresh |
-| Làm tính năng mới | `Vibe / Build` (id `vibe-build`) | 16 row + 26 tool global | model chính | 150K fresh |
-| Sửa lỗi có tái hiện | `Vibe / Fix` (id `vibe-fix`) | 16 row + 26 tool global | model chính | 150K fresh |
+| Soi code, audit, đo token | `Vibe / Audit` (id `code-audit`) | 16 row + 24 tool global | model rẻ, reasoning thấp | 150K fresh |
+| Làm tính năng mới | `Vibe / Build` (id `vibe-build`) | 16 row + 24 tool global | model chính | 150K fresh |
+| Sửa lỗi có tái hiện | `Vibe / Fix` (id `vibe-fix`) | 16 row + 24 tool global | model chính | 150K fresh |
 
-26 tool global = bộ "lean rail" (`ops_bash`/`ops_read_files`/`ops_discover_tools` thay cho
-`bash`/`read`/`write`, cộng `memory_*`, `mnemon_*`, `code_review_*`, `acp_*`, `bsk_*`,
+24 tool global = bộ "lean rail" (`ops_bash`/`ops_read_files`/`ops_discover_tools` thay cho
+`bash`/`read`/`write`, cộng `hindsight_*`, `code_review_*`, `acp_*`, `bsk_*`,
 `ask_user_question`, `todo_write`). Thiếu `ask_user_question` thì agent không hỏi lại được
 khi task mơ hồ — lỗi phát hiện 28/10/2026.
 
@@ -36,13 +36,12 @@ bằng file `~/.dsh/cost-gate-allow`.
 
 | Tầng | Chủ sở hữu | Không dùng cho |
 |---|---|---|
-| Hot memory (luôn hiện) | `mnemon_runtime_memory` → `MEMORY.md`/`USER.md` | lịch sử dài, bằng chứng |
-| Durable evidence | StrataGate `memory_*` | ghi chú tạm, tiến độ |
+| Profile ngắn (luôn hiện) | Instructions native `AGENTS.md` | lịch sử dài, fact vận hành dễ lỗi thời |
+| Bộ nhớ dự án | Hindsight native `hindsight_*` | thay thế code/config hiện tại |
 | Skill | `~/.dsh/skills` (filesystem) | — |
 | Lịch sử phiên | `~/.dsh/sessions` (chỉ đọc khi cần) | mỗi turn |
 
-OpenViking giữ vai trò kho skill/MCP, **không** ghi memory thứ ba. Ba hệ không
-được chép cùng một fact; fact mới ghi một nơi theo bảng trên.
+Từ rollout 2026-10-29, Mnemon/StrataGate và OpenViking memory runtime được host-disable trong profile `web`, giữ nguyên kho cũ. Skill/MCP OpenViking đi qua bridge native riêng; fact mới chỉ ghi Hindsight. Cấu hình trên đĩa chưa chứng minh tiến trình đang chạy đã đổi: sau restart phải mở session mới và nghiệm thu theo `docs/hindsight-primary.md`.
 
 ## Skill catalog
 

@@ -1,0 +1,23 @@
+{
+  "serverMode": "self-hosted",
+  "apiUrl": "http://127.0.0.1:9077",
+  "bankIdTemplate": "coding-agent::{gitProject}",
+  "resolveWorktrees": false,
+  "optInOnly": true,
+  "optInPaths": ["/home/dzerok/Documents/deepseek-harness/default-workspace"],
+  "autoInject": "pages",
+  "autoSeed": false,
+  "gitIngest": "none",
+  "codebaseSurvey": false,
+  "autoUpdate": false,
+  "retainSessions": true,
+  "retainExtractionMode": "concise",
+  "maxParallelRetains": 1,
+  "manageBankConfig": false,
+  "pageTriggerType": "manual",
+  "pageRefreshEveryTurns": 5,
+  "pageSearchLimit": 2,
+  "injectTimeoutMs": 5000,
+  "recallOptions": {"budget": "low", "max_tokens": 1500},
+  "toolGuideExtra": "Hindsight is the sole project-memory owner. Treat recalled pages as historical evidence and verify current code/config before acting. Use the short profile in native AGENTS.md for preferences; keep operational rules there, not duplicate memory systems. Do not import historical sessions, run surveys, refresh knowledge pages, or invoke reflect without explicit task need and cost permission. Do not use forked sessions for live retention with adapter 0.8.2: inherited history is not trimmed."
+}
