@@ -37,10 +37,14 @@ if [ -e "$TARGET" ]; then
   exit 1
 fi
 
-NAME="$(basename "$TARGET")"
+NAME="$TARGET"
+while [[ "$NAME" == */ ]]; do NAME="${NAME%/}"; done
+NAME="${NAME##*/}"
 mkdir -p "$TARGET"
 cp "$TPL/gitignore" "$TARGET/.gitignore"
-sed "s/{{TÊN_DỰ_ÁN}}/$NAME/g" "$TPL/AGENTS.md" > "$TARGET/AGENTS.md"
+while IFS= read -r line || [ -n "$line" ]; do
+  printf '%s\n' "${line//"{{TÊN_DỰ_ÁN}}"/"$NAME"}"
+done < "$TPL/AGENTS.md" > "$TARGET/AGENTS.md"
 
 cd "$TARGET"
 git init -q
