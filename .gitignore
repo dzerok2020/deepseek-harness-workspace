@@ -1,5 +1,19 @@
 # Rác tạm & môi trường — không bao giờ commit
 node_modules/
+/.cache/
+/.probe/
+/.tmp-install/
+/output/tmp/
+
+# Credential cục bộ (template không chứa secret vẫn được commit)
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+credentials.json
+private-key.pem
+id_ed25519
 .dsh-browser-smoke/
 /tools/__pycache__/
 /test/__pycache__/
