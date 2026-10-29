@@ -1,13 +1,20 @@
-import test from 'node:test';
+import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 // Trỏ trạng thái vào thư mục tạm TRƯỚC khi import plugin (plugin đọc DSH_HOME
 // tại thời điểm gọi, nhưng giữ biến sớm cho chắc).
+const previousHome = process.env.DSH_HOME;
 const home = mkdtempSync(join(tmpdir(), 'cost-gate-'));
 process.env.DSH_HOME = home;
+after(() => {
+  if (previousHome === undefined) delete process.env.DSH_HOME;
+  else process.env.DSH_HOME = previousHome;
+  assert.ok(home.startsWith(join(tmpdir(), 'cost-gate-')));
+  rmSync(home, { recursive: true, force: true });
+});
 const { apply } = await import('../lib/index.js');
 
 function harness(config) {
@@ -59,13 +66,32 @@ test('turn mới reset bộ đếm turn nhưng giữ session', async () => {
   assert.equal((await step('s2', 2, 1)).kind, 'enter');
 });
 
+for (const [label, inputTokens, cacheReadTokens, expectedHitRate] of [
+  ['fresh + cache', 100, 900, 0.9],
+  ['chỉ cache', 0, 900, 1],
+  ['chỉ fresh', 100, 0, 0],
+  ['không có token', 0, 0, 0],
+]) {
+  test(`status hitRate dùng tổng fresh + cached: ${label}`, async () => {
+    const { usage } = harness();
+    await usage('status', { inputTokens, cacheReadTokens, outputTokens: 0 });
+    const status = JSON.parse(readFileSync(join(home, 'cost-gate-status.json'), 'utf8'));
+    assert.equal(status.sessions.status.inputTokens, inputTokens);
+    assert.equal(status.sessions.status.fresh, inputTokens);
+    assert.equal(status.sessions.status.cacheReadTokens, cacheReadTokens);
+    assert.equal(status.sessions.status.hitRate, expectedHitRate);
+  });
+}
+
 test('DSH_COST_GATE=off thì không đăng ký hook nào', async () => {
+  const previousGate = process.env.DSH_COST_GATE;
   process.env.DSH_COST_GATE = 'off';
   try {
     const hooks = new Map();
     apply({ on: (name, fn) => hooks.set(name, fn), logger: { info() {}, warn() {} } }, {});
     assert.equal(hooks.size, 0);
   } finally {
-    delete process.env.DSH_COST_GATE;
+    if (previousGate === undefined) delete process.env.DSH_COST_GATE;
+    else process.env.DSH_COST_GATE = previousGate;
   }
 });

@@ -16,6 +16,7 @@ import {
   applyUsage,
   createSession,
   evaluate,
+  hitRate,
   missWarning,
   resetTurn,
 } from './policy.js';
@@ -134,7 +135,7 @@ export function apply(ctx, config = {}) {
               outputTokens: s.outputTokens,
               turnFresh: s.turnFresh,
               turnOutput: s.turnOutput,
-              hitRate: s.inputTokens === 0 ? 0 : s.cacheReadTokens / s.inputTokens,
+              hitRate: hitRate(s),
               misses: s.misses,
               blocked: s.blocked,
               updatedAt: s.updatedAt,
