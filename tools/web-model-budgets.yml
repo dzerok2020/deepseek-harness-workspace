@@ -1,8 +1,10 @@
 # Portable budget overlay for the current web profile; contains no credentials.
 # Desired per-model operating policy, checked by tools/model_budgets.py.
-# or context values originate from the reported 2026-10-25 OmniRoute catalog;
-# advertised catalog capacity is NOT verified end-to-end request acceptance.
-# cgw stays at the conservative 128000 policy; unknown models fail closed.
+# Explicit routes refreshed from the 2026-10-29 OmniRoute UI/cached catalog.
+# Evidence and conservative exceptions: docs/aegis/work/2026-10-29-dsh-audit/budget-sources.md.
+# Advertised catalog capacity is NOT verified end-to-end request acceptance.
+# Rows without advertised output retain a conservative 16384 operating cap.
+# cgw stays separate at 128000/16384; unknown models still fail closed.
 # Do not merge/restart automatically: review current routing and back up first.
 # Health/repair compare only models present; they never remove or add models.
 # Explicit model budgets take precedence over provider defaults.
@@ -15,39 +17,63 @@
         models:
           - id: cx/gpt-6-astra
             contextWindow: 872000
-            maxTokens: 16384
+            maxTokens: 128000
           - id: cx/gpt-6-sol
             contextWindow: 872000
-            maxTokens: 16384
+            maxTokens: 128000
           - id: cx/gpt-6-luna
             contextWindow: 872000
-            maxTokens: 16384
+            maxTokens: 128000
           - id: b-ai/deepseek-v4.1-flash
             contextWindow: 128000
             maxTokens: 16384
           - id: b-ai/glm-5.3-flash
             contextWindow: 1000000
-            maxTokens: 16384
+            maxTokens: 131072
           - id: b-ai/qwen3.8-flash
             contextWindow: 128000
             maxTokens: 16384
           - id: antigravity/gemini-3.8-flash-tiered
             contextWindow: 1048576
-            maxTokens: 16384
+            maxTokens: 65536
           - id: gpt-free
             contextWindow: 104000
             maxTokens: 16384
           - id: b-ai/gemini-4-argon
-            contextWindow: 1000000
-            maxTokens: 16384
+            contextWindow: 1048576
+            maxTokens: 65536
           - id: b-ai/gpt-6.1-sol
-            contextWindow: 400000
-            maxTokens: 16384
+            contextWindow: 1050000
+            maxTokens: 128000
           - id: cx/gpt-6.1-sol
             contextWindow: 872000
-            maxTokens: 16384
+            maxTokens: 128000
           - id: cx/gpt-6.1-sol-fast
             contextWindow: 400000
+            maxTokens: 16384
+          - id: cx/gpt-5.6-terra
+            contextWindow: 872000
+            maxTokens: 128000
+          - id: nr-ai/deepseek-v4-flash
+            contextWindow: 1000000
+            maxTokens: 384000
+          - id: nr-ai/deepseek-v4.1-flash
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: nr-ai/glm-5.1
+            contextWindow: 200000
+            maxTokens: 128000
+          - id: nr-ai/qwen3.8-flash
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: nr-ai/glm-5.3-flash
+            contextWindow: 1000000
+            maxTokens: 131072
+          - id: nr-ai/deepseek-v4-flash-0731
+            contextWindow: 1000000
+            maxTokens: 384000
+          - id: nr-ai/grok-4.7
+            contextWindow: 128000
             maxTokens: 16384
       cgw:
         defaultContextWindow: 128000

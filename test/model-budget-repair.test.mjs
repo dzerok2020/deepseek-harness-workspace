@@ -16,7 +16,7 @@ const profile = (cgwWindow = 1000000) => `# keep this comment
         models:
           - id: b-ai/glm-5.3-flash
             contextWindow: 1000000 # valid large model
-            maxTokens: 16384
+            maxTokens: 131072
       cgw:
         defaultContextWindow: 128000
         defaultMaxTokens: 16384
@@ -80,7 +80,7 @@ test('unknown model, malformed YAML, duplicate keys and aliases fail before writ
 
 test('repair corrects defaults and inserts missing explicit numeric fields', () => {
   const input = profile().replace('defaultContextWindow: 128000', 'defaultContextWindow: 872000')
-    .replace('            maxTokens: 16384\n      cgw:', '      cgw:');
+    .replace('            maxTokens: 131072\n      cgw:', '      cgw:');
   const r = run(input);
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.equal(r.text, profile(128000));

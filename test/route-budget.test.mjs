@@ -5,16 +5,23 @@ import { spawnSync } from 'node:child_process';
 // Independent, model-keyed expectations: swapping valid numbers must not pass.
 const expected = {
   or: {
-    'cx/gpt-6-astra': 872000, 'cx/gpt-6-sol': 872000, 'cx/gpt-6-luna': 872000,
-    'b-ai/deepseek-v4.1-flash': 128000, 'b-ai/qwen3.8-flash': 128000,
-    'b-ai/glm-5.3-flash': 1000000, 'b-ai/gemini-4-argon': 1000000,
-    'antigravity/gemini-3.8-flash-tiered': 1048576, 'gpt-free': 104000,
-    'b-ai/gpt-6.1-sol': 400000, 'cx/gpt-6.1-sol': 872000, 'cx/gpt-6.1-sol-fast': 400000,
+    'cx/gpt-6-astra': [872000, 128000], 'cx/gpt-6-sol': [872000, 128000],
+    'cx/gpt-6-luna': [872000, 128000], 'cx/gpt-6.1-sol': [872000, 128000],
+    'cx/gpt-5.6-terra': [872000, 128000], 'cx/gpt-6.1-sol-fast': [400000, 16384],
+    'b-ai/deepseek-v4.1-flash': [128000, 16384], 'b-ai/qwen3.8-flash': [128000, 16384],
+    'b-ai/glm-5.3-flash': [1000000, 131072], 'b-ai/gemini-4-argon': [1048576, 65536],
+    'antigravity/gemini-3.8-flash-tiered': [1048576, 65536], 'gpt-free': [104000, 16384],
+    'b-ai/gpt-6.1-sol': [1050000, 128000],
+    'nr-ai/deepseek-v4-flash': [1000000, 384000],
+    'nr-ai/deepseek-v4.1-flash': [128000, 16384],
+    'nr-ai/deepseek-v4-flash-0731': [1000000, 384000],
+    'nr-ai/glm-5.1': [200000, 128000], 'nr-ai/glm-5.3-flash': [1000000, 131072],
+    'nr-ai/qwen3.8-flash': [128000, 16384], 'nr-ai/grok-4.7': [128000, 16384],
   },
   cgw: Object.fromEntries([
     'chatgpt-web/gpt-6-sol-instant', 'chatgpt-web/gpt-6-sol', 'chatgpt-web/gpt-6-pro',
     'chatgpt-web/gpt-5.6-sol-instant', 'chatgpt-web/gpt-5.6-sol', 'chatgpt-web/gpt-5.6-pro',
-  ].map(id => [id, 128000])),
+  ].map(id => [id, [128000, 16384]])),
 };
 
 for (const name of ['vibe-native.yml', 'vibe-cgw.yml', 'web-model-budgets.yml']) {
@@ -33,8 +40,7 @@ for (const name of ['vibe-native.yml', 'vibe-cgw.yml', 'web-model-budgets.yml'])
       assert.equal(new Set(config.models.map(model => model.id)).size, config.models.length);
       for (const model of config.models) {
         assert.ok(Object.hasOwn(expected[provider], model.id), `unknown model ${model.id}`);
-        assert.equal(model.contextWindow, expected[provider][model.id], model.id);
-        assert.equal(model.maxTokens, 16384, model.id);
+        assert.deepEqual([model.contextWindow, model.maxTokens], expected[provider][model.id], model.id);
       }
       if (name === 'web-model-budgets.yml') {
         assert.deepEqual(config.models.map(model => model.id).sort(), Object.keys(expected[provider]).sort());

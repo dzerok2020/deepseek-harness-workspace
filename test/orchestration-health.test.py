@@ -22,10 +22,12 @@ class HealthTests(unittest.TestCase):
         self.assertTrue(health.budget_errors(provider))
 
     def test_model_specific_policy_values_pass(self):
-        for model_id, window in [('b-ai/deepseek-v4.1-flash', 128000), ('gpt-free', 104000),
-                                 ('b-ai/glm-5.3-flash', 1000000), ('cx/gpt-6-sol', 872000)]:
+        for model_id, window, output in [('b-ai/deepseek-v4.1-flash', 128000, 16384),
+                                         ('gpt-free', 104000, 16384),
+                                         ('b-ai/glm-5.3-flash', 1000000, 131072),
+                                         ('cx/gpt-6-sol', 872000, 128000)]:
             self.assertEqual(health.budget_errors({'defaultContextWindow':128000, 'defaultMaxTokens':16384,
-                'models':[{'id':model_id,'contextWindow':window,'maxTokens':16384}]}), [], model_id)
+                'models':[{'id':model_id,'contextWindow':window,'maxTokens':output}]}), [], model_id)
 
     def test_unknown_model_and_provider_are_errors(self):
         provider = {'defaultContextWindow':128000, 'defaultMaxTokens':16384,
