@@ -4,7 +4,15 @@
 
 Ngày 2026-10-29: rollout được duyệt cho profile `web`, opt-in workspace hiện tại và thư mục con. Adapter được pin `@vectorize-io/hindsight-coding-agents@0.8.2`; server local hiện có giữ `0.10.3`. Đây là hai hệ version khác nhau; không tự nâng server lên release mới chỉ vì số version.
 
-Cấu hình được chuẩn bị trên đĩa, **chưa restart** DSH giữa phiên. Chỉ sau restart và mở **session mới** mới nghiệm thu được injection/retain thật. Không dùng resume/fork session cũ cho lần thử đầu: adapter 0.8.2 có thể lưu cả phần lịch sử kế thừa, dù `autoSeed:false`. Chưa có benchmark chứng minh nhớ chính xác hơn hoặc giảm bao nhiêu token.
+Ghi nhận ban đầu khi rollout: cấu hình mới nằm trên đĩa, **chưa restart** DSH giữa phiên. Kiểm tra live ngày 2026-10-29 đã xác nhận adapter inject 2 page trong session mới và có retain trước đó hoàn tất. Không dùng resume/fork session cũ cho lần thử đầu: adapter 0.8.2 có thể lưu cả phần lịch sử kế thừa, dù `autoSeed:false`. Bài thử hai session mới để xác minh auto-retain/recall vẫn chưa nghiệm thu; chưa có benchmark chứng minh nhớ chính xác hơn hoặc giảm bao nhiêu token.
+
+Bảo trì được duyệt trong cùng ngày:
+
+- Đổi duy nhất `HINDSIGHT_API_LLM_PROVIDER=openai` thành `openai-responses` trong env của daemon. Giữ `gh/gpt-5.4-nano`, base URL `http://localhost:20128/v1`, key và server `0.10.3`; không thêm proxy, không bật strict schema. Người dùng đã restart daemon; health healthy/database connected. LLM request metadata live xác nhận provider mới thành công ở retain và consolidation.
+- API smoke test đã ghi document `diagnostic:dsh-responses:2026-10-29:sen-dong`, operation `d8cac377-f5e8-4a11-a5a1-e71e1de2910a` completed; recall low/800 tokens không chứa đáp án trả đúng source và marker. Đây không thay thế nghiệm thu auto-retain qua hai session DSH mới. Document giả lập được giữ riêng để kiểm tra tiếp; không phải cấu hình production.
+- Đính chính: kiểm kê trực tiếp knowledge-base tree tìm thấy cả 12 page có cron hàng giờ; `trigger:null` ở endpoint mental-model trước đó không chứng minh page là manual. Sau khi được duyệt, đã giữ nguyên 12 page, query, model IDs và các trigger option khác; chỉ đặt `refresh_cron:null`, `refresh_after_consolidation:false`. Chưa refresh/curate nội dung stale và không xóa page nào.
+- Đã sao lưu riêng rồi xóa đúng 85 terminal operation records cũ (35 cặp batch/retain + 15 refresh = 50 nhóm lỗi), không retry và không xóa memory facts. ID-set SHA-256: `5f55067655a91bfd256cfb2e0b7bee19d85b2f7b9730680e609431140f98dd9b`. Từng ID trả `status:not_found` (HTTP 200 theo API), failed-list total=0; stats recompute `refresh=true` cũng failed=0. Không dùng HTTP 404 làm assertion cho endpoint status này.
+- Backup riêng tại `~/.hindsight/backups/responses-20261029-1441/`: env trước thay đổi, tree/trigger trước thay đổi, chi tiết/payload 85 operation, scope và checksums. Thư mục `0700`, file `0600`, không đưa vào Git/chat. Đây là archive cho cấu hình và các record đã dọn, **không** phải full-bank/bit-exact database backup; không có public API phục hồi operation records vào đúng bank cũ.
 
 ## Một chủ cho mỗi vai trò
 
@@ -26,7 +34,7 @@ Không xóa database, bank, page, session hoặc pending queue. Không copy cả
 - `autoSeed:false`, `gitIngest:none`, `codebaseSurvey:false`, `autoUpdate:false`: không import lịch sử hay tự chạy survey CLI.
 - `autoInject:pages`: tìm page bằng search, không tự reflect/synthesis; tối đa 2 kết quả, refresh roster mỗi 5 turn. Preamble/roster vẫn tồn tại; không hứa zero-injection hoặc hard token cap.
 - `retainSessions:true`: cho phép hội thoại MỚI ghi qua model OmniRoute hiện có; extraction `concise`, concurrency 1. Đây vẫn có thể tốn token mỗi turn và chạy consolidation server-side; không phải miễn phí vì API ở localhost.
-- `manageBankConfig:false`, `pageTriggerType:manual`: giữ config bank, không tự seed/sync. Hai cờ này không tự thay trigger đã có. Trước rollout, 11 page cũ đều `trigger:null`, `is_stale:true`; chưa tự refresh các page đó. Initiative rollout được tạo riêng sau khi duyệt.
+- `manageBankConfig:false` ngăn adapter ghi config bank, không phải cam kết không chạy `seedPages`. `pageTriggerType:manual` không tự gỡ cron đã tồn tại; `autoUpdate:false` chỉ tắt cập nhật package. Lần kiểm kê/bảo trì 2026-10-29 ở trên đã tắt đúng 12 cron hiện có. Nếu sau này gọi configure/seed/deepen thủ công hoặc dùng harness khác, phải kiểm tra lại trigger/source owner; không coi page stale là unused/orphan để tự xóa.
 - Reflect, refresh page, history migration hoặc paid benchmark cần phạm vi/chi phí được duyệt riêng. Quyền cho live-retain không đồng nghĩa quyền chạy mọi job LLM.
 
 OpenViking `autoRecall:false`/`autoCapture:false` chưa đủ: startup vẫn chèn profile, drainer vẫn replay queue. Vì vậy host-disable `openviking-memory-runtime` rồi mount lại proxy/skills bằng hai component native có sẵn. Mnemon cũng không có chế độ chỉ `USER.md`; StrataGate không có profile-only switch đáng tin trong bản cài. Host-disable cả hai, giữ stores để rollback.
