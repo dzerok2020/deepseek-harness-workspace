@@ -4,18 +4,18 @@
 // KHÔNG có user/message, assistant/message, tool/call hay request/header.
 // Mặc định chỉ LIỆT KÊ. Muốn xoá thật: --apply --yes
 import { spawn } from "node:child_process";
-import { readdirSync, statSync, rmSync, existsSync } from "node:fs";
+import { readdirSync, lstatSync, realpathSync, rmSync, existsSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
 
 const REAL_RECORDS = new Set(["user/message", "assistant/message", "tool/call", "tool/result", "request/header", "llm/retry"]);
 const MIN_AGE_MS = 60 * 60 * 1000; // bỏ qua session vừa tạo trong 1 giờ
 
-export function classify({ records, realRecords, mtimeMs, nowMs }) {
+export function classify({ records, realRecords, complete, mtimeMs, nowMs }) {
   if (mtimeMs > nowMs - MIN_AGE_MS) return "active-now";
   if (realRecords > 0) return "live";
-  return records > 0 ? "empty" : "broken";
+  return complete === true && records > 0 ? "empty" : "broken";
 }
 
 // Đọc stream zstd, dừng ngay khi gặp record thật (session thật thường thấy trong vài chục KB đầu).
@@ -26,6 +26,8 @@ export function probe(file, { maxRecords = 5000 } = {}) {
     let records = 0;
     let realRecords = 0;
     let done = false;
+    let eof = false;
+    child.stdout.on("end", () => { eof = true; });
     const finish = (value) => {
       if (done) return;
       done = true;
@@ -34,7 +36,7 @@ export function probe(file, { maxRecords = 5000 } = {}) {
       resolve(value);
     };
     rl.on("line", (line) => {
-      if (!line.trim()) return;
+      if (done || !line.trim()) return;
       records++;
       try {
         const rec = JSON.parse(line);
@@ -43,28 +45,47 @@ export function probe(file, { maxRecords = 5000 } = {}) {
         // dòng hỏng: coi như có nội dung, không xoá
         realRecords++;
       }
-      if (realRecords > 0 || records >= maxRecords) finish({ records, realRecords });
+      if (realRecords > 0 || records >= maxRecords) finish({ records, realRecords, complete: false });
     });
-    rl.on("close", () => finish({ records, realRecords }));
-    child.on("error", () => finish({ records: -1, realRecords: -1 }));
+    rl.on("error", () => finish({ records, realRecords, complete: false }));
+    child.on("close", (code, signal) => finish({ records, realRecords, complete: eof && code === 0 && signal === null }));
+    child.on("error", () => finish({ records: -1, realRecords: -1, complete: false }));
   });
+}
+
+function inspectCandidate(root, dir) {
+  try {
+    const wsDir = dirname(dir);
+    if (dirname(wsDir) !== root) return null;
+    const paths = [wsDir, dir, join(dir, "session.v4.jsonl.zstd")];
+    const stats = paths.map((path) => lstatSync(path));
+    if (!stats[0].isDirectory() || !stats[1].isDirectory() || !stats[2].isFile()) return null;
+    if (paths.some((path) => realpathSync(path) !== path)) return null;
+    return { st: stats[2], identity: stats.map((st) => `${st.dev}:${st.ino}`).join("/") };
+  } catch {
+    return null;
+  }
 }
 
 export async function scan(root = join(homedir(), ".dsh", "sessions"), nowMs = Date.now()) {
   const rows = [];
   if (!existsSync(root)) return rows;
+  root = realpathSync(root);
   for (const ws of readdirSync(root)) {
     const wsDir = join(root, ws);
     let entries;
-    try { entries = readdirSync(wsDir); } catch { continue; }
+    try {
+      if (!lstatSync(wsDir).isDirectory() || realpathSync(wsDir) !== wsDir) continue;
+      entries = readdirSync(wsDir);
+    } catch { continue; }
     for (const name of entries) {
       const dir = join(wsDir, name);
-      const file = join(dir, "session.v4.jsonl.zstd");
-      if (!existsSync(file)) continue;
-      const st = statSync(file);
-      const { records, realRecords } = await probe(file);
-      const kind = classify({ records, realRecords, mtimeMs: st.mtimeMs, nowMs });
-      rows.push({ workspace: ws, name, dir, size: st.size, mtimeMs: st.mtimeMs, records, realRecords, kind });
+      const candidate = inspectCandidate(root, dir);
+      if (!candidate) continue;
+      const { st, identity } = candidate;
+      const { records, realRecords, complete } = await probe(join(dir, "session.v4.jsonl.zstd"));
+      const kind = classify({ records, realRecords, complete, mtimeMs: st.mtimeMs, nowMs });
+      rows.push({ root, workspace: ws, name, dir, identity, size: st.size, mtimeMs: st.mtimeMs, records, realRecords, complete, kind });
     }
   }
   return rows;
@@ -99,15 +120,21 @@ async function main() {
   let n = 0;
   let freed = 0;
   for (const r of empty) {
+    const before = inspectCandidate(r.root, r.dir);
+    if (!before || before.identity !== r.identity) {
+      console.warn(`bỏ qua (đường dẫn đã đổi/không an toàn): ${r.name}`);
+      continue;
+    }
+    // Chỉ xoá khi lần đọc cuối vẫn xác nhận đầy đủ là rỗng và không vừa hoạt động.
+    const again = await probe(join(r.dir, "session.v4.jsonl.zstd"));
+    const after = inspectCandidate(r.root, r.dir);
+    if (!after || after.identity !== r.identity || classify({ ...again, mtimeMs: after.st.mtimeMs, nowMs: Date.now() }) !== "empty") {
+      console.warn(`bỏ qua (không xác nhận rỗng/đường dẫn đã đổi): ${r.name}`);
+      continue;
+    }
     const files = readdirSync(r.dir);
     if (files.length !== 1 || files[0] !== "session.v4.jsonl.zstd") {
       console.warn(`bỏ qua (có file lạ): ${r.name}`);
-      continue;
-    }
-    // chốt lần cuối ngay trước khi xoá: record thật xuất hiện thì thôi
-    const again = await probe(join(r.dir, "session.v4.jsonl.zstd"));
-    if (again.realRecords > 0) {
-      console.warn(`bỏ qua (vừa có nội dung): ${r.name}`);
       continue;
     }
     rmSync(r.dir, { recursive: true, force: true });
