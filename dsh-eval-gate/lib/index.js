@@ -51,7 +51,7 @@ function textOf(message) {
 
 /** Extract a file path from whichever tool argument shape was used. */
 function filePathOf(exec) {
-  const args = exec?.args;
+  const args = exec?.arguments;
   if (args === null || typeof args !== 'object') return undefined;
   const candidate = args.path ?? args.file_path ?? args.filePath ?? args.target;
   return typeof candidate === 'string' ? candidate : undefined;
@@ -80,7 +80,7 @@ function sentinelsIn(text) {
 }
 
 function declaredKind(exec) {
-  const args = exec?.args;
+  const args = exec?.arguments;
   if (args === null || typeof args !== 'object') return undefined;
   const intent = args.sentinel ?? args.intent;
   if (intent === 'must-change' || intent === 'must-keep') return intent;
