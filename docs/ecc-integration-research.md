@@ -1,5 +1,20 @@
 # ECC → DeepSeek Harness: ghi chú tích hợp (15/10/2026)
 
+## Cập nhật kiểm chứng bridge (30/10/2026)
+
+Đây là kết quả **so sánh trước cài**, không phải biên bản cài đặt hoàn tất. Phần nghiên cứu ngày 15/10 bên dưới được giữ nguyên theo thời điểm khảo sát; phiên kiểm tra mới dùng DSH `0.2.1-rc.2` và checkout ECC `b92f181b3b748d1abbc2afd94af6aa7d8c8fca29`.
+
+- **Dependency thực tế:** `require.resolve` từ runtime hiện tại báo `MODULE_NOT_FOUND` cho cả `@deepseek-ai/dsh-hooks-claude-code` và `@deepseek-ai/dsh-hook-protocol`. Tám peer còn lại của bridge khớp phiên bản: bảy gói DSH `0.2.1-rc.2` và Cordis `4.0.5`. Vì vậy không áp dụng nguyên văn giả định bridge đã đi kèm runtime trong hướng dẫn ECC.
+- **Package đúng phiên bản có tồn tại:** đã tải hai tarball `0.2.1-rc.2` từ npm registry chính thức vào thư mục tạm, đối chiếu SHA-512 với metadata và kiểm tra archive chỉ có đường dẫn tương đối, file/thư mục thường, trong giới hạn kích thước. Cả hai dùng MIT; không chạy install script, không import/chạy hooks và không thay đổi profile. Kiểm tra integrity này không thay thế kiểm toán bảo mật toàn bộ dependency.
+- **Không thể đạt đầy đủ hành vi chỉ bằng cài bridge:** source bridge chỉ nhận 7 loại event; config ECC đang khảo sát có 8 loại được dùng, nên generator giữ 23/27 command entries qua 5 loại event và bỏ `PreCompact`, `PostToolUseFailure`, `SessionEnd`. Generator và parser bridge đều không giữ `async`; bridge chạy các command khớp theo thứ tự và chờ từng command.
+- **Khoảng thiếu payload/response:** bridge không áp dụng `updatedInput`; `transcript_path` luôn rỗng, `stop_hook_active` luôn `false`. Hook ECC cần transcript, sửa đầu vào tool hoặc nhận diện vòng Stop vì thế không được xem là đã tương đương. Ví dụ cost tracker ECC lấy dữ liệu từ transcript hoặc biến môi trường dự phòng; không có transcript hợp lệ thì không có bằng chứng đo usage/cost đúng.
+- **Phân biệt bằng chứng:** đã kiểm metadata, source package và khả năng resolve dependency; chưa mount bridge, chưa kiểm event lifecycle/sandbox trên DSH chạy thật, chưa kiểm chứng tích hợp agents/commands/rules. README bridge có mô tả `SessionStart` vừa awaited vừa detached; source có `await run`, nhưng thứ tự so với request đầu tiên vẫn cần test host lifecycle, không lấy riêng README làm kết luận.
+- **Trạng thái quyết định:** người dùng yêu cầu so sánh ECC với DSH trước và muốn đầy đủ hơn skills. Phương án hoàn thiện adapter trong profile thử nghiệm đã được đề xuất nhưng chưa được xác nhận tại thời điểm ghi. Không bật hooks, MCP, memory/learning, model ngoài hoặc ghi đè cấu hình đang dùng trong lượt kiểm chứng này.
+
+Nguồn tái kiểm tra: [metadata bridge đúng phiên bản](https://registry.npmjs.org/@deepseek-ai/dsh-hooks-claude-code/0.2.1-rc.2), [metadata protocol đúng phiên bản](https://registry.npmjs.org/@deepseek-ai/dsh-hook-protocol/0.2.1-rc.2), [generator ECC đã ghim](https://github.com/affaan-m/ECC/blob/b92f181b3b748d1abbc2afd94af6aa7d8c8fca29/scripts/dsh/generate-hooks-config.js), [cost tracker ECC đã ghim](https://github.com/affaan-m/ECC/blob/b92f181b3b748d1abbc2afd94af6aa7d8c8fca29/scripts/hooks/cost-tracker.js).
+
+## Nghiên cứu gốc ngày 15/10/2026
+
 Nguồn chính: [affaan-m/ECC tại commit `b92f181b3b748d1abbc2afd94af6aa7d8c8fca29`](https://github.com/affaan-m/ECC/tree/b92f181b3b748d1abbc2afd94af6aa7d8c8fca29). Đây là **nghiên cứu, không phải cài đặt**. Máy hiện báo `dsh --version` = `0.2.0-rc.2`; tài liệu ECC chỉ xác nhận DSH `0.2.0-rc.1`, nên tính tương thích với bản đang chạy **chưa được kiểm thử**.
 
 ## Cách cài đúng theo từng agent
