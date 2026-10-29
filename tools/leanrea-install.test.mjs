@@ -18,7 +18,10 @@ const globalSkillPath = join(dshHome, 'skills/leanrea/SKILL.md');
 
 await test('LeanRea project and global copies match the pinned upstream and MIT license', async () => {
   assert.equal(
-    sha256(skill.replace('disable-model-invocation: true\n', '')),
+    sha256(skill
+      .replace(/^description: .*$/m, 'description: Reverse engineer shipped software with plain local CLI tools, no MCP needed. Covers Electron/JS bundles, native Mach-O/ELF/PE, Go/Rust/.NET/Flutter/WASM binaries, APKs, SQLite, pcaps, firmware and websites. Use to explain how a feature works, extract versions/deps, compare builds, or rebuild a feature.')
+      .replace(/^disable-model-invocation: (?:true|false)\n/m, '')
+      .replace(/<!-- DSH adapter start -->\n[\s\S]*?<!-- DSH adapter end -->\n\n/, '')),
     '53581bd7fb1fae4352ab43252e67b84667b68895a68e372b99d302b58d9c782d',
   );
   const license = await readFile(new URL('LICENSE', skillUrl));
@@ -30,7 +33,7 @@ await test('LeanRea project and global copies match the pinned upstream and MIT 
   assert.deepEqual(await readFile(join(dshHome, 'skills/leanrea/LICENSE')), license);
 });
 
-await test('DSH loads manual-only LeanRea in project and outside workspaces', async () => {
+await test('DSH loads auto-invocable LeanRea in project and outside workspaces', async () => {
   const dshBinary = execFileSync('which', ['dsh'], { encoding: 'utf8' }).trim();
   const host = createRequire(realpathSync(dshBinary));
   // Match the running DSH host's dependency resolution without changing packages.
@@ -75,13 +78,28 @@ await test('DSH loads manual-only LeanRea in project and outside workspaces', as
       assert.equal(loaded.path, realpathSync(scope.path));
       assert.equal(loaded.source, scope.source);
       assert.ok(loaded.content.includes('## Router'));
-      assert.deepEqual(loaded.invocation, { modelInvocable: false, userInvocable: true });
+      assert.deepEqual(loaded.invocation, { modelInvocable: true, userInvocable: true });
+      assert.match(loaded.description, /phân tích phần mềm <tệp\/thư mục\/link>/);
+      assert.ok(loaded.content.includes('## DSH auto-invocation and safety'));
     }
   } finally {
     await provider?.dispose();
     controller.abort();
     hooks.deregister();
   }
+});
+
+await test('LeanRea advertises the short Vietnamese trigger with explicit read-only safeguards', () => {
+  assert.match(skill, /^description: .*phân tích phần mềm <tệp\/thư mục\/link>/m);
+  assert.match(skill, /^description: .*Not for general document\/data analysis or routine code review\.$/m);
+  assert.equal((skill.match(/<!-- DSH adapter start -->/g) || []).length, 1);
+  assert.equal((skill.match(/<!-- DSH adapter end -->/g) || []).length, 1);
+  assert.ok(skill.includes('Default to read-only static analysis with tools already installed.'));
+  assert.ok(skill.includes('Do not install tools or packages'));
+  assert.ok(skill.includes('execute target software/scripts'));
+  assert.ok(skill.includes('delete/move/overwrite user files'));
+  assert.ok(skill.includes('unless the user explicitly authorizes that specific action'));
+  assert.ok(skill.includes('Generic urgency or "do it all" is not authorization.'));
 });
 
 await test('LeanRea installation notes retain sources and valid Markdown structure', async () => {
