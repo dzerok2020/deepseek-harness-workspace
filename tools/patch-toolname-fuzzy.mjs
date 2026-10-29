@@ -56,6 +56,19 @@ function extractMethod(text) {
   return text.slice(start, end + NL.length + TAB.length + 1);
 }
 
+function assertSupported(text, applied) {
+  const head = applied ? NEW_HEAD : ORIG_HEAD;
+  const collapse = applied ? COLLAPSE_NEW : COLLAPSE_ORIG;
+  const method = extractMethod(text);
+  if (countOccurrences(text, head) !== 1 || countOccurrences(text, collapse) !== 1 ||
+      countOccurrences(text, MARK) !== (applied ? 1 : 0) ||
+      countOccurrences(text, applied ? ORIG_HEAD : NEW_HEAD) !== 0 ||
+      countOccurrences(text, applied ? COLLAPSE_ORIG : COLLAPSE_NEW) !== 0 ||
+      !method.includes(head) || !method.includes(collapse)) {
+    throw new Error('unsupported or drifted fuzzy-toolname anchors; current bundle left unchanged');
+  }
+}
+
 function syntaxGate(source, target) {
   const checkPath = target.slice(0, -3) + '.dshcheck.mjs';
   writeFileSync(checkPath, source);
@@ -112,12 +125,11 @@ function main() {
     return 0;
   }
   if (mode === '--apply') {
+    assertSupported(text, applied);
     if (applied) {
       console.log(JSON.stringify({ mode, target, applied: true, changed: false }, null, 2));
       return 0;
     }
-    if (countOccurrences(text, ORIG_HEAD) !== 1) throw new Error('anchor ORIG_HEAD must appear exactly once, saw ' + countOccurrences(text, ORIG_HEAD));
-    if (countOccurrences(text, COLLAPSE_ORIG) !== 1) throw new Error('anchor COLLAPSE_ORIG must appear exactly once, saw ' + countOccurrences(text, COLLAPSE_ORIG));
     const patched = patch(text);
     syntaxGate(patched, target);
     if (!existsSync(backup)) copyFileSync(target, backup);
@@ -128,18 +140,17 @@ function main() {
     return 0;
   }
   if (mode === '--revert') {
-    if (existsSync(backup)) {
-      copyFileSync(backup, target);
-      console.log(JSON.stringify({ mode, target, applied: false, restored: 'backup', backup }, null, 2));
-      return 0;
-    }
+    // Backups are historical evidence, not a restore source after an upgrade.
+    assertSupported(text, applied);
     if (!applied) {
       console.log(JSON.stringify({ mode, target, applied: false, changed: false }, null, 2));
       return 0;
     }
     const original = unpatch(text);
     syntaxGate(original, target);
-    writeFileSync(target, original);
+    const temp = target + '.dsh-fuzzy-toolname.tmp';
+    writeFileSync(temp, original);
+    renameSync(temp, target);
     console.log(JSON.stringify({ mode, target, applied: false, changed: true }, null, 2));
     return 0;
   }
