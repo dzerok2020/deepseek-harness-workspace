@@ -1,0 +1,8 @@
+- insert:
+    - id: dsh-ecc-adapter
+      name: dsh-ecc-adapter
+      config:
+        eccRoot: /home/dzerok/.dsh/ecc/source
+        dataRoot: /home/dzerok/.dsh/profiles/ecc-lab/ecc-state
+        expectedRevision: b92f181b3b748d1abbc2afd94af6aa7d8c8fca29
+        enableHooks: false
