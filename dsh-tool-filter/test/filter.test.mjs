@@ -48,9 +48,50 @@ test("tên đã biến mất: bỏ tên đó rồi thử lại", () => {
   assert.match(ctx.warnings[0], /gone_tool/);
 });
 
-test("lọc hết sạch sau khi bỏ tên lỗi: không gọi restrict rỗng", () => {
+test("lọc hết allow sau khi bỏ tên lỗi: chặn mọi tool thừa hưởng", () => {
   const ctx = fakeCtx(true);
   apply(ctx, { allow: ["gone_tool"] });
-  assert.equal(ctx.calls.length, 1);
+  assert.deepEqual(ctx.calls, [{ allow: ["gone_tool"] }, { allow: [] }]);
+  assert.match(ctx.warnings[0], /gone_tool/);
+});
+
+test("allow rỗng: chặn mọi tool thừa hưởng", () => {
+  const ctx = fakeCtx(false);
+  apply(ctx, { allow: [] });
+  assert.deepEqual(ctx.calls, [{ allow: [] }]);
+});
+
+test("allow chỉ có giá trị falsy: giữ allow rỗng sau chuẩn hóa", () => {
+  const ctx = fakeCtx(false);
+  apply(ctx, { allow: ["", null, false] });
+  assert.deepEqual(ctx.calls, [{ allow: [] }]);
+});
+
+test("allow rỗng cùng deny: vẫn giữ allow rỗng", () => {
+  const ctx = fakeCtx(false);
+  apply(ctx, { allow: [], deny: ["b"] });
+  assert.deepEqual(ctx.calls, [{ allow: [], deny: ["b"] }]);
+});
+
+test("allow hết tên hợp lệ cùng deny: thử lại với allow rỗng", () => {
+  const ctx = fakeCtx(true);
+  apply(ctx, { allow: ["gone_tool"], deny: ["b"] });
+  assert.deepEqual(ctx.calls, [
+    { allow: ["gone_tool"], deny: ["b"] },
+    { allow: [], deny: ["b"] },
+  ]);
+  assert.match(ctx.warnings[0], /gone_tool/);
+});
+
+test("deny rỗng không có allow: không gọi restrict", () => {
+  const ctx = fakeCtx(false);
+  apply(ctx, { deny: [] });
+  assert.equal(ctx.calls.length, 0);
+});
+
+test("deny hết tên hợp lệ không có allow: không thử lại với filter rỗng", () => {
+  const ctx = fakeCtx(true);
+  apply(ctx, { deny: ["gone_tool"] });
+  assert.deepEqual(ctx.calls, [{ deny: ["gone_tool"] }]);
   assert.equal(ctx.warnings.length, 0);
 });

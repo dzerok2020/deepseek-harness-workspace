@@ -14,7 +14,7 @@ export function apply(ctx, config = {}) {
 
   const restrict = (a, d) => {
     const filter = {};
-    if (a && a.length > 0) filter.allow = a;
+    if (a !== undefined) filter.allow = a;
     if (d && d.length > 0) filter.deny = d;
     if (filter.allow === undefined && filter.deny === undefined) return false;
     ctx.tools.restrict(filter);
