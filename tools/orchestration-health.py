@@ -11,21 +11,7 @@ import sys
 import urllib.request
 
 
-def budget_errors(provider):
-    """Ngân sách context phải tường minh và khớp default của route (128000/16384)."""
-    errors = []
-    default_window = provider.get('defaultContextWindow')
-    default_max = provider.get('defaultMaxTokens')
-    if default_window != 128000:
-        errors.append('defaultContextWindow != 128000')
-    if default_max != 16384:
-        errors.append('defaultMaxTokens != 16384')
-    for model in provider.get('models', []):
-        if model.get('contextWindow') != default_window:
-            errors.append(str(model.get('id')) + ': contextWindow khong khop route default')
-        if model.get('maxTokens') != default_max:
-            errors.append(str(model.get('id')) + ': maxTokens khong khop route default')
-    return errors
+from model_budgets import budget_errors, check_profile_budgets
 
 
 def shim_ready(body):
@@ -45,54 +31,6 @@ def fetch_json(url, timeout=5):
     request = urllib.request.Request(url, headers={'accept': 'application/json'})
     with urllib.request.urlopen(request, timeout=timeout) as response:
         return json.load(response)
-
-
-def check_profile_budgets(path):
-    """Đọc cordis.patch.yml thật, kiểm provider or/cgw có ngân sách 128000/16384 tường minh.
-
-    GUI từng ghi đè file lúc 13:24 trả 1M/65000/131000 — kiểm định trực tiếp
-    trên đĩa, không tin bản nhớ trong đầu tiến trình.
-    """
-    providers = {}
-    current = None
-    model = None
-    with open(path, encoding='utf-8') as stream:
-        for raw in stream:
-            line = raw.rstrip('\n')
-            stripped = line.strip()
-            indent = len(line) - len(line.lstrip())
-            if indent == 6 and stripped.endswith(':'):
-                current = stripped[:-1] if stripped[:-1] in ('or', 'cgw') else None
-                if current:
-                    providers[current] = {'defaultContextWindow': None, 'defaultMaxTokens': None, 'models': []}
-                model = None
-            elif current is None or indent < 8:
-                continue
-            elif indent == 8 and ':' in stripped:
-                key, _, value = stripped.partition(':')
-                if key == 'defaultContextWindow':
-                    providers[current]['defaultContextWindow'] = int(value)
-                elif key == 'defaultMaxTokens':
-                    providers[current]['defaultMaxTokens'] = int(value)
-                elif key == 'models':
-                    pass
-            elif indent == 10 and stripped.startswith('- id:'):
-                model = {'id': stripped[len('- id:'):].strip()}
-                providers[current]['models'].append(model)
-            elif indent == 12 and ':' in stripped and model is not None:
-                key, _, value = stripped.partition(':')
-                if key in ('contextWindow', 'maxTokens'):
-                    try:
-                        model[key] = int(value)
-                    except ValueError:
-                        pass
-    if not providers:
-        return ['khong thay provider or/cgw trong profile']
-    errors = []
-    for name, provider in providers.items():
-        for message in budget_errors(provider):
-            errors.append(name + ' -> ' + message)
-    return errors
 
 
 def main():

@@ -27,6 +27,17 @@ Giữ nguyên model, provider, đăng nhập và dữ liệu. Giới hạn conte
 3. Health: phân biệt static, endpoint, chức năng và live opt-in; timeout hữu hạn, không gọi LLM ngầm ở kiểm tra thường. Thêm kiểm tra quyền/context và chuỗi bridge; test lỗi endpoint/malformed/model mismatch, không coi HTTP 200 là chức năng thành công. Commit riêng.
 4. Đo rồi tinh gọn: thu thập snapshot RAM/service và số bundle/route; loại khai báo trùng đã chứng minh thuộc repo, không tắt plugin memory chỉ vì cùng loại. Ghi rõ dữ liệu chưa đủ để quyết định tắt lớp; không hứa cải thiện tốc độ nếu chưa đo A/B.
 
+## Cập nhật policy theo model — 2026-10-29
+
+Phần này thay thế quy tắc **mọi model cùng 128000** của lát 2 ở trên; bảng trạng thái ngày 17/10 bên dưới là lịch sử, không phải policy hiện hành.
+
+- Nguồn policy vận hành mong muốn duy nhất là [web-model-budgets.yml](<../tools/web-model-budgets.yml>), khóa theo provider + model; defaults vẫn là `128000/16384`. Các giá trị `or` xuất phát từ catalog được báo cáo ngày 25/10, **không phải chứng nhận request dài đã được upstream chấp nhận**. `cgw` giữ ngân sách bảo thủ `128000/16384`.
+- [Helper ngân sách](<../tools/model_budgets.py>) dùng PyYAML (máy hiện có `6.0.3`) cho health và repair, thay numeric allowlist và parser indentation. Model không biết, model trùng hoặc YAML mơ hồ phải báo lỗi, không suy đoán từ model khác. Model bị thiếu khỏi profile không được tự thêm hay xóa; overlay không chứng minh profile đã được áp dụng.
+- [Entrypoint repair](<../tools/fix-cordis-budgets.sh>) chỉ sửa budget của model/provider đã biết, giữ model 1M hợp lệ và phần cấu hình khác; backup giữ nguyên bytes và LF/CRLF, không tạo backup nếu đã sạch hoặc từ chối ghi. Unknown/malformed làm repair dừng trước khi ghi; mixed newline bị từ chối. Không ghi lại cả YAML để tránh đổi comment/credential/phần không liên quan.
+- Trước khi repair có ghi: **dừng DSH/GUI và mọi tiến trình có thể lưu profile**, rồi mới xác nhận bằng `bash tools/fix-cordis-budgets.sh --writer-stopped`. Công cụ không tự dừng/restart hệ thống; thiếu xác nhận sẽ từ chối ghi. Advisory file lock chỉ chặn repair cùng công cụ, không chặn GUI; kiểm tra inode/bytes và atomic rename **không phải compare-and-swap**, nên không an toàn nếu writer khác vẫn hoạt động.
+- Runtime adapter đã cài ưu tiên `entry.contextWindow`, rồi registry của model, rồi provider default; vì vậy default 128K không giới hạn entry 1M. Ngưỡng nén context là hành vi DSH, không chứng minh upstream cho phép cùng kích thước.
+- Các test âm tính phải gồm đổi chéo ngân sách giữa model, default sai, unknown, cgw 1M, và repair giữ nguyên model 1M hợp lệ. Repair được kiểm trên profile giả; không tự áp dụng vào profile live hoặc restart DSH.
+
 ## Nghiệm thu và rollback
 
 Mỗi lát: focused tests → toàn bộ `node --test test/`, Python health tests, hai plugin tests khi cần → diff check → commit. Cuối: health static/endpoint, live synthetic task biệt lập và kiểm tra worktree. Chưa chạy được phải ghi chưa verify.
