@@ -1,14 +1,15 @@
 # LeanRea: tích hợp vào DSH
 
-**2026-10-29 — đã cài skill native cho workspace DSH hiện tại; không đổi profile/model, không ghi memory, không chạy installer hoặc benchmark upstream.**
+**2026-10-29 — đã cài skill native toàn cục cho tài khoản DSH hiện tại, dùng chung `DSH_HOME=/home/dzerok/.dsh` qua các workspace; không đổi profile/model, không ghi memory, không chạy installer hoặc benchmark upstream.**
 
 ## Bản cài và kiểm chứng
 
-- Phạm vi: workspace `/home/dzerok/Documents/deepseek-harness/default-workspace`, không phải cài toàn bộ workspace trên máy. Nguồn duy nhất: [skill đã cài](<../.dsh/skills/leanrea/SKILL.md>) và [MIT LICENSE](<../.dsh/skills/leanrea/LICENSE>).
+- Phạm vi: toàn cục cho tài khoản DSH hiện tại qua [skill dùng chung](</home/dzerok/.dsh/skills/leanrea/SKILL.md>) và [MIT LICENSE dùng chung](</home/dzerok/.dsh/skills/leanrea/LICENSE>). Các workspace dùng cùng DSH_HOME và provider filesystem đều quét root `user-dsh`; không cài cho tài khoản hệ điều hành hoặc máy khác.
+- Giữ [bản skill project](<../.dsh/skills/leanrea/SKILL.md>) và [license project](<../.dsh/skills/leanrea/LICENSE>) làm snapshot đã pin, không tự xóa file đã commit. Hai bản khớp byte. Tại workspace này, `project-dsh` (rank 100) vẫn ưu tiên trước `user-dsh` (rank 400); nếu cập nhật sau này cần đồng bộ hai bản hoặc chủ động bỏ override project.
 - Pin commit `09ba4aa0217f82cd880f855a60b877f59f39b22b`. Chỉ thêm frontmatter `disable-model-invocation: true`; giữ nguyên nội dung upstream vì đây là bản import, không tự viết lại skill. Chọn gọi thủ công, không để model tự kích hoạt các ví dụ có xóa thư mục/tải tool.
 - SHA-256 của upstream skill sau khi bỏ flag DSH: `53581bd7fb1fae4352ab43252e67b84667b68895a68e372b99d302b58d9c782d`. SHA-256 LICENSE: `f126681f66a89b4f610999a64f1a1fc6da98d221a39f65799a6d6bb6e051d922`. Cả hai đã khớp nguồn pin.
-- Provider `@deepseek-ai/dsh-skill-filesystem` 0.2.1-rc.2 của profile `web` đã discover đúng một LeanRea và load được nội dung: **3/3 kiểm tra PASS, exit 0**; invocation trả `modelInvocable: false`, `userInvocable: true`. Phép thử standalone nối module host qua Node resolve hook, không sửa dependency/profile.
-- Kiểm chứng cuối bằng Node test runner: **6 tests, 6 pass, 0 fail, exit 0** (hash skill, hash license, discovery/load/quyền gọi thủ công, fence/whitespace tài liệu, liên kết nguồn, fence/whitespace skill).
+- Provider `@deepseek-ai/dsh-skill-filesystem` 0.2.1-rc.2 của profile `web` đã load bản `project-dsh` tại workspace hiện tại và bản `user-dsh` khi cwd là `/tmp`, đối chiếu đúng đường dẫn global thực tế, không dựa vào bản project. Cả hai giữ `modelInvocable: false`, `userInvocable: true`. Phép thử standalone nối module host qua Node resolve hook, không sửa dependency/profile.
+- Lệnh kiểm chứng: `node --test tools/leanrea-install.test.mjs` ([bài test](<../tools/leanrea-install.test.mjs>)). Trước cài global: **1 pass, 2 fail, exit 1**, đúng lỗi thiếu global skill và thiếu `user-dsh` ngoài workspace. Sau cài: **3 tests, 3 pass, 0 fail, exit 0**, bao phủ hash nguồn/license, hai bản khớp byte, discovery/load/quyền gọi thủ công ở hai cwd, fence/whitespace và liên kết nguồn.
 - Provider hiện tại hỗ trợ watch thư mục skill, nên không cần restart DSH để nhận file ở lượt catalog kế tiếp. Discovery/load đã verify; hiệu quả reverse engineering thực tế, auto-routing và benchmark tiết kiệm token **chưa verify**. Chưa xác nhận chọn skill trong GUI: công cụ browser lỗi tham số tùy chọn, không phải lỗi cài skill; không gửi prompt hay gọi model để thử.
 - Health check trước cài: `34 đạt, 1 lỗi, 10 bỏ qua`, exit 1. Lỗi có sẵn: `chuỗi ChatGPT Web chưa đạt — pipeline sẽ fallback native; xem dòng LỖI ở trên`. Không tự sửa bridge hoặc mở quyền để làm health xanh.
 - Markdown: giữ nguyên các lỗi bảng/snippet upstream để bảo toàn nguồn; phần rủi ro bên dưới ghi rõ không copy chạy mù, nhất là trên Linux.
