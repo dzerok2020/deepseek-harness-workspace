@@ -9,7 +9,17 @@ Adapter cục bộ `0.2.0` cho DSH `0.2.1-rc.2`, đọc nguyên nguồn [ECC](ht
 - Main runtime đã tạo [status snapshot](</home/dzerok/.dsh/profiles/web/ecc-state/status.json>) với `ready-partial`, nạp ownership instructions và xuất bốn memory tools trong phiên thật.
 - Model, credential, Hindsight config/bank, instructions native và các provider/preset khác được giữ nguyên.
 - Bundle mặc định vẫn bảo thủ cho profile mới; không suy ra profile khác tự có cấu hình `web`. Xem [bundle](<cordis.patch.yml>) và [entry](<lib/index.js>).
-- GUI `/ecc-status` và vòng gọi model/generation trên GUI **chưa verify**: browser session cũ hết hạn nhưng vẫn chiếm quota; không đóng phiên người khác hoặc khởi động GUI thay thế.
+- Sau restart đã kiểm tra native memory/config. Output JSON của `/ecc-status` trên GUI và E2E mọi workflow vẫn **chưa verify**; không đồng nhất câu trả lời AI từ `memory_doctor` với native command result.
+
+## Kiểm tra native command trên GUI
+
+Trong phiên parent của workspace, nhập **duy nhất** dòng dưới vào ô chat rồi Enter, không thêm lời nhờ AI hoặc dấu backtick:
+
+```text
+/ecc-status
+```
+
+Handler trả JSON có `adapter: dsh-ecc-adapter`, `status: ready-partial`, `parity: partial`, inventory/policy/ownership/native/memory/hooks. Command này không khai báo arguments và không gọi model. Theo contract GUI hiện cài, tên command không có descriptor hoặc thêm arguments có thể rơi về đường chat; đó chưa phải bằng chứng adapter hỏng. Nếu chỉ thấy câu trả lời AI dùng `memory_doctor`, cần xem khối kết quả command gốc, không tính memory report là nghiệm thu toàn bộ ECC.
 
 ## Coverage và owner
 
