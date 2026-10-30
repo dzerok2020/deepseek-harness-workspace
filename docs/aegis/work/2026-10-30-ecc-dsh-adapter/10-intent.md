@@ -1,42 +1,37 @@
-# ECC–DSH adapter trong profile thử nghiệm
+# ECC trên DSH — tích hợp chọn lọc, Hindsight làm memory owner
 
-## Kết quả và quyền đã chốt
+## Kết quả và quyền hiện hành
 
-Người dùng yêu cầu đọc tài liệu và cài ECC vào DSH, tự xử lý lỗi/thiếu liên quan. Sau so sánh, người dùng chọn hoàn thiện adapter ECC–DSH trong profile thử nghiệm riêng. Không thay profile `web`, không tự bật MCP cần credential, model ngoài hoặc kho memory thay Hindsight. Đây là kế hoạch triển khai được chốt từ lựa chọn đó; không cần phê duyệt lại cùng phạm vi.
+Người dùng đã chọn phương án A ngày 2026-10-30: DSH tiếp tục là host chính; giữ nguyên upstream ECC, tái sử dụng chức năng DSH đã có, kết hợp có chọn lọc và dùng Hindsight làm kho nhớ duy nhất. Phạm vi mới thay thế giới hạn lab-only trước đó: thử và kiểm chứng trong lab, sau đó đưa cấu hình đạt vào profile `web`, có backup/rollback và restart đúng GUI hiện có. Không cần hỏi lại quyết định A.
 
-## Baseline và nguồn chuẩn
+Full coverage không đồng nghĩa bật mọi process hoặc cam kết host parity. Mỗi nhóm chức năng và từng phần chưa thay thế phải có owner/trạng thái/lý do, không lấy source-present hay số test làm bằng chứng hoạt động thật.
 
-- Workspace: `/home/dzerok/Documents/deepseek-harness/default-workspace`; HEAD trước triển khai `277729c`.
-- DSH `0.2.1-rc.2`; ECC nguồn hiện có chỉ đọc tại `/home/dzerok/.dsh/ecc/source`, pin `b92f181b3b748d1abbc2afd94af6aa7d8c8fca29`.
-- Tài liệu và static audit: [ecc-integration-research.md](<../../../ecc-integration-research.md>); bridge/protocol exact `0.2.1-rc.2`, MIT, đã đối chiếu integrity nhưng chưa có bằng chứng runtime.
-- Health baseline: `42 đạt, 1 lỗi, 2 bỏ qua`; lỗi model policy/catalog có trước, không sửa lựa chọn model ngoài phạm vi.
-- DSH có native skills, command registry, agent presets, context/instructions, tool/lifecycle hooks. Không suy ra tương đương ECC chỉ từ tên tính năng.
+## Baseline và source of truth
 
-## Phạm vi và tác động
+- Workspace HEAD bắt đầu lát mới: `89e214d`; working tree sạch.
+- DSH `0.2.1-rc.2`, Node `26.8.2`; ECC giữ pin `b92f181b3b748d1abbc2afd94af6aa7d8c8fca29` tại `/home/dzerok/.dsh/ecc/source`; không sửa upstream hoặc DSH core.
+- Adapter lab trước đó: 61/61 public-SDK fixtures xanh, chưa generation/GUI acceptance. Profile web chưa cài adapter. Đây là baseline, không phải nghiệm thu scope mới.
+- [Hindsight primary](<../../../hindsight-primary.md>) sở hữu config/routing/quyền/chi phí memory. Native adapter `0.8.2`, server `0.10.3`; không đổi model, credential, bank hoặc tạo memory database khác.
+- [Research](<../../../ecc-integration-research.md>) và [README adapter](<../../../../dsh-ecc-adapter/README.md>) ghi giới hạn của baseline. Health model-policy/catalog lỗi đã tồn tại, không tự đổi route để làm xanh.
 
-Thêm package `dsh-ecc-adapter/` và profile `/home/dzerok/.dsh/profiles/ecc-lab`. Package tái sử dụng upstream source, không chép hoặc sửa nội dung ECC; inventory phải phản ánh toàn bộ skills/commands/agents/rules/hooks/MCP cùng trạng thái kích hoạt. Không ghi đè native command, preset hoặc global skill hiện có. Namespaced entry rõ ràng để tránh nhầm command ECC và DSH.
+## Phạm vi và ranh giới
 
-Giữ nguyên source ECC, profile web, global AGENTS/skills, memory hiện tại và checkout DSH. Dependency được ghim đúng phiên bản, không chạy install scripts chưa duyệt. Không khởi động server thay GUI hiện tại. Một profile riêng không tự tạo sandbox OS: hooks phải có containment thực hoặc mặc định không thực thi side effect chưa kiểm chứng.
+1. Kiểm kê skills/commands/agents/rules/hooks/MCP; quyết định theo nội dung và contract, không theo tên giống nhau. Mỗi chức năng có một owner; bổ sung ECC không được đè native skill/instructions/guard.
+2. Cầu nối memory dùng API công khai của Hindsight hiện có, cùng workspace/bank đã opt-in. Không chạy ECC vault/observer/summary model song song. Bảo toàn ID/metadata và xác nhận lưu; trả pending/error trung thực. Không xóa dữ liệu, chạy migration, reflect, page refresh, survey, hoặc cài MCP Hindsight thứ hai.
+3. Giữ quy trình learning hữu ích khác với việc mở một kho nhớ mới. Entry cần filesystem/host gốc mà chưa có thay thế phải được báo, không âm thầm bật.
+4. Tái sử dụng quyền/tool/model route/cost controls native. Không host khác, model ngoài hoặc MCP có credential mới. Chỉ server được chọn sau review hợp đồng; không bật toàn bộ templates.
+5. Không tạo server thay GUI. Main rollout chỉ sau tests/review/compose; backup ngoài Git trước đổi profile; restart có thể ngắt session nên phải checkpoint trước.
 
-Không yêu cầu kích hoạt mọi MCP: upstream cũng hướng dẫn chọn server theo nhu cầu. Không dùng Stop thay SessionEnd, không báo async/rewritten input/transcript hoạt động nếu chỉ có static bằng chứng. Host không có lifecycle public tương ứng thì ghi unsupported thay vì bịa event.
+## Seams nghiệm thu đã duyệt
 
-## TDD Route và seams nghiệm thu
+- ECC memory API: save → receipt/completed hoặc pending → search → read theo ID; lỗi/timeout/collision/scopes/metadata; qua hai phiên mới không đưa đáp án vào query, không ghi vault ECC.
+- Ownership policy: native owner và ECC supplement có căn cứ; unknown/lifecycle thiếu ghi rõ, duplicate names không được coi semantic-equivalent.
+- Native SDK: command arguments/confirmation, agent tool/model scope, rules/skill resources và precedence, hook monotonic deny/Stop/containment giữ regression.
+- Integration: source sạch/pin đúng, lab entry và main compose đúng, main status có per-asset owners, Hindsight cùng bank/config, provider/credential không đổi; kiểm chứng GUI/generation riêng với fixture.
+- Regression: toàn bộ adapter, loop/vibe guards, generator ECC, health; ghi nguyên văn pass/fail và phần chưa verify. Commit theo lát, không push.
 
-TDD Route: standard, red → green cho từng lát; test qua public exports/SDK registration và profile compose/load, không khóa chi tiết nội bộ. Các seam dưới đây cụ thể hóa phạm vi adapter và kiểm chứng khoảng thiếu đã được người dùng chọn:
+## Phân công và tiếp tục
 
-1. Inventory/source contract: pin, counts, collision handling và trạng thái source-present/registered/disabled/unsupported.
-2. Native registrations: command nhận arguments và giữ prompt/confirmation; agent giữ prompt/tool restrictions với model mapping minh bạch, không gọi provider khác.
-3. Skill/rule context: đúng resource root, common/language scope, precedence và không sửa AGENTS gốc.
-4. Hook public boundary: JSON/exit decisions, deny không có side effect, input/context/async/deadline, lifecycle thật và sandbox/environment. Chỉ bật runtime hook sau khi evidence đủ.
-5. Profile seam: compose đúng entry, mount thật trong fixture không provider credential/không LLM ngoài, toàn bộ package tests và health/regression liên quan; kiểm tra fingerprint web và source không đổi.
+Lead sở hữu memory bridge ban đầu, bootstrap/context integration, profile rollout và kiểm chứng tổng. Phạm vi teammate theo từng task trên board: native assets/ownership policies và các fix đã xác minh; hooks/policy và các fix memory receipt. Các task có write scopes tách biệt, get/claim trước làm và freeze trước review cuối; không suy ra quyền sửa ngoài task. Trạng thái cuối và các nhiệm vụ đã hoàn tất nằm ở checkpoint.
 
-## Lát triển khai và owner
-
-1. Lead: scaffold package, source inventory, skills/rules, profile bootstrap, integration và tài liệu/rollback.
-2. Native-assets teammate: chỉ `dsh-ecc-adapter/lib/native-assets.js`, `dsh-ecc-adapter/test/native-assets.test.js`; public `registerNativeAssets(ctx, config)` nhận `eccRoot`, trả summary/disposers, không sửa profile/package chung. Commands dùng namespace `ecc-`; agent preset namespace `ecc-`; khám phá SDK thực, không giả API.
-3. Hooks teammate: chỉ `dsh-ecc-adapter/lib/hooks.js`, `dsh-ecc-adapter/test/hooks.test.js`; public `registerHooks(ctx, config)` nhận `eccRoot`, `dataRoot`, `enableHooks`; trả status/disposers. Mặc định không chạy upstream side effects chưa containment. Dùng public DSH lifecycle thực, ghi gaps và test đỏ trước fix; không sửa core, upstream hoặc profile.
-4. Lead ghép và chạy full test, verify profile thật, review diff và commit đúng phạm vi. Không tự push.
-
-## Điều kiện giao và rollback
-
-Không gọi đây là full behavioral parity nếu còn unsupported/disabled. Giao profile dùng được, lệnh sử dụng, coverage thực và phần chưa verify. Nếu native API khiến một tiêu chí không thể đáp ứng, giữ bằng chứng và tiếp tục phần độc lập; chỉ hỏi quyết định mới có ảnh hưởng lớn. Rollback chỉ tác động package/profile mới, không đụng web/source/global skills; kiểm tra đường dẫn tuyệt đối trước xóa/move. Trạng thái tiếp tục nằm trong [20-checkpoint.md](<20-checkpoint.md>), không tạo owner kế hoạch thứ hai.
+Trạng thái mới nhất và resume: [20-checkpoint.md](<20-checkpoint.md>). Bằng chứng cũ chỉ đóng phạm vi lab cũ; không dùng thay bằng chứng scope A.

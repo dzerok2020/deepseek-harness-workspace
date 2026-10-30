@@ -101,7 +101,7 @@ function contained(binary, args, command, payload, timeoutMs, signal) {
  * No hooks execute until an actual event is delivered. Project/transcript access
  * is deliberately unavailable: only ECC (RO) and adapter hook state (RW) mount.
  */
-export async function registerHooks(ctx, { eccRoot, dataRoot, enableHooks = false }) {
+export async function registerHooks(ctx, { eccRoot, dataRoot, enableHooks = false, hookManifest }) {
   const gaps = [];
   const hooks = [];
   const disposers = [];
@@ -121,7 +121,7 @@ export async function registerHooks(ctx, { eccRoot, dataRoot, enableHooks = fals
   }
   let config;
   try {
-    config = JSON.parse(await readFile(join(eccRoot, 'hooks/hooks.json'), 'utf8')).hooks;
+    config = (hookManifest ?? JSON.parse(await readFile(join(eccRoot, 'hooks/hooks.json'), 'utf8'))).hooks;
     if (!config || typeof config !== 'object' || Array.isArray(config)) throw new Error('hooks must be an object');
   } catch (error) {
     gaps.push(`ECC hook configuration unavailable: ${error.message}`);

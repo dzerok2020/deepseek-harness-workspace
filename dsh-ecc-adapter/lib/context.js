@@ -15,7 +15,9 @@ export async function registerEccContext(ctx, config) {
       name: provider.name,
       async list(options) {
         const result = await provider.list(options);
-        const candidates = (Array.isArray(result) ? result : result.candidates).map(candidate => ({ ...candidate, rank: 1000 }));
+        const candidates = (Array.isArray(result) ? result : result.candidates)
+          .filter(candidate => !config.allowedAssets || config.allowedAssets.skills.includes(candidate.name))
+          .map(candidate => ({ ...candidate, rank: 1000 }));
         return Array.isArray(result) ? candidates : { ...result, candidates };
       },
       get: (candidate, options) => provider.get(candidate, options),
@@ -23,7 +25,8 @@ export async function registerEccContext(ctx, config) {
     };
   }));
 
-  const entries = await readRules(config.eccRoot);
+  const entries = (await readRules(config.eccRoot))
+    .filter(rule => !config.allowedAssets || config.allowedAssets.rules.includes(rule.name));
   const pathsByScope = new WeakMap();
   const languages = config.ruleLanguages ?? [];
   const maxBytes = config.maxRuleBytes ?? 131072;
@@ -85,7 +88,17 @@ export async function registerEccContext(ctx, config) {
         if (winner.provider === 'ecc-upstream') return { name, status: 'native-registered', owner: winner.provider };
         return { name, status: 'shadowed', owner: winner.provider ?? 'registry-owned' };
       });
-      return { complete: catalog.complete, cwd: options.cwd ?? process.cwd(), scope: options.scope ? 'agent' : 'global', verification: 'catalog-only; skill execution was not tested', assets, collisions: assets.filter(asset => asset.status === 'shadowed') };
+      const ownership = (config.ownershipAssets ?? []).map(row => {
+        const observed = { kind: row.kind, name: row.name, action: row.action, nativeSkill: row.owner, owner: null, status: 'unresolved' };
+        if (!catalog.complete) return { ...observed, reason: 'Skill catalog discovery was incomplete; native ownership is unresolved.' };
+        const native = winners.get(row.owner);
+        if (native && native.provider !== 'ecc-upstream') return { ...observed, status: 'native-available', owner: row.owner, provider: native.provider };
+        if (row.kind === 'skills' && row.name === row.owner && winners.get(row.name)?.provider === 'ecc-upstream') {
+          return { ...observed, status: 'ecc-fallback', owner: 'ecc-upstream', reason: 'Same-name ECC fallback is the catalog winner; native equivalence is not asserted in this view.' };
+        }
+        return { ...observed, status: 'native-unavailable', reason: 'Reviewed native owner is not visible in this workspace/scope; held upstream content remains withheld, not an active equivalent.' };
+      });
+      return { complete: catalog.complete, cwd: options.cwd ?? process.cwd(), scope: options.scope ? 'agent' : 'global', verification: 'catalog-only; skill execution was not tested', assets, ownership, collisions: assets.filter(asset => asset.status === 'shadowed') };
     },
     rules,
     gaps: ['Rule paths are selected after scoped native file-tool observations, not by undocumented model context inspection.'],

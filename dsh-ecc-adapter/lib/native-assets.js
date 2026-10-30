@@ -35,7 +35,7 @@ function mapTools(requested, toolMap, tools, scope) {
     if (!names.length || names.some(name => typeof name !== 'string' || !name || name === 'run_code')) {
       throw new Error(`Invalid native mapping for tool ${tool}`);
     }
-    for (const name of names) if (!tools.get(name, scope)) throw new Error(`Native tool ${name} required by ${tool} is unavailable in this scope`);
+    for (const name of names) if (!tools.get(name, scope)) throw new Error(`Native tool ${name} required by ${tool} is unavailable in the adapter registration scope; standalone ECC presets do not inherit caller or other session tool registrations`);
     return names;
   });
   return [...new Set(mapped)];
@@ -46,6 +46,10 @@ function mapTools(requested, toolMap, tools, scope) {
 export const name = 'ecc-agent-persona';
 export const inject = ['tools', 'systemPrompt'];
 export function apply(ctx, config) {
+  const scope = scopeOf(ctx);
+  for (const tool of config.tools) {
+    if (!ctx.tools.get(tool, scope)) throw new Error(`Native tool ${tool} is unavailable in the actual preset activation scope; standalone ECC presets do not inherit caller or other session tool registrations`);
+  }
   const allowed = new Set(config.tools);
   ctx.systemPrompt.section({
     name: 'ecc-agent-persona', order: 0, interpolate: false,
@@ -81,6 +85,12 @@ export async function registerNativeAssets(ctx, config) {
       if (!entry.isFile() || !entry.name.endsWith('.md') || entry.name === 'README.md') continue;
       const asset = { kind, name: entry.name.slice(0, -3), path: join(directory, entry.name), nativeName: `ecc-${entry.name.slice(0, -3)}`, status: 'unsupported' };
       result[kind].push(asset);
+      if (config.allowedAssets && !config.allowedAssets[kind].includes(asset.name)) {
+        asset.status = 'policy-held';
+        asset.reason = 'Selective native ownership policy withheld the raw upstream prompt; see policy evidence.';
+        result.unsupported.push({ kind, name: asset.name, reason: asset.reason });
+        continue;
+      }
       try {
         const { metadata, content } = splitFrontmatter(await readFile(asset.path, 'utf8'));
         if (!/^[a-z][a-z0-9-]*$/.test(asset.nativeName)) throw new Error('Asset name is not a valid native ecc- identifier');

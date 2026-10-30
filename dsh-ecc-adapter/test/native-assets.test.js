@@ -266,6 +266,112 @@ test('real Loader and AgentPresetRegistry activate, mount and dispose the native
   assert.equal(ctx.agentPresets.inspectCompositions().length, 0);
 });
 
+test('main-shaped session-local capabilities stay fail-closed across late publication, sibling scopes and disposal', async t => {
+  const [{ default: Loader }, { default: Projections }, { default: Presets }, { registerNativeAssets }] = await Promise.all([
+    import('@deepseek-ai/cordis-plugin-loader'), import('@deepseek-ai/dsh-session-projection'),
+    import('@deepseek-ai/dsh-agent-preset-registry'), import('../lib/native-assets.js'),
+  ]);
+  const root = await fixture(t, { 'agents/reviewer.md': '---\ntools: [Read]\n---\nReview without widening native permissions.' });
+  const ctx = new Context();
+  await Promise.all([
+    ...[Loader, Projections, SystemPrompt, Tools, Commands].map(plugin => ctx.plugin(plugin)),
+    ctx.plugin(Presets, { default: 'standard' }),
+  ].map(fiber => fiber.await()));
+  t.after(() => ctx.fiber.dispose());
+  await ctx.agentPresets.register({ id: 'standard', plugins: [] });
+  const sessions = [];
+  for (let index = 0; index < 2; index++) {
+    const key = {};
+    const scope = createScope(ctx, key);
+    t.after(() => scope.dispose());
+    await ctx.agentPresets.mount(scope.ctx, 'standard');
+    let view;
+    await scope.ctx.plugin({ inject: ['tools'], apply(scoped) { view = scoped; } }).await();
+    sessions.push({ key, scope, view });
+  }
+  const calls = [];
+  const sibling = sessions[1];
+  const removeSibling = registerTool(sibling.view, 'ops_read_files', calls);
+  const config = { eccRoot: root, toolMap: { Read: 'ops_read_files' } };
+  const assertHeld = async () => {
+    const result = await registerNativeAssets(ctx, config);
+    assert.equal(result.agents[0].status, 'unsupported');
+    assert.match(result.agents[0].reason, /adapter registration scope/);
+    assert.match(result.agents[0].reason, /standalone ECC presets.*do not inherit/);
+    assert.doesNotMatch(result.agents[0].reason, /missing dependency|not installed/i);
+    assert.equal(result.disposers.length, 0);
+    assert.deepEqual((await ctx.agentPresets.list()).map(preset => preset.id), ['standard']);
+    assert.equal(ctx.tools.get('ops_read_files'), undefined);
+    return result;
+  };
+  assert.ok(ctx.tools.get('ops_read_files', sibling.key));
+  assert.equal(ctx.tools.get('ops_read_files', sessions[0].key), undefined);
+  await assertHeld();
+  const removeParent = registerTool(sessions[0].view, 'ops_read_files', calls);
+  assert.ok(ctx.tools.get('ops_read_files', sessions[0].key));
+  await assertHeld();
+  const unrelated = {};
+  const execution = await ctx.tools.execute({ callId: 'no-session-leak', name: 'ops_read_files', arguments: { files: [{ path: 'src/example.py' }] }, signal: new AbortController().signal, agent: unrelated });
+  assert.equal(execution.isError, true);
+  removeParent();
+  assert.equal(ctx.tools.get('ops_read_files', sessions[0].key), undefined);
+  assert.ok(ctx.tools.get('ops_read_files', sibling.key));
+  await assertHeld();
+  removeSibling();
+  assert.equal(ctx.tools.get('ops_read_files', sibling.key), undefined);
+  assert.deepEqual(calls, [], 'no real worker or fixture tool body may run');
+});
+
+test('a caller-visible tool is not inherited by an independently activated real ECC preset', async t => {
+  const [{ default: Loader }, { default: Projections }, { default: Presets }, { registerNativeAssets }] = await Promise.all([
+    import('@deepseek-ai/cordis-plugin-loader'), import('@deepseek-ai/dsh-session-projection'),
+    import('@deepseek-ai/dsh-agent-preset-registry'), import('../lib/native-assets.js'),
+  ]);
+  const root = await fixture(t, { 'agents/reviewer.md': '---\ntools: [Read]\n---\nNo caller capability transfer.' });
+  const ctx = new Context();
+  await Promise.all([
+    ...[Loader, Projections, SystemPrompt, Tools, Commands].map(plugin => ctx.plugin(plugin)),
+    ctx.plugin(Presets, { default: 'standard' }),
+  ].map(fiber => fiber.await()));
+  t.after(() => ctx.fiber.dispose());
+  const key = {};
+  const caller = createScope(ctx, key);
+  t.after(() => caller.dispose());
+  let view;
+  await caller.ctx.plugin({ inject: ['tools', 'systemPrompt', 'agentPresets'], apply(scoped) { view = scoped; } }).await();
+  const calls = [];
+  registerTool(view, 'ops_read_files', calls);
+  assert.ok(ctx.tools.get('ops_read_files', key));
+  assert.equal(ctx.tools.get('ops_read_files'), undefined);
+  const result = await registerNativeAssets(view, { eccRoot: root, toolMap: { Read: 'ops_read_files' } });
+  assert.equal(result.agents[0].status, 'unsupported', 'caller visibility must never make an independent preset falsely ready');
+  assert.match(result.agents[0].reason, /activation failed/);
+  assert.equal(result.disposers.length, 0);
+  assert.equal((await ctx.agentPresets.list()).length, 0);
+  assert.ok(ctx.tools.get('ops_read_files', key), 'failed activation must not dispose caller-owned tools');
+  assert.equal(ctx.tools.get('ops_read_files', {}), undefined);
+  assert.ok(!(await ctx.systemPrompt.assemble({ scope: key })).sections.some(section => section.text.includes('No caller capability transfer.')));
+  assert.deepEqual(calls, []);
+});
+
+test('preset apply validates its actual capability scope before contributing prompt or restrictions', async t => {
+  const { apply } = await import('../lib/native-assets.js');
+  const { ctx } = await host(t);
+  const key = {};
+  const scope = createScope(ctx, key);
+  t.after(() => scope.dispose());
+  let failure;
+  await scope.ctx.plugin({ inject: ['tools', 'systemPrompt'], apply(view) {
+    try {
+      apply(view, { prompt: 'No partial persona on rejected capability.', tools: ['ops_read_files'], model: { requested: null, nativeModel: null } });
+    } catch (error) { failure = error; }
+  } }).await();
+  assert.ok(failure, 'an unavailable required capability must fail activation');
+  assert.ok(!(await ctx.systemPrompt.assemble({ scope: key })).sections.some(section => section.text.includes('No partial persona on rejected capability.')), 'rejected activation must not leave a partial ECC persona');
+  assert.match(failure.message, /actual preset activation scope/);
+  assert.deepEqual(ctx.tools.schemas(key), []);
+});
+
 test('missing required host services are explicit unsupported assets, never false registered', async t => {
   const { registerNativeAssets } = await import('../lib/native-assets.js');
   const root = await fixture(t, { 'commands/plan.md': 'Plan.', 'agents/reviewer.md': '---\ntools: [Read]\n---\nReview.' });

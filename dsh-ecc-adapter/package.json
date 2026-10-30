@@ -1,9 +1,9 @@
 {
   "name": "dsh-ecc-adapter",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Pinned ECC assets and explicit compatibility status for an isolated DSH profile",
+  "description": "Pinned ECC selective-native integration with one Hindsight memory owner for DSH",
   "main": "lib/index.js",
   "exports": {
     ".": "./lib/index.js"

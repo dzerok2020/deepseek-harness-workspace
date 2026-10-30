@@ -75,6 +75,44 @@ test('skill diagnostics distinguish registered catalog entries from incomplete d
   assert.match(observation.assets[0].reason, /incomplete/i);
 });
 
+test('ownership diagnostics use the current skill view and do not claim missing partial owners', async t => {
+  const ownershipAssets = [
+    { kind: 'skills', name: 'alpha', action: 'native-equivalent', owner: 'alpha' },
+    { kind: 'skills', name: 'flow', action: 'reference-only', owner: 'tdd' },
+  ];
+  const { ctx, root, state } = await setup(t, { ownershipAssets });
+  const otherCwd = join(root, 'other-project');
+  const first = createScope(ctx, {}), second = createScope(ctx, {});
+  t.after(async () => { await first.dispose(); await second.dispose(); });
+  const scoped = first.ctx.plugin({ name: 'view-owner-fixture', inject: ['skills'], apply(view) {
+    view.skills.registerProvider(() => ({ name: 'native-view',
+      list: async options => options.cwd === root ? ['alpha', 'tdd'].map(name => ({ name, description: 'Scoped owner', rank: 100, provider: 'native-view', source: 'project', locator: name, invocation: { modelInvocable: true, userInvocable: true } })) : [],
+      get: async candidate => ({ ...candidate, content: 'Scoped body' }),
+    }));
+  } });
+  await scoped.await();
+  let observation = await state.observeSkills(['alpha'], { cwd: root, scope: scopeOf(first.ctx) });
+  assert.ok(Array.isArray(observation.ownership), 'Current-view ownership diagnostics must be returned.');
+  assert.equal(observation.ownership.find(row => row.name === 'alpha').status, 'native-available');
+  assert.equal(observation.ownership.find(row => row.name === 'flow').owner, 'tdd');
+  for (const view of [{ cwd: otherCwd, scope: scopeOf(first.ctx) }, { cwd: root, scope: scopeOf(second.ctx) }]) {
+    observation = await state.observeSkills(['alpha'], view);
+    assert.equal(observation.ownership.find(row => row.name === 'alpha').status, 'ecc-fallback');
+    const held = observation.ownership.find(row => row.name === 'flow');
+    assert.equal(held.action, 'reference-only');
+    assert.equal(held.status, 'native-unavailable');
+    assert.equal(held.owner, null);
+  }
+  await scoped.dispose();
+  observation = await state.observeSkills(['alpha'], { cwd: root, scope: scopeOf(first.ctx) });
+  assert.equal(observation.ownership.find(row => row.name === 'alpha').status, 'ecc-fallback');
+  const incomplete = ctx.skills.registerProvider(() => ({ name: 'incomplete-owner-view', list: async () => ({ candidates: [], complete: false }), get: async () => undefined }));
+  observation = await state.observeSkills(['alpha'], { cwd: root });
+  assert.equal(observation.complete, false);
+  assert.ok(observation.ownership.every(row => row.status === 'unresolved' && row.owner === null));
+  incomplete();
+});
+
 test('path rules are scope-local, common-first and preserve literal template text', async t => {
   const { ctx } = await setup(t);
   const first = createScope(ctx, {}), second = createScope(ctx, {});
