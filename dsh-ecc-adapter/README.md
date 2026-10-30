@@ -1,11 +1,11 @@
 # ECC–DSH adapter — selective native, Hindsight làm memory owner
 
-Adapter cục bộ `0.2.0` cho DSH `0.2.1-rc.2`, đọc nguyên nguồn [ECC](https://github.com/affaan-m/ECC) tại pin `b92f181b3b748d1abbc2afd94af6aa7d8c8fca29`. Không sửa upstream hoặc DSH core. DSH tiếp tục sở hữu instructions, permissions, model/provider routing; Hindsight là kho tri thức duy nhất. Đây là tích hợp **partial**, không phải bản sao toàn bộ runtime Claude Code.
+Adapter cục bộ `0.3.1` cho DSH `0.2.1-rc.2`, đọc nguyên nguồn [ECC](https://github.com/affaan-m/ECC) tại pin `b92f181b3b748d1abbc2afd94af6aa7d8c8fca29`. Không sửa upstream hoặc DSH core. DSH tiếp tục sở hữu instructions, permissions, model/provider routing; Hindsight là kho tri thức duy nhất. Đây là tích hợp **partial**, không phải bản sao toàn bộ runtime Claude Code.
 
 ## Trạng thái cài đặt
 
 - Đã thử trong `ecc-lab`, sau đó cài local bundle vào profile `web` bằng CLI chính thức với install scripts bị tắt.
-- Profile `web` bật `selective`, `enableMemory`, `enableHooks`; classifier chỉ cho chạy **một** upstream hook cảnh báo tên tài liệu. Không bật toàn bộ hooks.
+- Profile `web` bật `selective`, `enableMemory`, `enableHooks`, `enablePlanner`, `enablePayloadHooks`; classifier chỉ cho chạy **một** upstream hook cảnh báo tên tài liệu. Payload-only warning là port native riêng, không thêm vào số 27 upstream hooks. Không bật toàn bộ hooks.
 - Main runtime đã tạo [status snapshot](</home/dzerok/.dsh/profiles/web/ecc-state/status.json>) với `ready-partial`, nạp ownership instructions và xuất bốn memory tools trong phiên thật.
 - Model, credential, Hindsight config/bank, instructions native và các provider/preset khác được giữ nguyên.
 - Bundle mặc định vẫn bảo thủ cho profile mới; không suy ra profile khác tự có cấu hình `web`. Xem [bundle](<cordis.patch.yml>) và [entry](<lib/index.js>).
@@ -20,6 +20,14 @@ Trong phiên parent của workspace, nhập **duy nhất** dòng dưới vào ô
 ```
 
 Handler trả JSON có `adapter: dsh-ecc-adapter`, `status: ready-partial`, `parity: partial`, inventory/policy/ownership/native/memory/hooks. Command này không khai báo arguments và không gọi model. Theo contract GUI hiện cài, tên command không có descriptor hoặc thêm arguments có thể rơi về đường chat; đó chưa phải bằng chứng adapter hỏng. Nếu chỉ thấy câu trả lời AI dùng `memory_doctor`, cần xem khối kết quả command gốc, không tính memory report là nghiệm thu toàn bộ ECC.
+
+## Lát B — planner, hook payload và connector native
+
+- Planner pilot dùng nguyên persona upstream, join native parent preset generation, chỉ cho phép ba OPS đọc/tìm kiếm. Model/provider kế thừa parent; metadata `opus` không đổi route. Giữ depth cap native, timeout readiness 5s/runtime 120s, output cap 2048 tokens, cancellation và await disposal. Gọi qua tool `ecc_planner` hoặc `/ecc-planner <task>`; slash handler vẫn đi qua ToolRuntime guards.
+- SDK có identity phải là peer của host, không bản dependency riêng. Regression qua public linked-plugin resolver đã tái hiện scope singleton sai trước sửa manifest và xanh sau sửa; không nới phép so sánh scope. Process đã load module cũ có thể giữ cache qua HMR: version entry không chứng minh helper mới. Sau genuine helper update và HMR public, status main có `implementationVersion:0.3.1`. Actual native pilot đã **completed**: child `6270f950-92e9-4f70-83da-94fca25c2133`, đúng một `ops_read_files` thành công đọc package version 0.3.1; native request chỉ quảng bá `ops_glob/ops_grep/ops_read_files`, maxTokens2048, route kế thừa `or/cx/gpt-6.1-sol`, không `opus` override. Child log riêng xác nhận turn completed; tool chỉ trả kết quả sau await disposal. Đây là một smoke readonly, không chứng minh mọi persona/task hoặc mọi parent-private callback được clone.
+- Payload port đã được kiểm chứng **trên native write và edit thật** với fixture TypeScript bị Git ignore, không chạy fixture. Cả hai cung cấp advisory vào request kế tiếp. Hook chỉ soi literal `console.log` trong new text JS/TS; receipt object/schema, absolute-path binding, thay đổi thực, 128KiB snapshot/payload và bounds được kiểm trước. Không AST/Stop/project scan, không filesystem IO/process/network/model/memory trong hook; relative/alias/unknown-before/no-op bị bỏ qua bảo thủ.
+- Connector ưu tiên ba OPS native hiện có; scope/cwd hiện tại được quan sát lại, `runtimeVerified:false` chỉ là catalog evidence. Không khởi động MCP nào. 34 templates không phải 34 server cần bật; không thêm credential hoặc kho nhớ, bao gồm `memxus`.
+- Full installed-entry cuối sau provenance: **156 tests, 156 pass, 0 fail, 0 skipped**, coverage **99.16% lines / 87.73% branches / 95.18% functions**, log `/tmp/ecc-B-accepted-final.I70NDG.log`. Driver planner trong suite là inert fixture; bằng chứng AgentLoop/model thật là pilot riêng nêu trên. `runtimeVerified:false` trong diagnostics cố ý không dùng một smoke để cấp chứng nhận mọi workspace/capability. Regression workspace cuối: **233/233 Node + 60/60 Python**, log `/tmp/ecc-B-workspace-final.VuJukG.log`. Health cuối: **42 đạt, 0 lỗi, 2 bỏ qua**, log `/tmp/ecc-B-health-final.whUH5g.log`; hai mục bỏ qua không được tính pass. Final scoped source review không còn actionable P1/P2; review không thay thế live smoke.
 
 ## Coverage và owner
 
@@ -57,7 +65,7 @@ node --test --test-concurrency=1 --experimental-test-coverage \
   --test-coverage-include='lib/**' test/
 ```
 
-Kết quả cuối sau hai fix review: **114 tests, 114 pass, 0 fail, 0 skipped**, exit `0`; coverage **98.95% lines / 86.71% branches / 94.61% functions**. Bao gồm public SDK fixtures cho registration/disposal, scope/cwd ownership fallback, hook admission/Stop reentry/containment và memory routing/receipts/cancellation; một approved upstream doc-file warning chạy thật, không model call. Không suy ra mọi upstream workflow đã được kiểm E2E.
+Kết quả Scope A trước lát B, sau hai fix review: **114 tests, 114 pass, 0 fail, 0 skipped**, exit `0`; coverage **98.95% lines / 86.71% branches / 94.61% functions**. Bao gồm public SDK fixtures cho registration/disposal, scope/cwd ownership fallback, hook admission/Stop reentry/containment và memory routing/receipts/cancellation; một approved upstream doc-file warning chạy thật, không model call. Không suy ra mọi upstream workflow đã được kiểm E2E.
 
 Các kiểm tra liên quan: ECC hook generator **11 pass / 0 fail**; loop guard **22/22**; vibe guard **92/92**. Main config compose exit `0`, stderr rỗng, đúng một adapter; manifest/patch cũ được bảo toàn ngoài mục ECC mới. Public native `memory_doctor`, `memory_read`, `memory_search` đều trả kết quả thật từ cùng bank Hindsight.
 
@@ -76,7 +84,7 @@ Kiểm tra bổ sung ngày 2026-10-30 theo yêu cầu sửa model-policy/catalog
 
 ## Backup và rollback
 
-Backup riêng tư trước rollout: [web-before-selective-20261030-075237](</home/dzerok/.dsh/ecc/backups/web-before-selective-20261030-075237/backup-manifest.json>), gồm manifest, lockfile, patch và composed config; thư mục `0700`, files `0600`. Không chia sẻ backup vì có thể chứa config riêng.
+Backup riêng tư trước pilot B: [web-before-pilot-20261030](</home/dzerok/.dsh/ecc/backups/web-before-pilot-20261030/backup-manifest.json>). Rollback chỉ pilot bằng cách tắt `enablePlanner` và `enablePayloadHooks`, giữ nguyên cấu hình selective/memory đã nghiệm thu; HMR public hoặc restart đúng host nếu được yêu cầu. Không restore đè thay đổi mới. Backup Scope A trước rollout: [web-before-selective-20261030-075237](</home/dzerok/.dsh/ecc/backups/web-before-selective-20261030-075237/backup-manifest.json>), gồm manifest, lockfile, patch và composed config; thư mục `0700`, files `0600`. Không chia sẻ backup vì có thể chứa config riêng.
 
 1. Gỡ đúng bundle khỏi `web`: `dsh plugin --profile web remove dsh-ecc-adapter`.
 2. Khôi phục riêng override patch từ backup sau khi xác nhận không có thay đổi mới cần giữ; không restore đè cả profile nếu đã có thay đổi sau backup. Có thể xóa riêng row `id: dsh-ecc-adapter` thay vì restore nguyên patch.

@@ -1,6 +1,6 @@
 {
   "name": "dsh-ecc-adapter",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "private": true,
   "type": "module",
   "description": "Pinned ECC selective-native integration with one Hindsight memory owner for DSH",
@@ -26,14 +26,21 @@
   },
   "dependencies": {
     "@deepseek-ai/dsh-hook-protocol": "0.2.1-rc.2",
+    "yaml": "2.8.1"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.5",
+    "@deepseek-ai/dsh-llm": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-scope": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-skill-filesystem": "0.2.1-rc.2",
+    "@deepseek-ai/schemastery": "3.18.5"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.5",
     "@deepseek-ai/dsh-llm": "0.2.1-rc.2",
     "@deepseek-ai/dsh-scope": "0.2.1-rc.2",
     "@deepseek-ai/dsh-skill-filesystem": "0.2.1-rc.2",
     "@deepseek-ai/schemastery": "3.18.5",
-    "yaml": "2.8.1"
-  },
-  "devDependencies": {
-    "@deepseek-ai/cordis": "4.0.5",
     "@deepseek-ai/cordis-plugin-loader": "1.0.6",
     "@deepseek-ai/dsh-agent-preset-registry": "0.2.1-rc.2",
     "@deepseek-ai/dsh-commands": "0.2.1-rc.2",

@@ -55,6 +55,10 @@ test('plugin mounts native services, emits truthful inventory and does not activ
   assert.equal(status.hooks.status, 'disabled');
   assert.equal(status.memory.status, 'disabled');
   assert.equal(status.mcp.status, 'disabled');
+  assert.equal(status.planner.status, 'disabled');
+  assert.equal(status.payloadHooks.status, 'disabled');
+  assert.equal(status.connectors.serversStarted, 0);
+  assert.equal(status.connectors.capabilities[0].runtimeVerified, false);
   assert.equal(status.native.commands[0].status, 'registered');
   assert.equal(status.native.agents[0].status, 'registered');
   assert.equal(status.native.agents[0].model.mode, 'inherit-current');
@@ -73,6 +77,45 @@ test('plugin mounts native services, emits truthful inventory and does not activ
   await fiber.dispose();
   assert.equal(ctx.commands.find({}, 'ecc-status'), undefined);
   assert.equal(ctx.commands.find({}, 'ecc-plan'), undefined);
+});
+
+test('opt-in planner waits for the native service, obeys admission guards and disposes with it', async t => {
+  const { ctx, source, data } = await host(t);
+  await writeFile(join(source, 'agents/planner.md'), '---\nname: planner\ntools: Read, Grep, Glob\nmodel: opus\n---\nRead only; propose a plan and wait for approval.');
+  const plugin = await import(process.env.ECC_PLUGIN_ENTRY || new URL('../lib/index.js', import.meta.url).href);
+  const fiber = ctx.plugin(plugin, { eccRoot: source, dataRoot: data, selective: true, enablePlanner: true });
+  await fiber.await();
+  const initial = JSON.parse(await readFile(join(data, 'status.json'), 'utf8'));
+  assert.equal(initial.planner.status, 'waiting-service');
+  assert.ok(ctx.commands.find({}, 'ecc-status'));
+  assert.equal(ctx.tools.get('ecc_planner'), undefined);
+  let starts = 0;
+  const ready = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('late planner registration timed out')), 5000);
+    const off = ctx.on('tools/change', () => {
+      if (ctx.tools.get('ecc_planner')) { clearTimeout(timer); off(); resolve(); }
+    });
+    t.after(() => { clearTimeout(timer); off(); });
+  });
+  const native = ctx.plugin({ apply(view) { view.provide('subagents', {
+    getProvider() { return { prepareContinuable() {}, capabilities: { agentOptions: true } }; },
+    startActivation() { starts++; throw new Error('Bootstrap must not invoke a model'); },
+  }); } });
+  await native.await();
+  await ready;
+  await new Promise(resolve => setImmediate(resolve));
+  assert.ok(ctx.commands.find({}, 'ecc-planner'));
+  ctx.tools.guard(execution => execution.name === 'ecc_planner' ? 'native policy denies pilot' : undefined);
+  const agent = { ctx, options: {}, session: { append: () => ({ seq: 1 }) } };
+  const execution = await ctx.commands.execute(agent, '/ecc-planner Read only.', [], new AbortController().signal);
+  assert.equal(execution.result.kind, 'error');
+  assert.match(execution.result.text, /native policy denies pilot/);
+  assert.equal(starts, 0);
+  await native.dispose();
+  assert.equal(ctx.tools.get('ecc_planner'), undefined);
+  assert.equal(ctx.commands.find({}, 'ecc-planner'), undefined);
+  assert.ok(ctx.commands.find({}, 'ecc-status'));
+  await fiber.dispose();
 });
 
 test('a source pin mismatch aborts before registering any ECC assets', async t => {

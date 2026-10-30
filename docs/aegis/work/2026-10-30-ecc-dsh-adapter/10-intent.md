@@ -6,6 +6,16 @@ Người dùng đã chọn phương án A ngày 2026-10-30: DSH tiếp tục là
 
 Full coverage không đồng nghĩa bật mọi process hoặc cam kết host parity. Mỗi nhóm chức năng và từng phần chưa thay thế phải có owner/trạng thái/lý do, không lấy source-present hay số test làm bằng chứng hoạt động thật.
 
+## Lát B được duyệt — agents → hooks → connector theo nhu cầu
+
+Người dùng ngày 2026-10-30 yêu cầu tự triển khai lộ trình đã đề xuất đến khi có bằng chứng thành công, không hỏi lại từng bước. Baseline lát B: `1fa4d7d`, worktree sạch; DSH/ECC pin và các ranh giới memory/model/credential của scope A giữ nguyên. Không bật toàn bộ ECC hoặc cài server không có nhu cầu.
+
+- Pilot planner: public native composition, tool allowlist Read/Grep/Glob và routing hiện hành; không copy tool parent ra global, bỏ guard hay sửa core. Task-14 sở hữu module/test planner, Lead tích hợp.
+- Hook nhỏ: cảnh báo JS/TS từ payload write/edit thành công, không đọc project/HOME/transcript, subprocess/network/LLM hoặc alternate store; không giả parity với Stop full-project scan. Task-15 sở hữu module/test, giữ nguyên containment.
+- Connector/MCP: nhu cầu file/search/docs, ưu tiên native theo catalog từng scope; không bật 34 templates hay credential mới. Registration khác runtime proof. Server mới chỉ khi có gap cụ thể và review license/version/egress/permissions.
+- Acceptance seams: public command/tool SDK, native agent/subagent composition và ToolRuntime; RED→GREEN late capability/sibling deny/cancel/disposal, hook success/failure/bounds. Full adapter/guards/health và bounded readonly planner smoke trên route hiện hành; lab→web với backup/rollback. Không gửi source sang provider khác.
+- Impact: bootstrap/status/version, module/test mới, docs cùng record và profile override riêng nếu cần; không schema/migration/memory rewrite. Rollback riêng commit/config, không reset workspace. Public seam thiếu thì giữ unsupported, không nới quyền.
+
 ## Baseline và source of truth
 
 - Workspace HEAD bắt đầu lát mới: `89e214d`; working tree sạch.
