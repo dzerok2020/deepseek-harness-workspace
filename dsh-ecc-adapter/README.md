@@ -63,6 +63,8 @@ Các kiểm tra liên quan: ECC hook generator **11 pass / 0 fail**; loop guard 
 
 Sau khi người dùng restart DSH, PID main đổi thành `288382`, snapshot plugin được tạo lại và memory doctor/read/search vẫn hoạt động với bank cũ, không retain mới. Health sau restart: **42 đạt, 1 lỗi, 2 bỏ qua**, exit `1`; log `/tmp/ecc-A-postrestart-health.rMU4UX.log`. Nhóm lỗi có sẵn nằm ở model-policy/catalog (`contextWindow`/`maxTokens` không khớp kỳ vọng); chưa sửa vì ngoài phạm vi và không được đổi model/credential để che lỗi. Hai check bỏ qua không được tính pass. Người dùng sau đó đã gửi JSON native `/ecc-status`; đối chiếu snapshot main mtime `2026-10-30T03:37:38.631Z` xác nhận version 0.2.0, source pin đúng, ownership complete tại workspace hiện tại, 52 commands registered và Hindsight native-registered. Memory doctor cuối vẫn ok, 1 document, không broken links. Nghiệm thu command GUI là qua kết quả người dùng cung cấp, không phải browser automation. Exact upstream runtime parity và E2E mọi workflow vẫn chưa verify.
 
+Kiểm tra bổ sung ngày 2026-10-30 theo yêu cầu sửa model-policy/catalog: đã đồng bộ reference từ Settings đang lưu, không sửa profile/model/credential hay restart. Health sau sửa **42 đạt, 0 lỗi, 2 bỏ qua**, exit `0`; log `/tmp/model-policy-health.zBL7XT.log`. Đây là sửa snapshot kiểm tra, không nâng trạng thái agents/hooks/MCP và không chứng nhận capacity upstream. Xem [chiều sync và regression](../docs/model-budget-sync.md).
+
 ## Sử dụng
 
 - `/ecc-status`: xem owner, trạng thái, collision, policy và phần chưa hỗ trợ; đọc snapshot đầy đủ khi cần chi tiết từng asset.

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 
 // Independent, model-keyed expectations: swapping valid numbers must not pass.
-const expected = {
+const legacyExpected = {
   or: {
     'cx/gpt-6-astra': [872000, 128000], 'cx/gpt-6-sol': [872000, 128000],
     'cx/gpt-6-luna': [872000, 128000], 'cx/gpt-6.1-sol': [872000, 128000],
@@ -24,8 +24,25 @@ const expected = {
   ].map(id => [id, [128000, 16384]])),
 };
 
+// Saved Settings is newer than the opt-in legacy overlays. Keep both exact
+// expectations independent of the YAML under test; never flatten them together.
+const referenceExpected = {
+  ...legacyExpected,
+  or: {
+    ...legacyExpected.or,
+    'cx/gpt-6-astra': [128000, 16384], 'cx/gpt-6-sol': [128000, 16384],
+    'cx/gpt-6-luna': [128000, 16384], 'cx/gpt-6.1-sol': [1000000, 128000],
+    'cx/gpt-5.6-terra': [1000000, 16384],
+    'b-ai/glm-5.3-flash': [128000, 16384], 'b-ai/gemini-4-argon': [128000, 16384],
+    'antigravity/gemini-3.8-flash-tiered': [128000, 16384], 'b-ai/gpt-6.1-sol': [128000, 16384],
+    'nr-ai/deepseek-v4.1-flash': [1048576, 384000],
+    'nr-ai/deepseek-v4-pro-0813': [1000000, 384000],
+  },
+};
+
 for (const name of ['vibe-native.yml', 'vibe-cgw.yml', 'web-model-budgets.yml']) {
   test(`${name} uses exact provider/model budgets, not a numeric allowlist`, () => {
+    const expected = name === 'web-model-budgets.yml' ? referenceExpected : legacyExpected;
     const path = new URL(`../tools/${name}`, import.meta.url).pathname;
     const result = spawnSync('python3', ['-c',
       'import json,sys,yaml; print(json.dumps(yaml.safe_load(open(sys.argv[1]))))', path],

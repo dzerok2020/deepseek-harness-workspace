@@ -51,6 +51,14 @@ Không sửa Settings/policy đồng thời với apply. Kiểm tra identity tr�
 
 Policy không còn khớp khi Settings được sửa mà chưa sync là trạng thái cần review, không phải lý do tự rollback. Chỉ commit/push snapshot đã được kiểm tra, không commit profile hoặc credential.
 
+## Sự cố snapshot cũ ngày 2026-10-30
+
+Health đã báo 20 lỗi do reference còn giữ số từ catalog cũ, trong khi Settings đã lưu budget khác và thêm `nr-ai/deepseek-v4-pro-0813`. Đã dùng đúng chiều **Settings → Git**, cập nhật 21 trường budget và giữ nguyên byte của profile đang chạy; không đổi routing, credential, danh sách model, plugin hay restart DSH. Đây là cấu hình vận hành do người dùng lưu, không phải kiểm chứng capacity quảng cáo của upstream.
+
+Regression mới chặn việc lấy lại số catalog cũ để ghi đè chủ ý Settings. Model không còn trong profile vẫn giữ reference lịch sử theo contract sync; các overlay `vibe-native`/`vibe-cgw` opt-in cũng giữ nguyên. Sau lần Save tiếp theo, cần review preview và apply lại nếu muốn cập nhật reference; không có auto-sync và không làm health im lặng trước drift.
+
+Kiểm chứng bản sửa: catalog regression RED **6 tests, 3 failures** → GREEN **6/6**; toàn bộ test root **233 Node + 60 Python pass**, không fail/skip. Health **42 đạt, 0 lỗi, 2 bỏ qua**, exit `0`; log `/tmp/model-policy-health.zBL7XT.log`. Preview sau apply trả `changes: []`; hash profile trước/sau giống nhau. Hai health check bỏ qua không tính pass; không gọi inference để chứng nhận capacity và không đổi contract agents/hooks/MCP.
+
 ## Bằng chứng kiểm thử
 
 [Test sync](../test/model-budget-sync.test.py) dùng profile/credential giả và thư mục tạm: RED trước implementation; preview read-only, apply CLI, idempotence, revision stale/metadata, model mới, CRLF/Unicode, malformed YAML, allowlist, symlink/hardlink, thay đổi đồng thời và replace failure. Không dùng inference để đo capacity.

@@ -24,8 +24,9 @@ class HealthTests(unittest.TestCase):
     def test_model_specific_policy_values_pass(self):
         for model_id, window, output in [('b-ai/deepseek-v4.1-flash', 128000, 16384),
                                          ('gpt-free', 104000, 16384),
-                                         ('b-ai/glm-5.3-flash', 1000000, 131072),
-                                         ('cx/gpt-6-sol', 872000, 128000)]:
+                                         ('b-ai/glm-5.3-flash', 128000, 16384),
+                                         ('cx/gpt-6-sol', 128000, 16384),
+                                         ('nr-ai/deepseek-v4-pro-0813', 1000000, 384000)]:
             self.assertEqual(health.budget_errors({'defaultContextWindow':128000, 'defaultMaxTokens':16384,
                 'models':[{'id':model_id,'contextWindow':window,'maxTokens':output}]}), [], model_id)
 

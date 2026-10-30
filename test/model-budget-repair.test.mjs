@@ -14,9 +14,9 @@ const profile = (cgwWindow = 1000000) => `# keep this comment
         defaultContextWindow: 128000
         defaultMaxTokens: 16384
         models:
-          - id: b-ai/glm-5.3-flash
+          - id: nr-ai/deepseek-v4-pro-0813
             contextWindow: 1000000 # valid large model
-            maxTokens: 131072
+            maxTokens: 384000
       cgw:
         defaultContextWindow: 128000
         defaultMaxTokens: 16384
@@ -80,7 +80,7 @@ test('unknown model, malformed YAML, duplicate keys and aliases fail before writ
 
 test('repair corrects defaults and inserts missing explicit numeric fields', () => {
   const input = profile().replace('defaultContextWindow: 128000', 'defaultContextWindow: 872000')
-    .replace('            maxTokens: 131072\n      cgw:', '      cgw:');
+    .replace('            maxTokens: 384000\n      cgw:', '      cgw:');
   const r = run(input);
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.equal(r.text, profile(128000));

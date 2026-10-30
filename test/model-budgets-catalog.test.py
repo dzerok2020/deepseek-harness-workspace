@@ -8,28 +8,27 @@ sys.path.insert(0, str(Path(__file__).parents[1] / 'tools'))
 import model_budgets as budgets
 
 
-# Exact route IDs from the 2026-10-29 local catalog; these are operating
-# limits, not a claim that inference at the advertised maximum was tested.
+# Independent operating-budget snapshot from saved Settings on 2026-10-30.
+# Absent routes retain their previous reference; no upstream capacity claim.
 EXPECTED = {
-    'cx/gpt-6-astra': (872000, 128000),
-    'cx/gpt-6-sol': (872000, 128000),
-    'cx/gpt-6-luna': (872000, 128000),
-    'cx/gpt-6.1-sol': (872000, 128000),
-    'cx/gpt-5.6-terra': (872000, 128000),
+    'cx/gpt-6-astra': (128000, 16384),
+    'cx/gpt-6-sol': (128000, 16384),
+    'cx/gpt-6-luna': (128000, 16384),
+    'cx/gpt-6.1-sol': (1000000, 128000),
+    'cx/gpt-5.6-terra': (1000000, 16384),
+    'cx/gpt-6.1-sol-fast': (400000, 16384),
     'nr-ai/deepseek-v4-flash': (1000000, 384000),
-    'nr-ai/deepseek-v4.1-flash': (128000, 16384),
+    'nr-ai/deepseek-v4.1-flash': (1048576, 384000),
     'nr-ai/deepseek-v4-flash-0731': (1000000, 384000),
+    'nr-ai/deepseek-v4-pro-0813': (1000000, 384000),
     'nr-ai/glm-5.1': (200000, 128000),
     'nr-ai/glm-5.3-flash': (1000000, 131072),
-    # No output ceiling advertised for these exact routes: retain the
-    # existing conservative operating cap rather than invent 128K output.
     'nr-ai/qwen3.8-flash': (128000, 16384),
     'nr-ai/grok-4.7': (128000, 16384),
-    'b-ai/gpt-6.1-sol': (1050000, 128000),
-    'b-ai/glm-5.3-flash': (1000000, 131072),
-    'b-ai/gemini-4-argon': (1048576, 65536),
-    'antigravity/gemini-3.8-flash-tiered': (1048576, 65536),
-    # Existing conservative routes are explicitly covered as well.
+    'b-ai/gpt-6.1-sol': (128000, 16384),
+    'b-ai/glm-5.3-flash': (128000, 16384),
+    'b-ai/gemini-4-argon': (128000, 16384),
+    'antigravity/gemini-3.8-flash-tiered': (128000, 16384),
     'b-ai/deepseek-v4.1-flash': (128000, 16384),
     'b-ai/qwen3.8-flash': (128000, 16384),
     'gpt-free': (104000, 16384),
@@ -41,12 +40,24 @@ class CatalogBudgetTests(unittest.TestCase):
         self.policy = budgets.read_providers(budgets.POLICY_PATH.read_text())
         self.models = {model['id']: model for model in self.policy['or']['models']}
 
-    def test_exact_advertised_routes_and_conservative_exceptions(self):
+    def test_exact_saved_settings_and_retained_reference_routes(self):
+        self.assertEqual(set(self.models), set(EXPECTED))
         for model_id, pair in EXPECTED.items():
             with self.subTest(model_id=model_id):
                 self.assertIn(model_id, self.models)
                 model = self.models[model_id]
                 self.assertEqual((model['contextWindow'], model['maxTokens']), pair)
+
+    def test_stale_catalog_capacity_does_not_override_saved_settings(self):
+        for model_id, window, output in [
+            ('cx/gpt-6-sol', 872000, 128000),
+            ('b-ai/glm-5.3-flash', 1000000, 131072),
+        ]:
+            with self.subTest(model_id=model_id):
+                provider = {**self.policy['or'], 'models': [
+                    {'id': model_id, 'contextWindow': window, 'maxTokens': output},
+                ]}
+                self.assertTrue(budgets.budget_errors(provider, 'or', self.policy))
 
     def test_unknown_future_models_still_fail_closed(self):
         provider = copy.deepcopy(self.policy['or'])
