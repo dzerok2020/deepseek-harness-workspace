@@ -51,7 +51,7 @@ Kết quả cuối sau hai fix review: **114 tests, 114 pass, 0 fail, 0 skipped*
 
 Các kiểm tra liên quan: ECC hook generator **11 pass / 0 fail**; loop guard **22/22**; vibe guard **92/92**. Main config compose exit `0`, stderr rỗng, đúng một adapter; manifest/patch cũ được bảo toàn ngoài mục ECC mới. Public native `memory_doctor`, `memory_read`, `memory_search` đều trả kết quả thật từ cùng bank Hindsight.
 
-Health hệ thống: **41 đạt, 1 lỗi, 2 bỏ qua**, exit `1`. Nhóm lỗi có sẵn nằm ở model-policy/catalog (`contextWindow`/`maxTokens` không khớp kỳ vọng); chưa sửa vì ngoài phạm vi và không được đổi model/credential để che lỗi. Hai check bỏ qua không được tính pass. GUI và exact upstream runtime parity vẫn chưa verify.
+Sau khi người dùng restart DSH, PID main đổi thành `288382`, snapshot plugin được tạo lại và memory doctor/read/search vẫn hoạt động với bank cũ, không retain mới. Health sau restart: **42 đạt, 1 lỗi, 2 bỏ qua**, exit `1`; log `/tmp/ecc-A-postrestart-health.rMU4UX.log`. Nhóm lỗi có sẵn nằm ở model-policy/catalog (`contextWindow`/`maxTokens` không khớp kỳ vọng); chưa sửa vì ngoài phạm vi và không được đổi model/credential để che lỗi. Hai check bỏ qua không được tính pass. GUI `/ecc-status` và exact upstream runtime parity vẫn chưa verify: quyền borrow tab người dùng bị từ chối, không thử lại hoặc giả là đã kiểm GUI.
 
 ## Sử dụng
 
