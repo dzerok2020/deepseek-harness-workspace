@@ -9,7 +9,7 @@ Adapter cục bộ `0.2.0` cho DSH `0.2.1-rc.2`, đọc nguyên nguồn [ECC](ht
 - Main runtime đã tạo [status snapshot](</home/dzerok/.dsh/profiles/web/ecc-state/status.json>) với `ready-partial`, nạp ownership instructions và xuất bốn memory tools trong phiên thật.
 - Model, credential, Hindsight config/bank, instructions native và các provider/preset khác được giữ nguyên.
 - Bundle mặc định vẫn bảo thủ cho profile mới; không suy ra profile khác tự có cấu hình `web`. Xem [bundle](<cordis.patch.yml>) và [entry](<lib/index.js>).
-- Sau restart đã kiểm tra native memory/config. Output JSON của `/ecc-status` trên GUI và E2E mọi workflow vẫn **chưa verify**; không đồng nhất câu trả lời AI từ `memory_doctor` với native command result.
+- Sau restart đã kiểm tra native memory/config và nghiệm thu JSON `/ecc-status` người dùng gửi trên GUI; snapshot main đối chiếu lúc 10:37:38 +07 ngày 2026-10-30 khớp `ready-partial`, đủ 661 thành phần và ownership complete đúng workspace. Đây không phải bằng chứng E2E mọi upstream workflow.
 
 ## Kiểm tra native command trên GUI
 
@@ -61,7 +61,7 @@ Kết quả cuối sau hai fix review: **114 tests, 114 pass, 0 fail, 0 skipped*
 
 Các kiểm tra liên quan: ECC hook generator **11 pass / 0 fail**; loop guard **22/22**; vibe guard **92/92**. Main config compose exit `0`, stderr rỗng, đúng một adapter; manifest/patch cũ được bảo toàn ngoài mục ECC mới. Public native `memory_doctor`, `memory_read`, `memory_search` đều trả kết quả thật từ cùng bank Hindsight.
 
-Sau khi người dùng restart DSH, PID main đổi thành `288382`, snapshot plugin được tạo lại và memory doctor/read/search vẫn hoạt động với bank cũ, không retain mới. Health sau restart: **42 đạt, 1 lỗi, 2 bỏ qua**, exit `1`; log `/tmp/ecc-A-postrestart-health.rMU4UX.log`. Nhóm lỗi có sẵn nằm ở model-policy/catalog (`contextWindow`/`maxTokens` không khớp kỳ vọng); chưa sửa vì ngoài phạm vi và không được đổi model/credential để che lỗi. Hai check bỏ qua không được tính pass. GUI `/ecc-status` và exact upstream runtime parity vẫn chưa verify: quyền borrow tab người dùng bị từ chối, không thử lại hoặc giả là đã kiểm GUI.
+Sau khi người dùng restart DSH, PID main đổi thành `288382`, snapshot plugin được tạo lại và memory doctor/read/search vẫn hoạt động với bank cũ, không retain mới. Health sau restart: **42 đạt, 1 lỗi, 2 bỏ qua**, exit `1`; log `/tmp/ecc-A-postrestart-health.rMU4UX.log`. Nhóm lỗi có sẵn nằm ở model-policy/catalog (`contextWindow`/`maxTokens` không khớp kỳ vọng); chưa sửa vì ngoài phạm vi và không được đổi model/credential để che lỗi. Hai check bỏ qua không được tính pass. Người dùng sau đó đã gửi JSON native `/ecc-status`; đối chiếu snapshot main mtime `2026-10-30T03:37:38.631Z` xác nhận version 0.2.0, source pin đúng, ownership complete tại workspace hiện tại, 52 commands registered và Hindsight native-registered. Memory doctor cuối vẫn ok, 1 document, không broken links. Nghiệm thu command GUI là qua kết quả người dùng cung cấp, không phải browser automation. Exact upstream runtime parity và E2E mọi workflow vẫn chưa verify.
 
 ## Sử dụng
 
