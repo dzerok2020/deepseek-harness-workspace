@@ -11,6 +11,21 @@ Adapter cục bộ `0.3.1` cho DSH `0.2.1-rc.2`, đọc nguyên nguồn [ECC](ht
 - Bundle mặc định vẫn bảo thủ cho profile mới; không suy ra profile khác tự có cấu hình `web`. Xem [bundle](<cordis.patch.yml>) và [entry](<lib/index.js>).
 - Sau restart đã kiểm tra native memory/config và nghiệm thu JSON `/ecc-status` người dùng gửi trên GUI; snapshot main đối chiếu lúc 10:37:38 +07 ngày 2026-10-30 khớp `ready-partial`, đủ 661 thành phần và ownership complete đúng workspace. Đây không phải bằng chứng E2E mọi upstream workflow.
 
+## AI tự gọi planner có chọn lọc
+
+Quy tắc đã duyệt nằm trong [managed fragment](</home/dzerok/Documents/deepseek-harness/default-workspace/dsh-ecc-adapter/planning-policy.md>), được cài một lần giữa hai marker `ecc-selective-planning:start` / `ecc-selective-planning:end` trong [global instructions](</home/dzerok/.dsh/AGENTS.md>). Native instructions loader là owner thực thi việc nạp; không thêm hook, router model, counter, memory store hoặc service. Các instructions cũ được giữ nguyên.
+
+- Parent tự gọi `ecc_planner` trước khi code cho dự án mới rõ mục tiêu/chưa có plan, tính năng lớn/nhiều module hoặc thay đổi dữ liệu/quyền/API/migration chưa được plan hiện tại bao phủ. Thiếu quyết định lớn thì làm rõ trước.
+- Dùng lại plan/workflow đã duyệt; bỏ qua việc nhỏ, debug thường lệ, giải thích, chạy test và các sự kiện mở folder/tạo repository/đổi session/restart. Không gọi chỉ vì người dùng gửi thêm một tin nhắn.
+- Một lần tự gọi cho workspace + mục tiêu/phạm vi, kể cả đang chạy hoặc thất bại; dùng checkpoint/handoff hiện có để tránh lặp. Chỉ lập lại phần bị ảnh hưởng khi phạm vi thay đổi đáng kể. Thiếu tool hoặc bị chặn thì nói rõ, không retry hay nới guard.
+- Đây là **hướng dẫn AI**, không phải state machine bảo đảm exactly-once. Quyền thực thi/routing/depth cap vẫn do native DSH quyết định; plan không cấp quyền xóa, triển khai, credential, migration hoặc chi phí mới. Instructions riêng của dự án vẫn có thể ưu tiên cao hơn và giới hạn context có thể loại bỏ global instructions.
+
+Đã kiểm chứng public native loader nạp quy tắc ở workspace hiện tại và một folder ngoài dự án, không gọi model. Session hiện tại cũng đã nhận cập nhật global instructions; không cần restart DSH. Chưa chạy behavioral eval để chứng minh AI luôn phân loại đúng mọi yêu cầu. [Contract test](</home/dzerok/Documents/deepseek-harness/default-workspace/dsh-ecc-adapter/test/planning-policy.test.js>) kiểm tra nội dung; hai kiểm tra cài đặt/loader chỉ chạy khi có `ECC_PLANNING_LIVE=1` và `DSH_INSTRUCTIONS_ENTRY` trỏ tới public native instructions module. Chúng không thay cho behavioral eval.
+
+Nghiệm thu lát instructions này: target **3/3**, full adapter **159/159**, root **233 Node + 60 Python tests** đều pass, không skip trong lần chạy có bật native-loader checks. Nội dung global trước managed block đối chiếu SHA-256 khớp hoàn toàn bản gốc. Review độc lập source/managed block: **0 actionable findings**; không coi review đó là behavioral proof.
+
+Rollback chỉ gỡ block giữa hai marker trên khỏi global instructions, không khôi phục toàn bộ file hoặc ghi đè thay đổi khác. Khi cập nhật managed fragment, cập nhật block native tương ứng rồi chạy lại contract/loader tests; không có daemon tự đồng bộ. Lệnh `/ecc-planner` thủ công và code runtime không đổi.
+
 ## Kiểm tra native command trên GUI
 
 Trong phiên parent của workspace, nhập **duy nhất** dòng dưới vào ô chat rồi Enter, không thêm lời nhờ AI hoặc dấu backtick:
