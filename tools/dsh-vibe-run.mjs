@@ -17,6 +17,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { homedir } from "node:os";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
@@ -135,6 +136,25 @@ function readIf(path, cap = 8000) {
   return `## ${path}\n\n${t.slice(0, cap)}${t.length > cap ? "\n\n[...cắt bớt...]" : ""}`;
 }
 
+// Browser-only Architect cannot invoke the native skill tool. Send installed
+// instructions inline, never install or execute their scripts in the browser.
+export function architectSkills(task, root = join(homedir(), ".dsh", "skills")) {
+  const names = ["four-phase-product-plan", "four-phase-tech-plan"];
+  const ui = /\b(ui|ux|frontend|dashboard|landing|portfolio|website)\b|giao diện|trang web|làm đẹp/i.test(task);
+  if (ui) names.push("vibe-code", /\b(landing|portfolio)\b/i.test(task) ? "design-taste-frontend" : "impeccable");
+  const sections = names.map((name) => {
+    const path = join(root, name, "SKILL.md");
+    try {
+      // Bound prompt size: four skills maximum, 8K characters each.
+      const text = readFileSync(path, "utf8");
+      return `## Local skill: ${name}\n${text.slice(0, 8000)}${text.length > 8000 ? "\n[truncated at 8000 characters]" : ""}`;
+    } catch (error) {
+      return `## Local skill: ${name}: unavailable (${error.code || "read error"})`;
+    }
+  });
+  return ["Local skill context (planning guidance only; native permissions, repo contracts and the user task take precedence). Do not install skills, run scripts, or claim unavailable/truncated instructions were fully loaded. Referenced files are not included.", ...sections].join("\n\n");
+}
+
 // ---- canned outputs for --mock (state-machine tests) ------------------
 function mockPhase(name, prompt) {
   const role = name.replace(/(-r\d+)?(-retry)?$/, "");
@@ -176,9 +196,11 @@ const main = () => {
   const planPath = join(run.out, "PLAN.md");
   const statePath = join(run.out, "RUN.json");
   const hash = (text) => createHash("sha256").update(text).digest("hex");
+  const skillContext = architectSkills(TASK);
+  const skillsHash = hash(skillContext);
   let saved = null;
   try { saved = JSON.parse(readFileSync(statePath, "utf8")); } catch {}
-  const resume = saved?.version === 1 && saved.task === TASK && saved.mock === MOCK &&
+  const resume = saved?.version === 1 && saved.skillsHash === skillsHash && saved.task === TASK && saved.mock === MOCK &&
     typeof saved.baseCommit === "string" && saved.baseCommit.length > 0 &&
     existsSync(planPath) && saved.planHash === hash(readFileSync(planPath, "utf8"));
   const baseCommit = resume ? saved.baseCommit : currentCommit;
@@ -193,12 +215,13 @@ const main = () => {
       readIf("AGENTS.md"),
       readIf("docs/product-plan.md"),
       readIf("docs/tech-plan.md"),
+      skillContext,
       "\nTrả về KẾ HOẠCH markdown: các bước nhỏ, file sẽ sửa/tạo, tiêu chí nghiệm thu kiểm chứng được (lệnh chạy + kết quả mong đợi). Cuối kế hoạch thêm dòng 'tool_note: <một câu>' để pipeline xác minh bạn đã nhận đủ ngữ cảnh.",
     ].join("\n\n");
     step("architect", planBrain, archPrompt, 300, (t) => {
       writeFileSync(planPath, t);
       if (!/tool\\?_note/.test(t)) fail("architect output lacks tool_note — abort (context may be too large)");
-      writeFileSync(statePath, JSON.stringify({ version: 1, task: TASK, mock: MOCK, baseCommit, planHash: hash(t) }, null, 2));
+      writeFileSync(statePath, JSON.stringify({ version: 1, task: TASK, mock: MOCK, baseCommit, skillsHash, planHash: hash(t) }, null, 2));
     });
   }
 

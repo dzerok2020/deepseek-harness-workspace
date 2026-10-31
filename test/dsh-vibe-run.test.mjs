@@ -3,13 +3,49 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { parseFinal, stripCgwAdvisory, parseJsonLoose } from "../tools/dsh-vibe-run.mjs";
+import { architectSkills, parseFinal, stripCgwAdvisory, parseJsonLoose } from "../tools/dsh-vibe-run.mjs";
 
 const TOOL = join(import.meta.dirname, "..", "tools", "dsh-vibe-run.mjs");
+
+test("Architect receives bounded local planning skills and one task-appropriate design lead", () => {
+  const root = mkdtempSync(join(tmpdir(), "vibe-skills-"));
+  const put = (name, text) => {
+    mkdirSync(join(root, name), { recursive: true });
+    writeFileSync(join(root, name, "SKILL.md"), text);
+  };
+  try {
+    for (const name of ["four-phase-product-plan", "four-phase-tech-plan", "vibe-code", "impeccable", "design-taste-frontend"]) put(name, `BODY:${name}`);
+    const backend = architectSkills("Add database index", root);
+    assert.match(backend, /BODY:four-phase-product-plan/);
+    assert.match(backend, /BODY:four-phase-tech-plan/);
+    assert.doesNotMatch(backend, /BODY:vibe-code|BODY:impeccable/);
+    const dashboard = architectSkills("Polish dashboard UI", root);
+    assert.match(dashboard, /BODY:vibe-code/);
+    assert.match(dashboard, /BODY:impeccable/);
+    assert.doesNotMatch(dashboard, /BODY:design-taste-frontend/);
+    assert.match(architectSkills("Build landing page", root), /BODY:design-taste-frontend/);
+    assert.match(architectSkills("Làm đẹp giao diện ứng dụng", root), /BODY:impeccable/);
+    put("four-phase-tech-plan", "x".repeat(20000));
+    const bounded = architectSkills("Add index", root);
+    assert.ok(bounded.length < 15000);
+    assert.match(bounded, /truncated/);
+    assert.notEqual(bounded, backend);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("Architect explicitly reports missing local skills without claiming they were loaded", () => {
+  const root = mkdtempSync(join(tmpdir(), "vibe-skills-"));
+  try {
+    const context = architectSkills("Build landing page", root);
+    assert.match(context, /four-phase-tech-plan: unavailable \(ENOENT\)/);
+    assert.match(context, /design-taste-frontend: unavailable/);
+    assert.match(context, /Do not install/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
 
 test("parseFinal takes the LAST final event", () => {
   const jsonl = [
@@ -80,6 +116,9 @@ test('native phase pins constrain writes at the permission owner', () => {
   try {
     const r = runFixture(dir, goodOutputs);
     assert.equal(r.status, 0, r.stdout + r.stderr);
+    const plan = readFileSync(join(dir, '.vibe-run', 'PLAN.md'), 'utf8');
+    assert.match(plan, /Local skill: four-phase-product-plan/);
+    assert.match(plan, /Local skill: four-phase-tech-plan/);
     const coder = readFileSync(join(dir,'.vibe-run','pin-coder.yml'),'utf8');
     assert.match(coder, /- id: sandbox-policy\n  config:\n    mode: workspace-write/);
     assert.match(coder, /- id: approval\n  config:\n    policy: never/);
@@ -215,6 +254,21 @@ test('legacy plan without task identity is not reused', () => {
     assert.equal(r.status,0,r.stderr);
     assert.match(r.stdout,/▶ architect/);
   } finally { rmSync(dir, {recursive:true,force:true}); }
+});
+
+test("resume regenerates a plan when its skill-context fingerprint is stale", () => {
+  const dir = makeRepo();
+  try {
+    assert.equal(runTool(dir).status, 0);
+    const path = join(dir, '.vibe-run', 'RUN.json');
+    const state = JSON.parse(readFileSync(path, 'utf8'));
+    assert.match(state.skillsHash, /^[a-f0-9]{64}$/);
+    writeFileSync(path, JSON.stringify({ ...state, skillsHash: 'stale' }));
+    const result = runTool(dir);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /▶ architect/);
+    assert.doesNotMatch(result.stdout, /\(resume\)/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
 test("pipeline refuses to run outside a git repo", () => {
