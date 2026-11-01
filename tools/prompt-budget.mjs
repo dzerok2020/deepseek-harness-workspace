@@ -5,6 +5,9 @@
 //
 // --check : exit 1 khi vượt ngưỡng (dùng cho tools/dsh-health.sh).
 // Ngưỡng đặt theo mức đo thật 2026-10-28: 128 tool ≈ 142 KB (~35,6K token).
+// Catalog skill đo theo MỌI root mà DSH thật sự nạp (project → plugin → user), không chỉ
+// ~/.dsh/skills: đo cũ chỉ thấy 82 skill / 26,7K ký tự trong khi catalog thật 428 skill /
+// ~132K ký tự, nên ngưỡng cũ 30K không bao giờ bắt được catalog phình (sửa 2026-11-01).
 
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -13,7 +16,15 @@ import path from 'node:path';
 
 const HOME = os.homedir();
 const DSH = path.join(HOME, '.dsh');
-const LIMITS = { toolsBytes: 150_000, toolsCount: 120, skillChars: 30_000, minHitRate: 75 };
+const LIMITS = {
+  toolsBytes: 150_000,
+  toolsCount: 120,
+  // Trần thật của catalog 2026-11-01: 428 skill ≈ 132K ký tự (ECC đóng góp 311 skill).
+  // 150K là mức trần có headroom; 100K là mốc nên rà lại vì đã tốn ~25K token/request.
+  skillChars: 150_000,
+  skillCharsWarn: 100_000,
+  minHitRate: 75,
+};
 
 function listSessions() {
   const root = path.join(DSH, 'sessions');
@@ -111,23 +122,91 @@ function sessionComposition(rows) {
   return acc;
 }
 
-function skillCatalog() {
-  const dir = path.join(DSH, 'skills');
-  if (!fs.existsSync(dir)) return { count: 0, chars: 0 };
-  let count = 0; let chars = 0;
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
-    const f = path.join(dir, entry.name, 'SKILL.md');
-    if (!fs.existsSync(f)) continue;
-    const text = fs.readFileSync(f, 'utf8');
-    const m = text.match(/^---\n([\s\S]*?)\n---/);
-    const fm = m ? m[1] : '';
-    const name = (fm.match(/^name:\s*(.+)$/m)?.[1] ?? entry.name).trim();
-    const desc = (fm.match(/^description:\s*"?([\s\S]*?)"?\s*$/m)?.[1] ?? '').trim();
-    count += 1;
-    chars += name.length + desc.length;
+// DSH nạp skill từ nhiều root (xem @deepseek-ai/dsh-skill-filesystem roots()):
+// project (.dsh/skills, .agents/skills) → custom dir do plugin đăng ký → user (~/.dsh/skills,
+// ~/.agents/skills) → bundled. Skill trùng tên thì root xếp trước thắng, nên dedupe theo name.
+const PROFILE = process.env.DSH_PROFILE ?? 'web';
+const MAX_SKILL_DEPTH = 4;
+
+function walkSkillFiles(dir, depth = 0, out = []) {
+  if (depth > MAX_SKILL_DEPTH) return out;
+  let entries;
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return out;
   }
-  return { count, chars };
+  for (const entry of entries) {
+    if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
+    const p = path.join(dir, entry.name);
+    if (entry.isDirectory()) walkSkillFiles(p, depth + 1, out);
+    else if (entry.name === 'SKILL.md') out.push(p);
+  }
+  return out;
+}
+
+/** Các thư mục skill theo đúng thứ tự ưu tiên của DSH. */
+function skillRoots() {
+  const roots = [
+    { dir: path.join(process.cwd(), '.dsh', 'skills'), source: 'project-dsh' },
+    { dir: path.join(process.cwd(), '.agents', 'skills'), source: 'project-agents' },
+    // custom dir: dsh-ecc-adapter đăng ký <eccRoot>/skills
+    { dir: path.join(DSH, 'ecc', 'source', 'skills'), source: 'ecc' },
+    { dir: path.join(DSH, 'skills'), source: 'user-dsh' },
+    { dir: path.join(HOME, '.agents', 'skills'), source: 'user-agents' },
+  ];
+  // custom dir: plugin đóng gói skill trong <pkg>/skills
+  const mods = path.join(DSH, 'profiles', PROFILE, 'node_modules');
+  let pkgs = [];
+  try {
+    pkgs = fs.readdirSync(mods, { withFileTypes: true });
+  } catch {
+    pkgs = [];
+  }
+  for (const entry of pkgs) {
+    if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
+    const dir = path.join(mods, entry.name, 'skills');
+    if (fs.existsSync(dir)) roots.push({ dir, source: `plugin:${entry.name}` });
+  }
+  for (const extra of (process.env.DSH_SKILL_EXTRA_ROOTS ?? '').split(path.delimiter)) {
+    if (extra.trim()) roots.push({ dir: extra.trim(), source: 'env' });
+  }
+  return roots;
+}
+
+function skillMeta(file, fallbackName) {
+  let text;
+  try {
+    text = fs.readFileSync(file, 'utf8').slice(0, 4096);
+  } catch {
+    return null;
+  }
+  const m = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  const fm = m ? m[1] : '';
+  const name = (fm.match(/^name:\s*(.+)$/m)?.[1] ?? fallbackName).trim();
+  const desc = (fm.match(/^description:\s*"?([\s\S]*?)"?\s*$/m)?.[1] ?? '').trim();
+  return { name, chars: name.length + desc.length };
+}
+
+function skillCatalog() {
+  const seen = new Set();
+  const perSource = [];
+  let count = 0;
+  let chars = 0;
+  for (const root of skillRoots()) {
+    const files = walkSkillFiles(root.dir);
+    let added = 0;
+    for (const file of files) {
+      const meta = skillMeta(file, path.basename(path.dirname(file)));
+      if (!meta || seen.has(meta.name)) continue;
+      seen.add(meta.name);
+      count += 1;
+      chars += meta.chars;
+      added += 1;
+    }
+    if (added) perSource.push({ source: root.source, count: added });
+  }
+  return { count, chars, sources: perSource };
 }
 
 function usageToday() {
@@ -175,6 +254,17 @@ function sessionRanking(days = 7) {
   return rows.sort((a, b) => b.fresh - a.fresh).slice(0, 8);
 }
 
+if (process.argv.includes('--skills-only')) {
+  const catalog = skillCatalog();
+  if (process.argv.includes('--json')) {
+    console.log(JSON.stringify(catalog, null, 2));
+    process.exit(0);
+  }
+  console.log(`Skill catalog   : ${catalog.count} skill, ${catalog.chars.toLocaleString('vi-VN')} ký tự ≈ ${Math.round(catalog.chars / 4).toLocaleString('vi-VN')} token / request`);
+  console.log('  theo nguồn    : ' + catalog.sources.map((s) => `${s.source} ${s.count}`).join(', '));
+  process.exit(0);
+}
+
 const sessions = listSessions();
 if (!sessions.length) {
   console.error('Không thấy session nào trong ~/.dsh/sessions');
@@ -197,6 +287,10 @@ if (process.argv.includes('--json')) {
     console.log('  nặng nhất     : ' + tools.top.map((t) => `${t.name} ${kb(t.bytes)}`).join(', '));
   }
   console.log(`Skill catalog   : ${catalog.count} skill, ${catalog.chars.toLocaleString('vi-VN')} ký tự ≈ ${Math.round(catalog.chars / 4).toLocaleString('vi-VN')} token / request`);
+  console.log('  theo nguồn    : ' + catalog.sources.map((s) => `${s.source} ${s.count}`).join(', '));
+  if (catalog.chars > LIMITS.skillCharsWarn) {
+    console.log(`  \x1b[33mCẢNH BÁO\x1b[0m  catalog > ${LIMITS.skillCharsWarn.toLocaleString('vi-VN')} ký tự — nên cắt root skill không dùng`);
+  }
   console.log(`Thành phần session: ${comp.steps} step · user thật ${comp.realUser} · snapshot runtime ${comp.snapshotUser} (lượt này ${comp.turnSnapshots}/${comp.turnSteps} step) · reminder 灵枢 ${comp.reminders} (số lớn nhất ${comp.reminderMax}) · AGENTS ${comp.workspaceReminder} · memory-block ${comp.memory}`);
   console.log(`  tool result ${kb(comp.toolResult)} (max ${kb(comp.toolResultMax)}) · text ${kb(comp.assistantText)} · reasoning ${kb(comp.assistantReasoning)} · block bơm vào ${kb(comp.injectedBytes)}`);
   if (usage) {
