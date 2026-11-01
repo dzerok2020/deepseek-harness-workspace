@@ -50,16 +50,21 @@ internal-comms, scaffold-exercises, slack-gif-creator, web-artifacts-builder,
 migrate-to-shoehorn, ask-matt) vào `~/.dsh/skills-archive/2026-10-28/`.
 Catalog còn 87 skill trong `~/.dsh/skills`. Khôi phục: chuyển thư mục lại `~/.dsh/skills/`.
 
-**Số đo thật 2026-11-01** (`node tools/prompt-budget.mjs --skills-only`): catalog mà model
-nhận **mỗi request** là **421 skill / 130.680 ký tự ≈ 32,7K token** — không phải 87 skill,
-vì DSH còn nạp skill của ECC và của plugin đóng gói:
+**Số đo thật 2026-11-01** (`node tools/prompt-budget.mjs --skills-only`): sau khi bật
+`skillAllowlist`, catalog mà model nhận **mỗi request** là **131 skill / 37.660 ký tự ≈ 9,4K
+token** (trước đó 421 skill / 130.680 ký tự ≈ 32,7K). Không phải 87 skill, vì DSH còn nạp
+skill của ECC và của plugin đóng gói:
 
 | Nguồn | Skill | Ký tự | Token/request |
 |---|---|---|---|
-| ECC (`~/.dsh/ecc/source/skills` qua `dsh-ecc-adapter`) | 311 | 99.105 | ~24,8K |
-| `~/.dsh/skills` | 80 | 26.100 | ~6,5K |
+| ECC (`~/.dsh/ecc/source/skills` qua `dsh-ecc-adapter`, sau `skillAllowlist`) | 20 | 5.796 | ~1,4K |
+| `~/.dsh/skills` | 81 | 26.100 | ~6,5K |
 | `plugin:aegis` | 23 | 4.564 | ~1,1K |
-| project + `~/.agents/skills` + plugin khác | 7 | ~900 | ~0,2K |
+| project + `~/.agents/skills` + plugin khác | 7 | ~1.200 | ~0,3K |
+
+Trước khi bật allowlist, ECC chiếm 311 skill / 99.105 ký tự trong phép đo quét thư mục; nhưng
+policy thật chỉ duyệt **268** skill (`37 review-required` + `6 memory-redirect` bị giữ lại),
+tức 84.858 ký tự ≈ 21,2K token/request.
 
 Trước 2026-11-01 phép đo chỉ đọc `~/.dsh/skills` nên báo 82 skill / 26.712 ký tự, và ngưỡng
 30.000 ký tự vì thế không bao giờ bắt được catalog phình. Nay đo đủ mọi root, in kèm số theo
@@ -70,9 +75,12 @@ Hai đòn giảm chi phí cố định, đều đo được:
   nhất (bsk_inspect 8,4 KB, code_review_preview 7,1 KB, market_install 3,7 KB, workflow
   3,3 KB, schedule_create 3,1 KB) đã chiếm ~6,5K token; preset `Vibe / *` chỉ nạp nhóm lõi
   (bash, fs, fs-search, jobs, skill…) nên cắt được phần lớn phần này.
-- **Catalog skill:** ECC chiếm 76% khối lượng. Muốn cắt phải thu hẹp `allowedAssets.skills`
-  của `dsh-ecc-adapter` trong `~/.dsh/profiles/web/cordis.patch.yml` (ngoài workspace, cần
-  restart) — đó là thay đổi chính sách đã duyệt nên phải hỏi trước khi làm.
+- **Catalog skill:** ECC chiếm ~76% khối lượng. Đòn này nay đã hiện thực bằng
+  `skillAllowlist` của `dsh-ecc-adapter` (`~/.dsh/profiles/web/cordis.patch.yml`): chỉ 20
+  skill ECC từng được gọi thật trong ~600 session được nạp, tiết kiệm **≈23,3K
+  token/request** (130.680 → 37.660 ký tự). Danh sách lấy từ log session, không phải đoán.
+  Khôi phục: thêm tên skill vào `skillAllowlist`, hoặc bỏ hẳn key để quay lại 268 skill policy
+  duyệt. `tools/prompt-budget.mjs` đọc chính key này nên số đo luôn khớp runtime.
 
 Quy ước: skill mới chỉ thêm khi (a) dùng ít nhất 1 lần/tháng, hoặc (b) là quy
 trình bắt buộc. Skill trùng chức năng thì giữ một bản, bản còn lại archive.

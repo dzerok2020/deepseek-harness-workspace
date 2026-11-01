@@ -188,17 +188,50 @@ function skillMeta(file, fallbackName) {
   return { name, chars: name.length + desc.length };
 }
 
+/**
+ * dsh-ecc-adapter chỉ nạp skill nằm trong giao của policy với config.skillAllowlist
+ * của profile (xem lib/integration-policy.js applySkillAllowlist). Đo đúng như runtime:
+ * danh sách rỗng = không cắt gì, trả [] để skillCatalog giữ nguyên hành vi cũ.
+ */
+function eccSkillAllowlist() {
+  let text;
+  try {
+    text = fs.readFileSync(path.join(DSH, 'profiles', PROFILE, 'cordis.patch.yml'), 'utf8');
+  } catch {
+    return [];
+  }
+  const block = text.split(/^- id: dsh-ecc-adapter\s*$/m)[1];
+  if (!block) return [];
+  const section = block.split(/^\s*skillAllowlist:\s*$/m)[1];
+  if (!section) return [];
+  const names = [];
+  for (const line of section.split('\n')) {
+    if (!line.trim()) continue;
+    const m = line.match(/^\s+- ([a-z0-9][a-z0-9-]*)\s*$/);
+    if (!m) break; // hết block allowlist
+    names.push(m[1]);
+  }
+  return names;
+}
+
 function skillCatalog() {
   const seen = new Set();
   const perSource = [];
+  const eccAllowed = new Set(eccSkillAllowlist());
   let count = 0;
   let chars = 0;
+  let eccSkipped = 0;
   for (const root of skillRoots()) {
     const files = walkSkillFiles(root.dir);
     let added = 0;
     for (const file of files) {
       const meta = skillMeta(file, path.basename(path.dirname(file)));
       if (!meta || seen.has(meta.name)) continue;
+      // Skill ECC ngoài allowlist không bao giờ vào prompt ⇒ không được tính.
+      if (root.source === 'ecc' && eccAllowed.size > 0 && !eccAllowed.has(meta.name)) {
+        eccSkipped += 1;
+        continue;
+      }
       seen.add(meta.name);
       count += 1;
       chars += meta.chars;
@@ -206,7 +239,7 @@ function skillCatalog() {
     }
     if (added) perSource.push({ source: root.source, count: added });
   }
-  return { count, chars, sources: perSource };
+  return { count, chars, sources: perSource, eccAllowlist: eccAllowed.size, eccSkipped };
 }
 
 function usageToday() {
@@ -288,6 +321,7 @@ if (process.argv.includes('--json')) {
   }
   console.log(`Skill catalog   : ${catalog.count} skill, ${catalog.chars.toLocaleString('vi-VN')} ký tự ≈ ${Math.round(catalog.chars / 4).toLocaleString('vi-VN')} token / request`);
   console.log('  theo nguồn    : ' + catalog.sources.map((s) => `${s.source} ${s.count}`).join(', '));
+  if (catalog.eccAllowlist) console.log(`  ecc allowlist : ${catalog.eccAllowlist} skill được nạp, ${catalog.eccSkipped} skill ECC bị bỏ khỏi prompt (theo cordis.patch.yml)`);
   if (catalog.chars > LIMITS.skillCharsWarn) {
     console.log(`  \x1b[33mCẢNH BÁO\x1b[0m  catalog > ${LIMITS.skillCharsWarn.toLocaleString('vi-VN')} ký tự — nên cắt root skill không dùng`);
   }
