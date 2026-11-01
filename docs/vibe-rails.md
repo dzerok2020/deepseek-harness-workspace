@@ -51,16 +51,22 @@ migrate-to-shoehorn, ask-matt) vào `~/.dsh/skills-archive/2026-10-28/`.
 Catalog còn 87 skill trong `~/.dsh/skills`. Khôi phục: chuyển thư mục lại `~/.dsh/skills/`.
 
 **Số đo thật 2026-11-01** (`node tools/prompt-budget.mjs --skills-only`): sau khi bật
-`skillAllowlist`, catalog mà model nhận **mỗi request** là **131 skill / 37.660 ký tự ≈ 9,4K
-token** (trước đó 421 skill / 130.680 ký tự ≈ 32,7K). Không phải 87 skill, vì DSH còn nạp
+`skillAllowlist`, catalog mà model nhận **mỗi request** là **131 skill / 29.251 ký tự ≈ 7,3K
+token** (trước allowlist 421 skill / 130.680 ký tự ≈ 32,7K; sau allowlist, trước khi rút gọn mô
+tả người dùng: 37.660 ký tự ≈ 9,4K). Không phải 87 skill, vì DSH còn nạp
 skill của ECC và của plugin đóng gói:
 
 | Nguồn | Skill | Ký tự | Token/request |
 |---|---|---|---|
 | ECC (`~/.dsh/ecc/source/skills` qua `dsh-ecc-adapter`, sau `skillAllowlist`) | 20 | 5.796 | ~1,4K |
-| `~/.dsh/skills` | 81 | 26.100 | ~6,5K |
+| `~/.dsh/skills` | 81 | 17.980 | ~4,5K |
 | `plugin:aegis` | 23 | 4.564 | ~1,1K |
-| project + `~/.agents/skills` + plugin khác | 7 | ~1.200 | ~0,3K |
+| project + `~/.agents/skills` + plugin khác | 7 | ~900 | ~0,2K |
+
+Ngày 2026-11-01 còn rút gọn mô tả của 41 skill người dùng chưa từng được gọi (11.685 → 3.254
+ký tự, riêng phần `description:`): `~/.dsh/skills` từ 26.100 xuống 17.980 ký tự. Bản gốc từng
+file ở `~/.dsh/skills-backup/20261101-190943/<tên-skill>/SKILL.md`; `~/.dsh/skills` không phải
+git repo nên phần này không có commit.
 
 Trước khi bật allowlist, ECC chiếm 311 skill / 99.105 ký tự trong phép đo quét thư mục; nhưng
 policy thật chỉ duyệt **268** skill (`37 review-required` + `6 memory-redirect` bị giữ lại),
@@ -79,6 +85,8 @@ Hai đòn giảm chi phí cố định, đều đo được:
   `skillAllowlist` của `dsh-ecc-adapter` (`~/.dsh/profiles/web/cordis.patch.yml`): chỉ 20
   skill ECC từng được gọi thật trong ~600 session được nạp, tiết kiệm **≈23,3K
   token/request** (130.680 → 37.660 ký tự). Danh sách lấy từ log session, không phải đoán.
+  Ngày 2026-11-01 rút thêm mô tả 41 skill người dùng chưa dùng thật: catalog xuống **29.251 ký
+  tự ≈ 7,3K token/request**, tức tổng hai đòn giảm 130.680 → 29.251 ký tự (≈ 32,7K → 7,3K token).
   Khôi phục: thêm tên skill vào `skillAllowlist`, hoặc bỏ hẳn key để quay lại 268 skill policy
   duyệt. `tools/prompt-budget.mjs` đọc chính key này nên số đo luôn khớp runtime.
 

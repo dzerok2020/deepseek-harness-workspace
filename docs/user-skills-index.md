@@ -1,8 +1,9 @@
 # 82 skill trong `~/.dsh/skills` — bản đồ và chi phí
-Cập nhật 2026-11-01 · số liệu: mô tả (name+description) của 82 skill = **25,668 ký tự ≈ 6,417 token/request**, chiếm ~68% trong tổng catalog 37.660 ký tự hiện tại.
+Cập nhật 2026-11-01 · số liệu: mô tả (name+description) của 82 skill = **17,259 ký tự ≈ 4,315 token/request** (trước khi rút gọn 41 mô tả: 25,668 ký tự ≈ 6,417 token), chiếm ~59% trong tổng catalog 29.251 ký tự hiện tại.
 
 ## 1. Tóm tắt
-- 82 skill: **41 đã từng được gọi** (14,005 ký tự), **41 chưa từng được gọi** (11,663 ký tự ≈ 2,915 token).
+- 82 skill: **41 đã từng được gọi** (14,005 ký tự), **41 chưa từng được gọi** (3,254 ký tự ≈ 814 token — đã rút gọn từ 11,663 ký tự ≈ 2,915 token).
+- Đã áp dụng 2026-11-01: rút gọn mô tả của **41 skill chưa từng dùng** (11,685 → 3,254 ký tự cho riêng phần `description:`), bảng bên dưới đã ghi số SAU rút gọn. Bản gốc từng file: `~/.dsh/skills-backup/20261101-190943/<tên-skill>/SKILL.md` (hoàn tác = copy ngược lại). `~/.dsh/skills` không phải git repo nên thay đổi này không có commit.
 - Nguồn "đã từng gọi": 602 session trong `~/.dsh/sessions` (chỉ log — xem `docs/ecc-skill-allowlist.md` mục 3 về giới hạn của log).
 - Trùng tên: `leanrea` có cả bản project (`.dsh/skills/` của workspace) và bản user → bản project thắng, bản user là bản sao y hệt (không tốn thêm token vì trùng tên bị gộp). `design-system` trùng tên với skill ECC cùng tên nhưng **khác nội dung**; bản ECC đang bị allowlist lọc nên bản user thắng — nếu sau này muốn dùng bản ECC thì phải đổi tên một bên.
 
@@ -19,17 +20,17 @@ Cập nhật 2026-11-01 · số liệu: mô tả (name+description) của 82 ski
 | `leanrea` | 316 | ✓ |
 | `prototype` | 179 | ✓ |
 | `discernment-nudge` | 1 | ✓ |
-| `react-bits` | 624 | — |
-| `algorithmic-art` | 324 | — |
-| `observability-and-instrumentation` | 307 | — |
-| `performance-optimization` | 295 | — |
-| `mcp-builder` | 277 | — |
-| `ci-cd-and-automation` | 207 | — |
-| `full-output-enforcement` | 203 | — |
-| `wayfinder` | 197 | — |
-| `domain-modeling` | 151 | — |
-| `triage` | 136 | — |
-| `wait-what` | 50 | — |
+| `react-bits` | 87 | — |
+| `algorithmic-art` | 86 | — |
+| `observability-and-instrumentation` | 87 | — |
+| `performance-optimization` | 80 | — |
+| `mcp-builder` | 82 | — |
+| `ci-cd-and-automation` | 75 | — |
+| `full-output-enforcement` | 81 | — |
+| `wayfinder` | 89 | — |
+| `domain-modeling` | 61 | — |
+| `triage` | 85 | — |
+| `wait-what` | 49 | — |
 
 ### Tài liệu, nội dung & kỹ năng (16)
 
@@ -37,19 +38,19 @@ Cập nhật 2026-11-01 · số liệu: mô tả (name+description) của 82 ski
 |---|---|---|
 | `skill-creator` | 392 | ✓ |
 | `writing-for-agents` | 103 | ✓ |
-| `interview-me` | 485 | — |
-| `stow` | 461 | — |
-| `doc-coauthoring` | 428 | — |
-| `docx` | 417 | — |
-| `xlsx` | 407 | — |
-| `pptx` | 354 | — |
-| `pdf` | 343 | — |
-| `wizard` | 313 | — |
-| `teach` | 309 | — |
-| `to-questionnaire` | 283 | — |
-| `pr` | 258 | — |
-| `brand` | 183 | — |
-| `grill-with-docs` | 106 | — |
+| `interview-me` | 89 | — |
+| `stow` | 89 | — |
+| `doc-coauthoring` | 78 | — |
+| `docx` | 79 | — |
+| `xlsx` | 84 | — |
+| `pptx` | 77 | — |
+| `pdf` | 81 | — |
+| `wizard` | 92 | — |
+| `teach` | 71 | — |
+| `to-questionnaire` | 81 | — |
+| `pr` | 60 | — |
+| `brand` | 81 | — |
+| `grill-with-docs` | 86 | — |
 | `grill-me` | 51 | — |
 
 ### Animation & 3D (12)
@@ -65,9 +66,9 @@ Cập nhật 2026-11-01 · số liệu: mô tả (name+description) của 82 ski
 | `img2threejs` | 280 | ✓ |
 | `gsap-react` | 273 | ✓ |
 | `gsap-performance` | 228 | ✓ |
-| `morphicons` | 476 | — |
-| `gsap-frameworks` | 355 | — |
-| `gsap-utils` | 228 | — |
+| `morphicons` | 77 | — |
+| `gsap-frameworks` | 74 | — |
+| `gsap-utils` | 83 | — |
 
 ### Quy trình làm phần mềm (11)
 
@@ -79,11 +80,11 @@ Cập nhật 2026-11-01 · số liệu: mô tả (name+description) của 82 ski
 | `four-phase-env-setup` | 359 | ✓ |
 | `four-phase-product-plan` | 357 | ✓ |
 | `implement` | 321 | ✓ |
-| `to-tickets` | 247 | — |
-| `setup-pre-commit` | 238 | — |
-| `setup-matt-pocock-skills` | 180 | — |
-| `to-spec` | 149 | — |
-| `implement-spec` | 57 | — |
+| `to-tickets` | 90 | — |
+| `setup-pre-commit` | 70 | — |
+| `setup-matt-pocock-skills` | 84 | — |
+| `to-spec` | 78 | — |
+| `implement-spec` | 65 | — |
 
 ### Chất lượng & kỹ thuật agent (10)
 
@@ -96,9 +97,9 @@ Cập nhật 2026-11-01 · số liệu: mô tả (name+description) của 82 ski
 | `context-engineering` | 198 | ✓ |
 | `agent-reach` | 1 | ✓ |
 | `ponytail` | 1 | ✓ |
-| `improve-codebase-architecture` | 379 | — |
-| `handoff` | 294 | — |
-| `git-guardrails-claude-code` | 243 | — |
+| `improve-codebase-architecture` | 85 | — |
+| `handoff` | 93 | — |
+| `git-guardrails-claude-code` | 85 | — |
 
 ### Thiết kế & UI (10)
 
@@ -109,11 +110,11 @@ Cập nhật 2026-11-01 · số liệu: mô tả (name+description) của 82 ski
 | `ui-ux-pro-max` | 495 | ✓ |
 | `canvas-design` | 289 | ✓ |
 | `design-taste-frontend` | 269 | ✓ |
-| `ui-styling` | 489 | — |
-| `frontend-design` | 356 | — |
-| `design-system` | 276 | — |
-| `codebase-design` | 265 | — |
-| `theme-factory` | 262 | — |
+| `ui-styling` | 89 | — |
+| `frontend-design` | 79 | — |
+| `design-system` | 81 | — |
+| `codebase-design` | 76 | — |
+| `theme-factory` | 84 | — |
 
 ### Tích hợp DSH / công cụ ngoài (4)
 
