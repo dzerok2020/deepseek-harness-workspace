@@ -48,7 +48,31 @@ Từ rollout 2026-10-29, Mnemon/StrataGate và OpenViking memory runtime đượ
 Đã lưu trữ 8 skill không liên quan vibe coding (academy-guide, brand-guidelines,
 internal-comms, scaffold-exercises, slack-gif-creator, web-artifacts-builder,
 migrate-to-shoehorn, ask-matt) vào `~/.dsh/skills-archive/2026-10-28/`.
-Catalog còn 87 skill. Khôi phục: chuyển thư mục lại `~/.dsh/skills/`.
+Catalog còn 87 skill trong `~/.dsh/skills`. Khôi phục: chuyển thư mục lại `~/.dsh/skills/`.
+
+**Số đo thật 2026-11-01** (`node tools/prompt-budget.mjs --skills-only`): catalog mà model
+nhận **mỗi request** là **421 skill / 130.680 ký tự ≈ 32,7K token** — không phải 87 skill,
+vì DSH còn nạp skill của ECC và của plugin đóng gói:
+
+| Nguồn | Skill | Ký tự | Token/request |
+|---|---|---|---|
+| ECC (`~/.dsh/ecc/source/skills` qua `dsh-ecc-adapter`) | 311 | 99.105 | ~24,8K |
+| `~/.dsh/skills` | 80 | 26.100 | ~6,5K |
+| `plugin:aegis` | 23 | 4.564 | ~1,1K |
+| project + `~/.agents/skills` + plugin khác | 7 | ~900 | ~0,2K |
+
+Trước 2026-11-01 phép đo chỉ đọc `~/.dsh/skills` nên báo 82 skill / 26.712 ký tự, và ngưỡng
+30.000 ký tự vì thế không bao giờ bắt được catalog phình. Nay đo đủ mọi root, in kèm số theo
+nguồn và cảnh báo từ 100.000 ký tự.
+
+Hai đòn giảm chi phí cố định, đều đo được:
+- **Tool schema:** session rail đầy đủ đang nạp 95 tool ≈ 25K token/request. Năm tool nặng
+  nhất (bsk_inspect 8,4 KB, code_review_preview 7,1 KB, market_install 3,7 KB, workflow
+  3,3 KB, schedule_create 3,1 KB) đã chiếm ~6,5K token; preset `Vibe / *` chỉ nạp nhóm lõi
+  (bash, fs, fs-search, jobs, skill…) nên cắt được phần lớn phần này.
+- **Catalog skill:** ECC chiếm 76% khối lượng. Muốn cắt phải thu hẹp `allowedAssets.skills`
+  của `dsh-ecc-adapter` trong `~/.dsh/profiles/web/cordis.patch.yml` (ngoài workspace, cần
+  restart) — đó là thay đổi chính sách đã duyệt nên phải hỏi trước khi làm.
 
 Quy ước: skill mới chỉ thêm khi (a) dùng ít nhất 1 lần/tháng, hoặc (b) là quy
 trình bắt buộc. Skill trùng chức năng thì giữ một bản, bản còn lại archive.
