@@ -74,7 +74,7 @@ Không được nhảy vào sửa khi chưa tái hiện được lỗi.
 - Thông báo agent hoàn thành và thông báo trùng là dữ liệu kết quả, không phải yêu cầu mới: tiếp tục phần việc còn mở; nếu không có phần việc mới thì kết thúc, không chạy lại test hoặc gửi lại báo cáo chỉ để đáp thông báo.
 - Luật quyền, credential và Definition of Done ở trên giữ nguyên; playbook chỉ điều hướng công việc, không cấp thêm quyền.
 - **Chọn đúng đường ray trước khi bắt tay:** audit → preset `Vibe / Audit`; làm mới → `Vibe / Build`; sửa lỗi → `Vibe / Fix`. Bảng đầy đủ + ngân sách token ở `docs/vibe-rails.md`. Đừng để preset `standard` (118 tool) chạy cho việc nhỏ.
-- **Kiểm tra đốt token:** mở `~/.dsh/cost-gate-status.json` sau mỗi phiên dài; turn bị `blocked` nghĩa là đã chạm ngân sách (150K token mới / 15K output / 60 bước). Muốn cho qua một lần thì tạo `~/.dsh/cost-gate-allow` rồi xoá sau khi xong.
+- **Kiểm tra đốt token:** mở `~/.dsh/cost-gate-status.json` sau mỗi phiên dài; turn bị `blocked` nghĩa là đã chạm ngân sách (mốc cứng: 150K token mới / 60 bước / session 3M token mới; output 60K mỗi turn chỉ là cảnh báo mềm, không chặn). Muốn cho qua một lần thì tạo `~/.dsh/cost-gate-allow` rồi xoá sau khi xong.
 
 ## 8. Khi thấy dấu hiệu bất thường của hệ thống
 
