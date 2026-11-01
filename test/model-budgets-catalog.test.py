@@ -32,6 +32,13 @@ EXPECTED = {
     'b-ai/deepseek-v4.1-flash': (128000, 16384),
     'b-ai/qwen3.8-flash': (128000, 16384),
     'gpt-free': (104000, 16384),
+    # Routes added in Settings and synced on 2026-11-01.
+    'anapinex/free/deepseek-v4-flash-0731': (1048576, 384000),
+    'anapinex/free/glm-5.3-flashx': (1048576, 128000),
+    'anapinex/free/minimax-m3.1-flash': (1000000, 128000),
+    'antigravity/claude-opus-5-5-medium': (1048576, 128000),
+    'cx/gpt-5.6-sol': (872000, 128000),
+    'gh/gpt-4.1': (1047576, 32768),
 }
 
 

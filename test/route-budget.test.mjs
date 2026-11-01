@@ -37,6 +37,13 @@ const referenceExpected = {
     'antigravity/gemini-3.8-flash-tiered': [128000, 16384], 'b-ai/gpt-6.1-sol': [128000, 16384],
     'nr-ai/deepseek-v4.1-flash': [1048576, 384000],
     'nr-ai/deepseek-v4-pro-0813': [1000000, 384000],
+    // Routes added in Settings and synced on 2026-11-01.
+    'anapinex/free/deepseek-v4-flash-0731': [1048576, 384000],
+    'anapinex/free/glm-5.3-flashx': [1048576, 128000],
+    'anapinex/free/minimax-m3.1-flash': [1000000, 128000],
+    'antigravity/claude-opus-5-5-medium': [1048576, 128000],
+    'cx/gpt-5.6-sol': [872000, 128000],
+    'gh/gpt-4.1': [1047576, 32768],
   },
 };
 
