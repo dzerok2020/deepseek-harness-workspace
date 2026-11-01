@@ -126,8 +126,13 @@ for p in dsh-loop-guard dsh-vibe-guard; do
 done
 
 head_ "6b. Regression của bộ kiểm chứng và tài liệu workspace"
-if python3 "$WS/test/hindsight-health.test.py" && python3 "$WS/test/orchestration-health.test.py" && (cd "$WS" && node --test test/); then
-  ok "test bộ kiểm chứng bộ nhớ, chuỗi ChatGPT và tài liệu workspace xanh"
+if python3 "$WS/test/hindsight-health.test.py" \
+   && python3 "$WS/test/orchestration-health.test.py" \
+   && python3 "$WS/test/model-budgets-catalog.test.py" \
+   && python3 "$WS/test/model-budget-sync.test.py" \
+   && python3 "$WS/test/model-budget-check.test.py" \
+   && (cd "$WS" && node --test test/); then
+  ok "test bộ kiểm chứng bộ nhớ, chuỗi ChatGPT, ngân sách model và tài liệu workspace xanh"
 else
   bad "regression bộ kiểm chứng hoặc tài liệu workspace ĐỎ"
 fi
@@ -258,6 +263,12 @@ head_ "12. Chuỗi ChatGPT Web — kiểm chứng CHỨC NĂNG (không chỉ HTT
 # không hỏng hẳn — nhưng bạn cần biết để mở lại tab ChatGPT trong launcher.
 if python3 "$WS/tools/orchestration-health.py"; then ok "shim + bridge + catalog đạt (chức năng)"
 else bad "chuỗi ChatGPT Web chưa đạt — pipeline sẽ fallback native; xem dòng LỖI ở trên"; fi
+
+head_ "12b. Ngân sách model — profile có khớp tham chiếu Git không"
+# Tách khỏi mục 12: thêm model trong Settings mà chưa chạy
+# tools/sync_model_budgets.py chỉ làm lệch tham chiếu, không phải shim/bridge hỏng.
+if python3 "$WS/tools/model-budget-check.py"; then ok "ngân sách context/maxTokens khớp tham chiếu Git"
+else bad "profile lệch tham chiếu — chạy tools/sync_model_budgets.py để xem trước, rồi --apply"; fi
 
 head_ "13. Ngân sách prompt — có đang phình/đốt token không"
 # Đo phần cố định phải trả mỗi request (tool schema, catalog skill) + mật độ

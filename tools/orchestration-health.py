@@ -11,7 +11,7 @@ import sys
 import urllib.request
 
 
-from model_budgets import budget_errors, check_profile_budgets
+from model_budgets import budget_errors, check_profile_budgets  # tests import qua module này; main() không dùng
 
 
 def shim_ready(body):
@@ -63,12 +63,8 @@ def main():
                 failures.append('catalog shim thieu model pipeline: ' + pipeline_model)
         except Exception as error:
             failures.append('shim /v1/models khong dap ung: ' + type(error).__name__)
-    profile_path = os.environ.get('DSH_WEB_CORDIS', os.path.expanduser('~/.dsh/profiles/web/cordis.patch.yml'))
-    if os.path.exists(profile_path):
-        for drift in check_profile_budgets(profile_path):
-            failures.append('profile: ' + drift)
-    else:
-        failures.append('profile: khong thay file ' + profile_path)
+    # Ngân sách model do tools/model-budget-check.py kiểm tra riêng: lệch ngân
+    # sách không phải lỗi của chuỗi ChatGPT Web.
     for failure in failures:
         print('LỖI:', failure)
     if not failures:
