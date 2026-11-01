@@ -93,6 +93,7 @@ Kiểm tra bổ sung ngày 2026-10-30 theo yêu cầu sửa model-policy/catalog
 - `/ecc-status`: xem owner, trạng thái, collision, policy và phần chưa hỗ trợ; đọc snapshot đầy đủ khi cần chi tiết từng asset.
 - Các command được đăng ký có tiền tố `/ecc-`; không nhầm với slash command native cùng mục đích. Presets ECC có tiền tố `ecc-`.
 - Skills gọi bằng tên thật trong catalog hiện tại; không tự chạy script của skill bị withheld chỉ vì source còn tồn tại.
+- `skillAllowlist` (config, tuỳ chọn): mảng tên skill để giao với danh sách policy đã duyệt; rỗng = giữ nguyên policy. Chỉ cắt được, không thêm — tên không được policy cấp sẽ hiện trong `/ecc-status` ở `skills.allowlist.unknown`. Dùng để giảm phần catalog cố định của prompt (xem `docs/vibe-rails.md`).
 - Memory dùng bốn native tools đã nêu; không chạy ECC memory CLI hoặc mở kho phụ.
 - Đây là `link:` tới workspace, không phải package đã publish. Di chuyển/xóa adapter hoặc checkout ECC sẽ làm hỏng đường dẫn. Update pin cần review policy và chạy lại tests; không auto-update upstream.
 - Việc cài/gỡ hoặc đổi cấu hình plugin cần restart DSH để bảo đảm sạch lifecycle, dù phiên này đã quan sát thấy dynamic activation. Không kill tiến trình GUI đang phục vụ chính phiên làm việc này. Sau restart chạy lại health và `/ecc-status` tại GUI hiện có.

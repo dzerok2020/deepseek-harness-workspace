@@ -8,7 +8,7 @@ import { readInventory } from './inventory.js';
 import { registerEccContext } from './context.js';
 import { registerNativeAssets } from './native-assets.js';
 import { registerHooks } from './hooks.js';
-import { buildIntegrationPolicy } from './integration-policy.js';
+import { applySkillAllowlist, buildIntegrationPolicy } from './integration-policy.js';
 import { classifyHooks, selectApprovedHooks } from './hook-policy.js';
 import { registerMemoryTools } from './memory-tools.js';
 import { registerConnectorDiagnostics } from './connectors.js';
@@ -22,6 +22,8 @@ export const Config = Schema.object({
   enablePlanner: Schema.boolean().default(false), enablePayloadHooks: Schema.boolean().default(false),
   enableHooks: Schema.boolean().default(false), ruleLanguages: Schema.array(Schema.string()).default([]),
   maxRuleBytes: Schema.natural().default(131072), modelMap: Schema.dict(Schema.string()).default({}), toolMap: Schema.dict(Schema.string()).default({}),
+  // Giao với danh sách skill đã duyệt: rỗng = giữ nguyên policy. Chỉ cắt được, không thêm.
+  skillAllowlist: Schema.array(Schema.string()).default([]),
 });
 
 /** Mount one reviewed owner per component; never mutate upstream or another profile. */
@@ -36,7 +38,7 @@ export async function apply(ctx, config) {
     if (stdout.trim()) throw new Error('ECC source is dirty; restore the reviewed upstream revision before activation');
   }
   if (ctx.commands.find(scopeOf(ctx) ?? {}, 'ecc-status')) throw new Error('ecc-status already exists; the existing owner was preserved');
-  let policy, hookPolicy, selectedConfig = config;
+  let policy, hookPolicy, skillNarrowing = null, selectedConfig = config;
   if (config.selective) {
     const assets = {};
     for (const [kind, rows] of Object.entries(inventory.assets)) assets[kind] = await Promise.all(rows.map(async row => ({ ...row, ...(['skills', 'commands', 'agents', 'rules'].includes(kind) ? { content: await readFile(row.path, 'utf8') } : {}) })));
@@ -44,6 +46,9 @@ export async function apply(ctx, config) {
     policy = { ...buildIntegrationPolicy({ ...inventory, assets }, { availableSkills: nativeSkills.complete ? nativeSkills.skills.map(skill => skill.name) : [] }),
       view: { cwd: process.cwd(), scope: 'global', verification: 'registration-view only; native owner availability is not projected across workspaces, scopes or provider lifetimes' } };
     const allowedAssets = Object.fromEntries(['skills', 'commands', 'agents', 'rules'].map(kind => [kind, policy.assets.filter(row => row.kind === kind && (row.action === 'include' || (kind === 'skills' && row.action === 'native-equivalent' && row.owner === row.name))).map(row => row.name)]));
+    const skillAllowlist = applySkillAllowlist(allowedAssets.skills, config.skillAllowlist);
+    allowedAssets.skills = skillAllowlist.skills;
+    skillNarrowing = { requested: skillAllowlist.unknown.length + skillAllowlist.skills.length, kept: skillAllowlist.skills.length, unknown: skillAllowlist.unknown };
     const manifest = JSON.parse(await readFile(join(config.eccRoot, 'hooks/hooks.json'), 'utf8'));
     const hookOptions = { sourceRevision: inventory.revision, availableCapabilities: config.enableHooks && typeof ctx.tools.guard === 'function' ? ['contained-runner', 'native-monotonic-guard', 'native-pre-tool-context'] : [] };
     hookPolicy = classifyHooks(manifest, hookOptions);
@@ -92,7 +97,7 @@ export async function apply(ctx, config) {
     ].join('\n') }));
     const statusPath = join(dataRoot, 'status.json');
     const snapshot = () => ({ adapter: name, version: '0.3.1', status: 'ready-partial', parity: 'partial', source: { root: sourceRoot, revision: inventory.revision }, inventory,
-      ...(policy ? { policy, hookPolicy } : {}), skills: context.skills, rules: context.rules,
+      ...(policy ? { policy, hookPolicy } : {}), skills: skillNarrowing ? { ...context.skills, allowlist: skillNarrowing } : context.skills, rules: context.rules,
       native: { commands: native.commands, agents: native.agents, collisions: native.collisions, unsupported: native.unsupported },
       hooks: { hooks: hooks.hooks, status: hooks.status, gaps: hooks.gaps }, memory: { status: memory.status, owner: memory.owner, tools: memory.tools, gaps: memory.gaps },
       planner: planner.observe ? planner.observe() : { status: planner.status, tools: planner.tools, gaps: planner.gaps },

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { readInventory } from '../lib/inventory.js';
-import { buildIntegrationPolicy } from '../lib/integration-policy.js';
+import { applySkillAllowlist, buildIntegrationPolicy } from '../lib/integration-policy.js';
 
 const PIN = 'b92f181b3b748d1abbc2afd94af6aa7d8c8fca29';
 const actions = ['include', 'native-equivalent', 'reference-only', 'memory-redirect', 'disabled', 'review-required'];
@@ -195,4 +195,20 @@ test('empty inventory still has stable explicit count buckets', () => {
   assert.deepEqual(policy.assets, []);
   assert.equal(policy.counts.total, 0);
   assert.ok(actions.every(action => policy.counts.byAction[action] === 0));
+});
+
+test('applySkillAllowlist: allowlist rỗng giữ nguyên policy', () => {
+  const allowed = ['alpha', 'beta'];
+  assert.deepEqual(applySkillAllowlist(allowed, []), { skills: allowed, unknown: [] });
+  assert.deepEqual(applySkillAllowlist(allowed), { skills: allowed, unknown: [] });
+});
+
+test('applySkillAllowlist: chỉ giữ tên có trong cả policy và allowlist, báo tên lạ', () => {
+  const result = applySkillAllowlist(['alpha', 'beta', 'gamma'], ['gamma', 'alpha', 'typo']);
+  assert.deepEqual(result.skills, ['alpha', 'gamma']);
+  assert.deepEqual(result.unknown, ['typo']);
+});
+
+test('applySkillAllowlist: allowlist không giao gì thì catalog rỗng, không âm thầm fallback', () => {
+  assert.deepEqual(applySkillAllowlist(['alpha'], ['beta']), { skills: [], unknown: ['beta'] });
 });

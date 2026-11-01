@@ -167,3 +167,15 @@ export function buildIntegrationPolicy(inventory, { availableSkills = [] } = {})
   }
   return { schemaVersion: 1, mode: 'selective-native', memoryOwner: 'hindsight', assets, counts };
 }
+
+/**
+ * Thu hẹp danh sách skill đã được policy duyệt bằng một allowlist cục bộ của profile.
+ * Đây chỉ là phép giao: không thêm skill mà policy chưa duyệt, không đoán tên. Tên trong
+ * allowlist mà policy không cấp được trả về ở `unknown` để /ecc-status báo thẳng.
+ */
+export function applySkillAllowlist(allowed, allowlist = []) {
+  const wanted = (Array.isArray(allowlist) ? allowlist : []).filter(name => typeof name === 'string' && name.length > 0);
+  if (wanted.length === 0) return { skills: allowed, unknown: [] };
+  const set = new Set(wanted);
+  return { skills: allowed.filter(name => set.has(name)), unknown: wanted.filter(name => !allowed.includes(name)) };
+}
