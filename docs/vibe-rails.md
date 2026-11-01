@@ -9,9 +9,28 @@ tool/skill thật sự cần** — thay vì nạp cả 118 tool cho mọi thứ.
 
 | Việc | Preset trong GUI | Tool | Model gợi ý | Ngân sách/turn |
 |---|---|---|---|---|
-| Soi code, audit, đo token | `Vibe / Audit` (id `code-audit`) | 16 row + 24 tool global | model rẻ, reasoning thấp | 150K fresh |
+| Soi code, audit, đo token | `Vibe / Audit` (id `code-audit`) | 15 tool dùng được (xem cảnh báo dưới) | model rẻ, reasoning thấp | 150K fresh |
 | Làm tính năng mới | `Vibe / Build` (id `vibe-build`) | 16 row + 24 tool global | model chính | 150K fresh |
 | Sửa lỗi có tái hiện | `Vibe / Fix` (id `vibe-fix`) | 16 row + 24 tool global | model chính | 150K fresh |
+| Việc hằng ngày, cần đủ tool trừ nhóm chết | `Vibe / Lean` (id `vibe-lean`) | **66 tool, 69 KB ≈ 17,8K token** | model chính | 150K fresh |
+
+**Cảnh báo 2026-11-01 — `Vibe / Audit` / `Build` / `Fix` đang thiếu tool:** allow list của 3
+preset này khai 25 tên nhưng **10 tên không tồn tại** trong bản DSH hiện tại (`ops_bash`,
+8 × `hindsight_*`, và dòng `insert:` lọt vào danh sách), nên thực tế chỉ còn **15 tool dùng
+được** — thiếu `bash`, `edit`, `write`, `compress`, `send_message`, `team_*`, `job_*`,
+`subagent`, `ops_grep`, `ops_glob`. Đừng bật 3 preset này cho tới khi sửa allow list; muốn ít
+tool mà vẫn làm được việc thì dùng `Vibe / Lean`.
+
+**`Vibe / Lean` (2026-11-01)** = bản sao `standard` bỏ 8 nhóm tool đã đo là gần như không dùng
+(12.368 lần gọi tool trong 120 session): `market_*` (2 lần / 6 KB), `schedule_*` (7 / 6 KB),
+`workflow` (0 / 3 KB), `summon_*`+`propose_*`+`open_*`+`list_expert*` (0 / ~6 KB),
+`conductor_dispatch` (0 / 1 KB), và 8 tool search phụ (0–1 / ~8 KB). Cách làm: bỏ row
+`tool-schedule` và 2 row `workflow-ptc`/`tool-workflow` (tool của preset không lọc được), phần
+còn lại là tool global nên lọc bằng `dsh-tool-filter` với `deny:` (deny an toàn hơn `allow`:
+tool mới thêm sau này tự đi qua). Đo mô phỏng trên header thật: **95 → 66 tool, 98 → 69 KB,
+25.022 → 17.782 token/request**. Kiểm bằng `node tools/preset-check.mjs` → `72 row trong 4
+preset, 0 lỗi`. Cần **restart DSH** thì preset mới xuất hiện ở composer; chọn `standard` để
+quay lại đủ tool.
 
 24 tool global = bộ "lean rail" (`ops_bash`/`ops_read_files`/`ops_discover_tools` thay cho
 `bash`/`read`/`write`, cộng `hindsight_*`, `code_review_*`, `acp_*`, `bsk_*`,

@@ -16,6 +16,7 @@ const yaml = requireDsh('js-yaml');
 
 const profile = process.argv[2] ?? 'web';
 const profileDir = join(homedir(), '.dsh', 'profiles', profile);
+const requireProfile = createRequire(join(profileDir, 'package.json'));
 const patchPath = join(profileDir, 'cordis.patch.yml');
 const doc = yaml.load(readFileSync(patchPath, 'utf8'));
 
@@ -42,6 +43,18 @@ function* presets() {
 
 async function loadModule(name) {
   if (name.startsWith('cordis:')) return null;
+  // Thử resolve qua exports của package trước: tên con kiểu
+  // '@deepseek-ai/dsh-tool-subagent-control/list-agents' hoặc
+  // '@deepseek-ai/dsh-plugin-market/tools' là subpath export, không phải thư mục,
+  // nên cách ghép đường dẫn thủ công bên dưới sẽ báo lỗi sai.
+  const resolvers = name.startsWith('@') ? [requireDsh, requireProfile] : [requireProfile, requireDsh];
+  for (const resolver of resolvers) {
+    try {
+      return await import(pathToFileURL(resolver.resolve(name)).href);
+    } catch (error) {
+      if (error?.code !== 'MODULE_NOT_FOUND' && error?.code !== 'ERR_MODULE_NOT_FOUND') throw error;
+    }
+  }
   const candidates = name.startsWith('@')
     ? [join(DSH, 'node_modules', name), join(profileDir, 'node_modules', name)]
     : [join(profileDir, 'node_modules', name), join(DSH, 'node_modules', name)];
@@ -61,6 +74,8 @@ let checked = 0;
 let failed = 0;
 for (const preset of presets()) {
   for (const row of rows(preset.plugins)) {
+    // Row disabled: true không được mount, kiểm nó chỉ tạo lỗi giả.
+    if (row.disabled === true) continue;
     checked += 1;
     const label = `${preset.id} / ${row.id ?? row.name}`;
     try {

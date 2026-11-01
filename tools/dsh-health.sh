@@ -285,7 +285,7 @@ head_ "14. Preset agent — cấu hình từng row có mount được không"
 # Bắt lỗi kiểu tool-subagent thiếu `provider` (Config required) làm cả preset
 # không chọn được trong GUI. Kiểm Config của từng plugin + resolve module.
 if node "$WS/tools/preset-check.mjs" >/tmp/preset-check.log 2>&1; then
-  ok "mọi row trong 3 preset Vibe khai đúng Config và resolve được"
+  ok "$(tail -1 /tmp/preset-check.log | sed 's/^ *//') — mọi row khai đúng Config và resolve được"
 else
   sed -n 1,20p /tmp/preset-check.log >&2
   bad "preset hỏng cấu hình — xem dòng LỖI ở trên (tools/preset-check.mjs)"
