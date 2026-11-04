@@ -1,0 +1,1226 @@
+# Your patch layer for this dsh profile, applied after every bundle layer:
+# a top-level YAML array of loader patch entries (id-targeted config
+# overrides, disables, and insert lists; `!!js` expressions allowed).
+- id: browserskill
+  config:
+    bskPath: /home/dzerok/.local/bin/bsk
+    lazyTools: false
+- id: ui-settings-general
+  name: "@deepseek-ai/dsh-client-ui-settings-general"
+  config:
+    welcomeNoticeVersion: 2026-09-28.1
+- id: llm-pi-ai
+  name: "@deepseek-ai/dsh-llm-pi-ai"
+  config:
+    providers:
+      or:
+        displayName: OmniRoute
+        apiKeyEnv: OR_API_KEY
+        api: openai-responses
+        baseURL: http://localhost:20128/v1
+        defaultContextWindow: 128000
+        defaultMaxTokens: 16384
+        models:
+          - id: cx/gpt-6-astra
+            name: astra 6
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: cx/gpt-6-sol
+            name: sol 6
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: cx/gpt-6-luna
+            name: luna 6
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: b-ai/deepseek-v4.1-flash
+            name: deepseek v4.1 flash
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: b-ai/glm-5.3-flash
+            name: glm 5.3 flash
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: b-ai/qwen3.8-flash
+            name: qwen3.8 flash
+            contextWindow: 128000
+            maxTokens: 16384
+            input:
+              - text
+          - id: antigravity/gemini-3.8-flash-tiered
+            name: gemini-3.8-flash-tiered
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: b-ai/gemini-4-argon
+            name: gemini 4 argon
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: b-ai/gpt-6.1-sol
+            name: gpt 6.1 sol
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: cx/gpt-6.1-sol
+            name: gpt 6.1 sol (codex)
+            contextWindow: 1000000
+            maxTokens: 128000
+            input:
+              - text
+              - image
+            reasoningEfforts:
+              off: null
+              low: low
+              medium: medium
+              high: high
+              xhigh: xhigh
+              max: max
+          - id: nr-ai/deepseek-v4.1-flash
+            name: deepseek v4.1 flash (nr)
+            contextWindow: 1048576
+            maxTokens: 384000
+            input:
+              - text
+              - image
+            reasoningEfforts:
+              max: max
+          - id: nr-ai/glm-5.1
+            name: glm 5.1 (nr)
+            contextWindow: 200000
+            maxTokens: 65000
+            input:
+              - text
+          - id: cx/gpt-5.6-terra
+            name: gpt 5.6 terra
+            contextWindow: 872000
+            maxTokens: 128000
+            input:
+              - text
+              - image
+            reasoningEfforts:
+              high: high
+              xhigh: xhigh
+              max: max
+          - id: nr-ai/deepseek-v4-pro-0813
+            name: deepseek-v4-pro-0813
+            contextWindow: 1000000
+            maxTokens: 384000
+            input:
+              - text
+              - image
+            reasoningEfforts:
+              max: max
+          - id: anapinex/free/deepseek-v4-flash-0731
+            name: deepseek-v4-flash-0731
+            contextWindow: 1048576
+            maxTokens: 384000
+            input:
+              - text
+              - image
+            reasoningEfforts:
+              high: high
+              max: max
+          - id: anapinex/free/glm-5.3-flashx
+            name: glm-5.3-flashx
+            contextWindow: 1048576
+            maxTokens: 128000
+            input:
+              - text
+              - image
+            reasoningEfforts:
+              off: null
+              low: low
+              medium: medium
+              high: high
+              xhigh: xhigh
+              max: max
+          - id: anapinex/free/minimax-m3.1-flash
+            name: minimax-m3.1-flash
+            contextWindow: 1000000
+            maxTokens: 128000
+            input:
+              - text
+              - image
+            reasoningEfforts:
+              off: null
+              low: low
+              medium: medium
+              high: high
+              xhigh: xhigh
+              max: max
+          - id: gh/gpt-4.1
+            name: gpt-4.1
+            contextWindow: 1047576
+            maxTokens: 32768
+            input:
+              - text
+              - image
+          - id: cx/gpt-5.6-sol
+            name: gpt-5.6-sol
+            contextWindow: 872000
+            maxTokens: 128000
+            input:
+              - text
+              - image
+            reasoningEfforts:
+              off: null
+              low: low
+              medium: medium
+              high: high
+              xhigh: xhigh
+              max: max
+          - id: antigravity/claude-opus-5-5-medium
+            name: claude-opus-5-5
+            contextWindow: 1048576
+            maxTokens: 128000
+            input:
+              - text
+              - image
+            reasoningEfforts:
+              low: low
+              medium: medium
+              high: high
+          - id: gpt-5.6-terra
+            name: gpt 5.6 terra
+            contextWindow: 872000
+            maxTokens: 128000
+            input:
+              - text
+              - image
+            reasoningEfforts:
+              off: null
+              low: low
+              medium: medium
+              high: high
+              xhigh: xhigh
+              max: max
+          - id: antigravity/gemini-3.8-flash-high
+            name: Gemini 3.8 Flash
+            input:
+              - text
+              - image
+            contextWindow: 1048576
+            maxTokens: 65536
+      cgw:
+        displayName: ChatGPT Web (codex-chatgpt-web)
+        api: openai-responses
+        apiKeyEnv: CGW_API_KEY
+        baseURL: http://127.0.0.1:17842/v1
+        defaultContextWindow: 128000
+        defaultMaxTokens: 16384
+        models:
+          - id: chatgpt-web/gpt-6-sol-instant
+            name: gpt 6 sol instant (ChatGPT Web)
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: chatgpt-web/gpt-6-sol
+            name: gpt 6 sol (ChatGPT Web)
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: chatgpt-web/gpt-6-pro
+            name: gpt 6 pro (ChatGPT Web)
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: chatgpt-web/gpt-5.6-sol-instant
+            name: gpt 5.6 sol instant (ChatGPT Web)
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: chatgpt-web/gpt-5.6-sol
+            name: gpt 5.6 sol (ChatGPT Web)
+            contextWindow: 128000
+            maxTokens: 16384
+          - id: chatgpt-web/gpt-5.6-pro
+            name: gpt 5.6 pro (ChatGPT Web)
+            contextWindow: 128000
+            maxTokens: 16384
+      nr:
+        displayName: NightN Router
+        apiKeyEnv: NR_API_KEY
+        api: openai-responses
+        baseURL: https://api.nightrouter.ai/v1
+        models:
+          - id: deepseek-v4.1-flash
+            name: deepseek v4.1 flash
+            contextWindow: 1000000
+            maxTokens: 16384
+            input:
+              - text
+              - image
+            reasoningEfforts:
+              high: high
+              max: max
+          - id: glm-5.3-flash
+            name: glm-5.3-flash
+            contextWindow: 1000000
+            maxTokens: 16384
+            input:
+              - text
+              - image
+          - id: qwen3.8-max-0902
+            name: qwen3.8-max-0902
+            contextWindow: 1000000
+            input:
+              - text
+              - image
+          - id: deepseek-v4-flash-vision-exp
+            name: deepseek v4 flash vision exp
+            contextWindow: 128000
+            maxTokens: 16384
+            input:
+              - text
+              - image
+          - id: glm-5.1
+            name: glm-5.1
+            contextWindow: 200000
+            maxTokens: 65000
+      gzs:
+        displayName: Gen Z Shop
+        apiKeyEnv: GZS_API_KEY
+        api: openai-completions
+        baseURL: https://modelapi.vn/v1
+        models:
+          - id: deepseek-v4.1-flash
+            name: deepseek-v4.1-flash
+            contextWindow: 1000000
+            input:
+              - text
+              - image
+            reasoningEfforts:
+              high: high
+              max: max
+      b-ai:
+        displayName: B AI
+        apiKeyEnv: B_AI_API_KEY
+        api: openai-responses
+        baseURL: https://api.b.ai/v1
+        models:
+          - id: qwen3.8-flash
+            name: qwen3.8-flash
+            contextWindow: 1000000
+            input:
+              - text
+              - image
+          - id: deepseek-v4.1-flash
+            name: deepseek-v4.1-flash
+            contextWindow: 1000000
+          - id: glm-5.3-flash
+            name: glm-5.3-flash
+            contextWindow: 1000000
+            input:
+              - text
+              - image
+          - id: gpt-6-luna
+            name: gpt-6-luna
+            contextWindow: 1000000
+          - id: claude-haiku-5.5
+            name: claude-haiku-5.5
+            contextWindow: 1000000
+            input:
+              - text
+              - image
+          - id: minimax-m3.1-flash
+            name: minimax-m3.1-flash
+            contextWindow: 1000000
+            maxTokens: 128000
+            input:
+              - text
+              - image
+            reasoningEfforts:
+              high: high
+              xhigh: xhigh
+              max: max
+      orcarouter:
+        displayName: Orcarouter
+        apiKeyEnv: ORCAROUTER_API_KEY
+        api: openai-completions
+        baseURL: https://api.orcarouter.ai/v1
+        models:
+          - id: z-ai/glm-5.3-flash-free
+            name: glm 5.3 flash
+            contextWindow: 1000000
+            input:
+              - text
+              - image
+          - id: deepseek/deepseek-v4.1-flash-free
+            name: deepseek v4.1 flash
+            contextWindow: 1000000
+            input:
+              - text
+              - image
+      tm:
+        displayName: Truc Mod
+        apiKeyEnv: TM_API_KEY
+        api: openai-completions
+        baseURL: https://literouter.fun/api/v1
+        models:
+          - id: deepseek-aideepseek-v4.1-flash-1017
+            name: deepseek v4.1 1017
+            contextWindow: 1000000
+            maxTokens: 128000
+            input:
+              - text
+              - image
+            reasoningEfforts:
+              high: high
+              max: max
+          - id: glm-5.3-flash
+            name: glm-5.3-flash
+            contextWindow: 1000000
+            maxTokens: 128000
+          - id: gemini-3.8-flash
+            name: gemini-3.8-flash
+            contextWindow: 200000
+          - id: deepseek-v4.1-flash-1017
+            name: deepseek v4.1 1017
+            contextWindow: 1000000
+            maxTokens: 128000
+            input:
+              - text
+              - image
+            reasoningEfforts:
+              high: high
+              max: max
+      ar:
+        displayName: anyrouter
+        apiKeyEnv: AR_API_KEY
+        api: openai-completions
+        baseURL: https://anyrouter.dev/api/v1
+        models:
+          - id: anyrouter/free
+            name: AnyRouter Free
+            contextWindow: 1048576
+            maxTokens: 64000
+          - id: nvidia/nemotron-3-ultra-550b-a55b
+            name: Nemotron 3 Ultra 550B
+            contextWindow: 1000000
+            maxTokens: 16384
+          - id: nvidia/nemotron-3.5-super-vl-120b-a12b
+            name: Nemotron 3.5 Super VL 120B A12B
+            contextWindow: 1000000
+            maxTokens: 131072
+      haimaker:
+        displayName: Haimaker
+        apiKeyEnv: HAIMAKER_API_KEY
+        api: openai-completions
+        baseURL: https://api.haimaker.ai/v1
+        models:
+          - id: deepseek/deepseek-v4.1-flash
+            name: deepseek-v4.1-flash
+            contextWindow: 1000000
+            maxTokens: 393000
+            input:
+              - text
+              - image
+            reasoningEfforts:
+              high: high
+              max: max
+          - id: z-ai/glm-5.3
+            name: glm-5.3
+            contextWindow: 1300000
+            maxTokens: 131000
+            input:
+              - text
+            reasoningEfforts:
+              max: max
+          - id: minimax/minimax-m3
+            name: minimax-m3
+            contextWindow: 1000000
+            maxTokens: 128000
+            input:
+              - text
+              - image
+            reasoningEfforts:
+              high: high
+              xhigh: xhigh
+              max: max
+          - id: zai/glm-5.3
+            name: glm-5.3
+            contextWindow: 1000000
+            maxTokens: 128000
+            reasoningEfforts:
+              high: high
+              xhigh: xhigh
+              max: max
+      tokenharbor:
+        displayName: tokenharbor
+        apiKeyEnv: TOKENHARBOR_API_KEY
+        api: openai-completions
+        baseURL: https://tokenharbor.ai/v1
+        models:
+          - id: mimo-v2.5:free
+            name: mimo-v2.5:free
+            contextWindow: 1048576
+          - id: deepseek-v4-flash:free
+            name: deepseek-v4-flash:free
+            contextWindow: 1000000
+          - id: deepseek-v4.1-flash:free
+            name: deepseek-v4.1-flash:free
+            contextWindow: 1048576
+            input:
+              - text
+              - image
+            reasoningEfforts:
+              high: high
+              max: max
+          - id: mimo-v2.6-flash:free
+            name: mimo-v2.6-flash:free
+            contextWindow: 1048576
+            input:
+              - text
+              - image
+            reasoningEfforts:
+              high: high
+              max: max
+      beatapi:
+        displayName: beatapi
+        apiKeyEnv: BEATAPI_API_KEY
+        api: openai-completions
+        baseURL: https://api.beatapi.io/v1
+        models:
+          - id: deepseek-v4.1-flash-free
+            name: deepseek-v4.1-flash
+            contextWindow: 1000000
+            maxTokens: 128000
+            input:
+              - text
+              - image
+            reasoningEfforts:
+              high: high
+              max: max
+          - id: gemini-3.8-flash-free
+            name: gemini-3.8-flash-free
+          - id: glm-5.3-flash-free
+            name: glm-5.3-flash-free
+          - id: jev-1.14-free
+            name: jev-1.14-free
+      an:
+        displayName: apinex
+        apiKeyEnv: AN_API_KEY
+        api: openai-completions
+        baseURL: https://api.apinex.bond/v1
+        models:
+          - id: free/deepseek-v4.1-flash
+            name: free/deepseek-v4.1-flash
+            contextWindow: 1000000
+            maxTokens: 128000
+            input:
+              - text
+              - image
+            reasoningEfforts:
+              high: high
+              max: max
+          - id: free/glm-5.3-flashx
+            name: free/glm-5.3-flashx
+            input:
+              - text
+              - image
+            contextWindow: 1000000
+            reasoningEfforts:
+              high: high
+              xhigh: xhigh
+              max: max
+          - id: free/glm-5.3-flash
+            name: free/glm-5.3-flash
+          - id: free/gemini-3.8-flash
+            name: free/gemini-3.8-flash
+          - id: free/kimi-k3
+            name: free/kimi-k3
+            contextWindow: 1000000
+            reasoningEfforts:
+              high: high
+              xhigh: xhigh
+              max: max
+            input:
+              - text
+          - id: free/minimax-m3.1-flash
+            name: free/minimax-m3.1-flash
+            input:
+              - text
+              - image
+            contextWindow: 1000000
+            reasoningEfforts:
+              high: high
+              xhigh: xhigh
+              max: max
+          - id: free/qwen-3.8-max
+            name: free/qwen-3.8-max
+            contextWindow: 1000000
+            input:
+              - text
+              - image
+            reasoningEfforts:
+              off: null
+              high: high
+              xhigh: xhigh
+              max: max
+      blazerail:
+        displayName: blazerail
+        apiKeyEnv: BLAZERAIL_API_KEY
+        api: openai-completions
+        baseURL: https://api.blazerail.com/v1
+        models:
+          - id: zai/glm-5.3:free
+            name: zai/glm-5.3:free
+            contextWindow: 1000000
+          - id: zai/glm-5.3-flash:free
+            name: zai/glm-5.3-flash:free
+            contextWindow: 1000000
+          - id: moonshot/kimi-k3:free
+            name: moonshot/kimi-k3:free
+            contextWindow: 1048576
+          - id: deepseek/deepseek-v4.1-flash:free
+            name: deepseek/deepseek-v4.1-flash:free
+            contextWindow: 1048576
+            maxTokens: 943718
+            reasoningEfforts:
+              high: high
+              max: max
+            input:
+              - text
+              - image
+      zrom:
+        displayName: moonmath
+        apiKeyEnv: ZROM_API_KEY
+        api: openai-completions
+        baseURL: https://zro.moonmath.ai/v1
+        models:
+          - id: deepseek-v4-flash-0731
+            name: deepseek-v4-flash-0731
+            contextWindow: 1048576
+            maxTokens: 64000
+            input:
+              - text
+              - image
+            reasoningEfforts:
+              high: high
+              max: max
+          - id: zro/deepseek-v4-flash-0731
+            name: zro/deepseek-v4-flash-0731
+            contextWindow: 1048576
+            maxTokens: 64000
+          - id: zro/deepseek-v4.1-flash
+            name: zro/deepseek-v4.1-flash
+            contextWindow: 1048576
+            maxTokens: 64000
+          - id: zro/glm-5.3-flash
+            name: zro/glm-5.3-flash
+            contextWindow: 1048576
+            maxTokens: 64000
+          - id: glm-5.3-flash
+            name: glm-5.3-flash
+            contextWindow: 1048576
+            maxTokens: 64000
+          - id: deepseek-v4.1-flash
+            name: deepseek-v4.1-flash
+            contextWindow: 1048576
+            maxTokens: 64000
+- id: agent-default-model
+  name: "@deepseek-ai/dsh-agent-default-model"
+  config:
+    provider: or
+    model: antigravity/gemini-3.8-flash-high
+- id: permission
+  name: "@deepseek-ai/dsh-permission-presets"
+  config:
+    presets:
+      read-only:
+        sandbox: read-only
+        approval: ask
+      workspace-write:
+        sandbox: workspace-write
+        approval: ask
+      danger-full-access:
+        sandbox: danger-full-access
+        approval: never
+    defaultPreset: workspace-write
+- id: vision-router
+  name: dsh-vision-router
+  config:
+    progressiveTools: false
+    onboardingSeen: true
+    httpProviders:
+      - name: omniroute
+        baseURL: http://localhost:20128/v1
+        model: b-ai/qwen3.8-flash
+        apiKeyEnv: OR_API_KEY
+        maxTokens: 1024
+    providers:
+      - provider: or
+        model: anapinex/free/minimax-m3.1-flash
+        fallbacks: []
+      - provider: or
+        model: anapinex/free/glm-5.3-flashx
+        fallbacks: []
+      - provider: b-ai
+        model: minimax-m3.1-flash
+        fallbacks: []
+      - provider: or
+        model: gh/gpt-4.1
+        fallbacks: []
+      - provider: or
+        model: antigravity/gemini-3.8-flash-high
+        fallbacks: []
+      - provider: vision-http
+        model: ovh/Qwen3.5-397B-A17B
+        fallbacks: []
+    wrappedProviders:
+      - provider: or
+        models: []
+# Provide local skill discovery on the deployment (global) plane as well.
+# Root cause of the missing skills: this profile's node_modules held
+# `@deepseek-ai/dsh-skill-filesystem@0.1.1-rc.2` (pulled in to satisfy peers of
+# aegis, agent-useful-skills and @openviking/dsh-memory-plugin) while the
+# runtime is 0.2.0-rc.2. The runtime's compatibility preflight therefore
+# disabled *every* row resolving that package -- including the row the web-app
+# bundle mounts inside each agent preset -- so the local skills in
+# ~/.dsh/skills, ~/.agents/skills and the project skill roots never reached the
+# agent catalog.
+# Fixed at the source with, in this profile directory:
+#   pnpm add --save-exact @deepseek-ai/dsh-skill-filesystem@0.2.0-rc.2
+# which is why the plain specifier below now resolves to the runtime-matched
+# 0.2.0-rc.2 copy. This row keeps the same provider registered on the global
+# plane too, so discovery does not depend on the preset plane alone.
+# Remove this block to return to the stock per-preset placement.
+- insert:
+    - id: skill-filesystem-global
+      name: '@deepseek-ai/dsh-skill-filesystem'
+- id: web
+  name: "@deepseek-ai/dsh-web"
+  config:
+    searchProvider: modsearch
+    fetchProvider: fs-quality-fetch
+# Agent preset "code-audit": ~39 tool thay vì 118.
+# Bản sao rút gọn của preset standard (bỏ delegation/team, goal, schedule, plan-mode, present)
+# + plugin dsh-tool-filter lọc các tool GLOBAL còn lại.
+# Lưu ý: đây là bản copy; khi nâng cấp DSH nên so lại với presets/standard.patch.yml.
+- insert:
+    - id: preset-code-audit
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: code-audit
+        name: 'Vibe / Audit'
+        description: 'Soi code, audit, đo token: chỉ đọc + chạy test, không ghi file,
+          không market/team/schedule/expert.'
+        order: 10
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: >-
+                You are a coding agent powered by the {{model}} model. Bạn đang
+                ở chế độ AUDIT: chỉ đọc, đo và báo cáo; không sửa file trừ khi
+                người dùng yêu cầu rõ.
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: time-context
+            name: '@deepseek-ai/dsh-time-context'
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-jobs
+            name: '@deepseek-ai/dsh-tool-jobs'
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: tool-filter
+            name: 'dsh-tool-filter'
+            config:
+              # 2026-11-01: bỏ allow list cũ — 10/24 tên không tồn tại (ops_bash + 9
+              # hindsight_*) nên rail mất ops_grep/ops_glob/ops_inspect_local_file/
+              # ops_result và compress/decompress/memory_*. Dùng deny thay allow để
+              # tool mới thêm sau này tự đi qua.
+              deny:
+                - cache_search
+                - conductor_dispatch
+                - domain_search
+                - free_search_test
+                - get_expert_team
+                - interrupt_agent
+                - list_expert_teams
+                - list_experts
+                - market_info
+                - market_install
+                - market_installed
+                - market_search
+                - market_uninstall
+                - multi_search
+                - open_custom_expert_editor
+                - open_expert_team_editor
+                - platform_search
+                - propose_custom_expert
+                - propose_expert_team
+                - research
+                - summon_expert
+                - summon_expert_team
+                - summon_experts
+                - team_task_create
+                - team_task_get
+                - team_task_list
+                - team_task_update
+                - video_search
+                - x_search
+
+# Ba đường ray vibe coding: Audit (đọc/soi) — Build (làm mới) — Fix (sửa lỗi).
+# Audit dùng preset code-audit ở trên (đã đổi tên hiển thị). Hai preset dưới là
+# bản rút gọn của standard: không market/team/schedule/expert/goal/plan-mode.
+# Chọn preset theo việc ở màn hình chat; đừng để mặc định standard 118 tool.
+- insert:
+    - id: preset-vibe-build
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: vibe-build
+        name: 'Vibe / Build'
+        description: 'Làm tính năng mới: bash, fs, jobs, todo, skill, web + code review.
+          Không market/team/schedule/expert/subagent/present.'
+        order: 12
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: >-
+                You are a coding agent powered by the {{model}} model. Bạn đang
+                ở chế độ BUILD: xây tính năng theo lát nhỏ, test trước, chạy
+                test, commit từng lát.
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: time-context
+            name: '@deepseek-ai/dsh-time-context'
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-jobs
+            name: '@deepseek-ai/dsh-tool-jobs'
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: tool-filter
+            name: 'dsh-tool-filter'
+            config:
+              # 2026-11-01: bỏ allow list cũ — 10/24 tên không tồn tại (ops_bash + 9
+              # hindsight_*) nên rail mất ops_grep/ops_glob/ops_inspect_local_file/
+              # ops_result và compress/decompress/memory_*. Dùng deny thay allow để
+              # tool mới thêm sau này tự đi qua.
+              deny:
+                - cache_search
+                - conductor_dispatch
+                - domain_search
+                - free_search_test
+                - get_expert_team
+                - interrupt_agent
+                - list_expert_teams
+                - list_experts
+                - market_info
+                - market_install
+                - market_installed
+                - market_search
+                - market_uninstall
+                - multi_search
+                - open_custom_expert_editor
+                - open_expert_team_editor
+                - platform_search
+                - propose_custom_expert
+                - propose_expert_team
+                - research
+                - summon_expert
+                - summon_expert_team
+                - summon_experts
+                - team_task_create
+                - team_task_get
+                - team_task_list
+                - team_task_update
+                - video_search
+                - x_search
+
+- insert:
+    - id: preset-vibe-fix
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: vibe-fix
+        name: 'Vibe / Fix'
+        description: 'Sửa lỗi có tái hiện + test: bash, fs, jobs, todo, skill, web, code
+          review. Không market/team/schedule/expert.'
+        order: 13
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: >-
+                You are a coding agent powered by the {{model}} model. Bạn đang
+                ở chế độ FIX: tái hiện lỗi bằng test đỏ trước, sửa nguyên nhân
+                gốc, chạy toàn bộ test, commit riêng.
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: time-context
+            name: '@deepseek-ai/dsh-time-context'
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-jobs
+            name: '@deepseek-ai/dsh-tool-jobs'
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: tool-filter
+            name: 'dsh-tool-filter'
+            config:
+              # 2026-11-01: bỏ allow list cũ — 10/24 tên không tồn tại (ops_bash + 9
+              # hindsight_*) nên rail mất ops_grep/ops_glob/ops_inspect_local_file/
+              # ops_result và compress/decompress/memory_*. Dùng deny thay allow để
+              # tool mới thêm sau này tự đi qua.
+              deny:
+                - cache_search
+                - conductor_dispatch
+                - domain_search
+                - free_search_test
+                - get_expert_team
+                - interrupt_agent
+                - list_expert_teams
+                - list_experts
+                - market_info
+                - market_install
+                - market_installed
+                - market_search
+                - market_uninstall
+                - multi_search
+                - open_custom_expert_editor
+                - open_expert_team_editor
+                - platform_search
+                - propose_custom_expert
+                - propose_expert_team
+                - research
+                - summon_expert
+                - summon_expert_team
+                - summon_experts
+                - team_task_create
+                - team_task_get
+                - team_task_list
+                - team_task_update
+                - video_search
+                - x_search
+# Agent preset "vibe-lean": bản sao standard, bỏ 8 nhóm tool đã ĐO là gần như
+# không dùng (12.368 lần gọi tool trong 120 session, đo 2026-11-01):
+#   market_* (2 lần/6 KB), schedule_* (7/6 KB), workflow (0/3 KB),
+#   expert+summon (0/~6 KB), conductor (0/1 KB), search phụ (0-1/~8 KB).
+# Mục tiêu: bớt ~30 KB schema (~7,5K token/request) mà không mất tool đang dùng.
+# schedule/workflow do preset tự mount nên phải bỏ row; phần còn lại là tool global
+# nên lọc bằng dsh-tool-filter deny (deny an toàn hơn allow: tool mới tự đi qua).
+- insert:
+    - id: preset-vibe-lean
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: vibe-lean
+        name: 'Vibe / Lean'
+        description: 'Như standard nhưng bỏ tool gần như không dùng: không market,
+          schedule, workflow, expert, conductor, search phụ.'
+        order: 20
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: You are a coding agent powered by the {{model}} model.
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: time-context
+            name: '@deepseek-ai/dsh-time-context'
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-jobs
+            name: '@deepseek-ai/dsh-tool-jobs'
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+          - id: command-goal
+            name: '@deepseek-ai/dsh-command-goal'
+          - id: tool-goal
+            name: '@deepseek-ai/dsh-tool-goal'
+          - id: planning
+            name: cordis:group
+            group: true
+            isolate:
+              planMode: true
+            config:
+              - id: plan-mode
+                name: '@deepseek-ai/dsh-plan-mode'
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024
+          - id: delegation
+            name: cordis:group
+            group: true
+            isolate:
+              workflowEngine: true
+            config:
+              - id: tool-subagent-control
+                name: '@deepseek-ai/dsh-tool-subagent-control'
+              - id: tool-subagent-list-agents
+                name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+              - id: tool-subagent
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: spawn
+                  toolName: subagent
+                  modelSelectionSettings: true
+              - id: tool-subagent-fork
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: fork
+                  toolName: subagent_fork
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: present
+            name: '@deepseek-ai/dsh-tool-present'
+          - id: tool-plugin-manager
+            name: '@deepseek-ai/dsh-plugin-manager/tools'
+            disabled: true
+          - id: tool-plugin-market
+            name: '@deepseek-ai/dsh-plugin-market/tools'
+            disabled: true
+          - id: tool-filter
+            name: 'dsh-tool-filter'
+            config:
+              deny:
+                - cache_search
+                - conductor_dispatch
+                - domain_search
+                - free_search_test
+                - get_expert_team
+                - list_expert_teams
+                - list_experts
+                - market_info
+                - market_install
+                - market_installed
+                - market_search
+                - market_uninstall
+                - multi_search
+                - open_custom_expert_editor
+                - open_expert_team_editor
+                - platform_search
+                - propose_custom_expert
+                - propose_expert_team
+                - research
+                - summon_expert
+                - summon_expert_team
+                - summon_experts
+                - video_search
+                - x_search
+# Khôi phục đủ 95 tool: chọn preset "standard" ở composer, hoặc bỏ key deny.
+- id: agent-preset-registry
+  name: "@deepseek-ai/dsh-agent-preset-registry"
+  config:
+    default: standard
+    selectedDefault: standard
+- id: ui-chat
+  name: "@deepseek-ai/dsh-client-ui-chat"
+  config:
+    performanceUsage: compact
+
+# Hindsight-first rollout: preserve old stores, disable overlapping runtimes.
+- id: mnemon
+  disabled: true
+- id: stratagate-memory
+  disabled: true
+- id: openviking-memory-runtime
+  disabled: true
+- id: hindsight
+  disabled: false
+- insert:
+    - id: openviking-tools-only
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: openviking
+        transport: stdio
+        command: /home/dzerok/.local/share/mise/installs/node/26.8.2/bin/node
+        args:
+          - /home/dzerok/.dsh/profiles/web/node_modules/@openviking/dsh-memory-plugin/servers/mcp-proxy.mjs
+        env:
+          ELECTRON_RUN_AS_NODE: '1'
+        toolCallTimeoutMs: 60000
+    - id: openviking-skills-only
+      name: '@deepseek-ai/dsh-skill-filesystem'
+      config:
+        providerName: openviking
+        includeDefaultRoots: false
+        bundledSkillDir: /home/dzerok/.dsh/profiles/web/node_modules/@openviking/dsh-memory-plugin/skills
+        watch: false
+
+- id: dsh-ecc-adapter
+  config:
+    eccRoot: /home/dzerok/.dsh/ecc/source
+    dataRoot: /home/dzerok/.dsh/profiles/web/ecc-state
+    expectedRevision: b92f181b3b748d1abbc2afd94af6aa7d8c8fca29
+    selective: true
+    enableMemory: true
+    enableHooks: true
+    enablePlanner: true
+    enablePayloadHooks: true
+    # Chỉ nạp 20 skill ECC đã từng được dùng thật trong ~600 session (đo 2026-11-01).
+    # Bỏ key này = quay lại toàn bộ 268 skill policy duyệt. Thêm tên = mở lại skill đó.
+    skillAllowlist:
+      - accessibility
+      - agent-eval
+      - agent-harness-construction
+      - agent-introspection-debugging
+      - agent-security-hardening
+      - agent-self-evaluation
+      - automation-audit-ops
+      - backend-patterns
+      - change-impact
+      - conventional-commit-review
+      - documentation-lookup
+      - frontend-a11y
+      - frontend-patterns
+      - intent-driven-development
+      - nextjs-turbopack
+      - production-audit
+      - react-patterns
+      - security-review
+      - terminal-ops
+      - test-collaboration
+    toolMap:
+      Read: ops_read_files
+      Write: write
+      Edit: edit
+      Grep: ops_grep
+      Glob: ops_glob
+      Bash: bash
+      WebSearch: web_search
+      WebFetch: web_fetch
+      AskUserQuestion: ask_user_question

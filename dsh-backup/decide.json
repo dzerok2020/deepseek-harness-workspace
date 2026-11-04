@@ -1,0 +1,8 @@
+{
+  "jevUrl": "https://api.b.ai",
+  "jevMode": "decisions",
+  "jevModel": "jev-1.13.0",
+  "jevKey": "sk-REPLACE_WITH_YOUR_KEY",
+  "layaUrl": "http://127.0.0.1:8000",
+  "timeoutMs": 30000
+}

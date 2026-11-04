@@ -1,0 +1,21 @@
+packages:
+  - .
+
+nodeLinker: hoisted
+autoInstallPeers: false
+allowBuilds:
+  cloudflared: true
+  cpu-features: true
+  ssh2: true
+  dsh-taskswarm: true
+  dsh-taskswarm@git+https://github.com/february2015/dsh-taskswarm.git: true
+  dsh-taskswarm@https://codeload.github.com/february2015/dsh-taskswarm/tar.gz/032e2c9d228c20cab65fe0ea061d78a7c753ab8c: true
+
+# Pin ONE version of the DSH host skill provider for every consumer.
+# agent-useful-skills is a GitHub dependency (not on npm) and asks for
+# ^0.1.1-rc.1, so pnpm nests a second, older copy of the host package under its
+# own node_modules. Two copies of a host package = exactly the conflict class
+# that previously made the runtime compatibility preflight disable EVERY row
+# resolving it (see the incident note in cordis.patch.yml).
+overrides:
+  '@deepseek-ai/dsh-skill-filesystem': 0.2.1-rc.2

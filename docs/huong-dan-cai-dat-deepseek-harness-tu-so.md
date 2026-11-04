@@ -13,19 +13,73 @@
 
 ## Mục lục
 
-1. [Bức tranh tổng thể: cái gì nằm ở đâu](#0-bức-tranh-tổng-thể)
-2. [Phase 0 — Chuẩn bị](#phase-0--chuẩn-bị)
-3. [Phase 1 — Cài phụ thuộc nền tảng theo OS](#phase-1--cài-phụ-thuộc-nền-tảng-theo-os)
-4. [Phase 2 — mise + Node.js + pnpm](#phase-2--mise--nodejs--pnpm)
-5. [Phase 3 — Cài dsh và chạy lần đầu](#phase-3--cài-dsh-và-chạy-lần-đầu)
-6. [Phase 4 — Cấu hình provider AI (để model trả lời được)](#phase-4--cấu-hình-provider-ai)
-7. [Phase 5 — Cài plugins giống máy hiện tại](#phase-5--cài-plugins)
-8. [Phase 6 — Skills + AGENTS.md + quy ước workspace](#phase-6--skills--agentsmd--quy-ước-workspace)
-9. [Phase 7 — Các service chạy nền (nâng cao)](#phase-7--các-service-chạy-nền-nâng-cao)
-10. [Phase 8 — Nghiệm thu: đã "giống như bây giờ" chưa?](#phase-8--nghiệm-thu)
-11. [Lỗi kinh điển — dán nguyên văn là có thuốc](#lỗi-kinh-điển)
-12. [Phụ lục A — Bảng phiên bản chính xác của máy này](#phụ-lục-a)
-13. [Phụ lục B — Danh sách 34 plugin và vai trò](#phụ-lục-b)
+1. [Đường tắt khôi phục 1 chạm (Quick Restore) khi cài lại máy](#đường-tắt-khôi-phục-1-chạm-quick-restore-khi-cài-lại-máy)
+2. [Bức tranh tổng thể: cái gì nằm ở đâu](#0-bức-tranh-tổng-thể)
+3. [Phase 0 — Chuẩn bị](#phase-0--chuẩn-bị)
+4. [Phase 1 — Cài phụ thuộc nền tảng theo OS](#phase-1--cài-phụ-thuộc-nền-tảng-theo-os)
+5. [Phase 2 — mise + Node.js + pnpm](#phase-2--mise--nodejs--pnpm)
+6. [Phase 3 — Cài dsh và chạy lần đầu](#phase-3--cài-dsh-và-chạy-lần-đầu)
+7. [Phase 4 — Cấu hình provider AI (để model trả lời được)](#phase-4--cấu-hình-provider-ai)
+8. [Phase 5 — Cài plugins giống máy hiện tại](#phase-5--cài-plugins)
+9. [Phase 6 — Skills + AGENTS.md + quy ước workspace](#phase-6--skills--agentsmd--quy-ước-workspace)
+10. [Phase 7 — Các service chạy nền (nâng cao)](#phase-7--các-service-chạy-nền-nâng-cao)
+11. [Phase 8 — Nghiệm thu: đã "giống như bây giờ" chưa?](#phase-8--nghiệm-thu)
+12. [Lỗi kinh điển — dán nguyên văn là có thuốc](#lỗi-kinh-điển)
+13. [Phụ lục A — Bảng phiên bản chính xác của máy này](#phụ-lục-a)
+14. [Phụ lục B — Danh sách 34 plugin và vai trò](#phụ-lục-b)
+
+---
+
+## Đường tắt khôi phục 1 chạm (Quick Restore) khi cài lại máy
+
+> **Áp dụng cho:** Máy Linux (Ubuntu, Debian, Arch, Omarchy...) hoặc Windows 10/11 (chạy qua **WSL2**).
+> Sau khi cài lại máy, bạn không cần phải làm thủ công từng bước 8 phase.
+> Toàn bộ 34 plugin, 91 skills, AGENTS.md, cấu hình gateway và test suites đã được đóng gói sẵn trong repo này (`dsh-backup/`).
+
+### Chỉ 3 bước đơn giản:
+
+#### Bước 1: Cài Node.js, pnpm và dsh
+- **Trên Linux (Ubuntu/Debian)**:
+  ```bash
+  sudo apt update && sudo apt install -y git curl build-essential
+  curl https://mise.run | sh
+  ~/.local/bin/mise use --global node@26.8.2
+  npm install -g pnpm @deepseek-ai/dsh@0.2.1-rc.2
+  ```
+- **Trên Windows 10/11**:
+  - Mở PowerShell (Admin), gõ `wsl --install` rồi khởi động lại máy.
+  - Mở terminal Ubuntu trong WSL2 và chạy các lệnh Linux như trên.
+
+#### Bước 2: Clone repo workspace và chạy restore script
+```bash
+# Clone repo về máy (thay dzerok2020 bằng username của bạn nếu cần)
+git clone https://github.com/dzerok2020/deepseek-harness-workspace.git ~/Documents/deepseek-harness/default-workspace
+cd ~/Documents/deepseek-harness/default-workspace
+
+# Chạy lệnh khôi phục tự động
+bash tools/restore-dsh.sh
+```
+
+Script này tự động:
+1. Tạo thư mục `~/.dsh` và chép luật `AGENTS.md` (Karpathy, Tiếng Việt thô, Cinematic Spatial UI).
+2. Khôi phục toàn bộ **91 skills** vào `~/.dsh/skills/`.
+3. Khôi phục profile `web` với đầy đủ cấu hình `cordis.patch.yml`, `pnpm-workspace.yaml`.
+4. Tự động thích ứng các đường dẫn theo máy mới (`$HOME` và thư mục workspace).
+5. Chạy `pnpm install` và liên kết tất cả 12 plugin cục bộ (`dsh-decide`, `dsh-vibe-guard`, `dsh-loop-guard`...).
+6. Chạy bộ kiểm tra sức khỏe `bash tools/dsh-health.sh` để nghiệm thu.
+
+#### Bước 3: Cấu hình API Key và khởi động DSH
+```bash
+# Đặt API key của bạn vào ~/.bashrc (hoặc cấu hình trong Web GUI Settings -> Providers):
+export DEEPSEEK_API_KEY="sk-..."
+export OR_API_KEY="sk-..."
+
+# Khởi động DeepSeek Harness Web GUI:
+dsh web
+```
+Truy cập trình duyệt: `http://127.0.0.1:3080` là bạn đã có lại 100% môi trường làm việc như hiện tại!
+
+---
 
 ---
 
