@@ -70,42 +70,10 @@ if [ -f "$BACKUP_DIR/profiles/web/pnpm-lock.yaml" ]; then
   cp "$BACKUP_DIR/profiles/web/pnpm-lock.yaml" "$DSH_HOME/profiles/web/pnpm-lock.yaml"
 fi
 
-# Thay thế đường dẫn workspace cũ bằng đường dẫn workspace thực tế trên máy mới
-node -e '
-const fs = require("fs");
-const path = require("path");
-const ws = process.argv[1];
-const targetPkgPath = path.join(process.argv[2], "package.json");
-const sourcePkg = JSON.parse(fs.readFileSync(path.join(process.argv[3], "profiles/web/package.json"), "utf8"));
+# Thay thế đường dẫn workspace và $HOME cũ bằng đường dẫn thực tế trên máy mới
+node "$WS/tools/adapt-restore-config.mjs" "$WS" "$DSH_HOME" "$BACKUP_DIR" "$DSH_HOME/profiles/web"
+green "  ✓ Đã đồng bộ package.json & cordis.patch.yml cho máy mới"
 
-for (const [dep, ver] of Object.entries(sourcePkg.dependencies || {})) {
-  if (typeof ver === "string" && (ver.startsWith("file:") || ver.startsWith("link:"))) {
-    const pluginName = dep;
-    const protocol = ver.startsWith("link:") ? "link:" : "file:";
-    sourcePkg.dependencies[dep] = `${protocol}${path.join(ws, pluginName)}`;
-  }
-}
-fs.writeFileSync(targetPkgPath, JSON.stringify(sourcePkg, null, 2) + "\n");
-' "$WS" "$DSH_HOME/profiles/web" "$BACKUP_DIR"
-green "  ✓ Đã đồng bộ ~/.dsh/profiles/web/package.json trỏ về $WS"
-
-# Điều chỉnh cordis.patch.yml: thay thế đường dẫn home cũ bằng $HOME hiện tại
-node -e '
-const fs = require("fs");
-const path = require("path");
-const cordisSrc = fs.readFileSync(path.join(process.argv[2], "profiles/web/cordis.patch.yml"), "utf8");
-const home = process.env.HOME;
-const nodeBin = process.execPath;
-
-// Thay thế đường dẫn home cũ
-let updated = cordisSrc.replace(/\/home\/[a-zA-Z0-9._-]+/g, home);
-// Đảm bảo node bin trỏ đúng node hiện tại nếu cần
-if (fs.existsSync(nodeBin)) {
-  updated = updated.replace(/command:\s*.*\/node/g, `command: ${nodeBin}`);
-}
-fs.writeFileSync(path.join(process.argv[1], "cordis.patch.yml"), updated);
-' "$DSH_HOME/profiles/web" "$BACKUP_DIR"
-green "  ✓ Đã tạo ~/.dsh/profiles/web/cordis.patch.yml thích ứng với $HOME"
 
 # 6. Cài đặt các plugin npm & liên kết plugin cục bộ
 echo ">>> [6/7] Cài đặt dependencies (pnpm install) và tạo symlink plugin cục bộ..."

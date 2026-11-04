@@ -32,27 +32,72 @@
 
 ## Đường tắt khôi phục 1 chạm (Quick Restore) khi cài lại máy
 
-> **Áp dụng cho:** Máy Linux (Ubuntu, Debian, Arch, Omarchy...) hoặc Windows 10/11 (chạy qua **WSL2**).
+> **Áp dụng cho:**
+> - **Windows 11 thật (Native PowerShell)**: Chạy trực tiếp 100% trên Windows, KHÔNG cần WSL2!
+> - **Linux / macOS / WSL2**: Chạy qua terminal Bash thông thường.
+>
 > Sau khi cài lại máy, bạn không cần phải làm thủ công từng bước 8 phase.
 > Toàn bộ 34 plugin, 91 skills, AGENTS.md, cấu hình gateway và test suites đã được đóng gói sẵn trong repo này (`dsh-backup/`).
 
-### Chỉ 3 bước đơn giản:
+---
+
+### Cách 1: Chạy trực tiếp trên Windows 11 thật (PowerShell - Không cần WSL2)
+
+#### Bước 1: Cài Git, Node.js, pnpm và dsh trên Windows
+Mở **PowerShell** (hoặc Windows Terminal) và chạy:
+```powershell
+# 1. Cài đặt Git và Node.js LTS bằng winget (công cụ có sẵn của Windows 11)
+winget install Git.Git
+winget install OpenJS.NodeJS.LTS
+winget install Python.Python.3.12    # Khuyên dùng nếu muốn dùng skill Python (ui-ux-pro-max...)
+
+# Khởi động lại PowerShell (hoặc mở tab mới) để nhận PATH, sau đó chạy:
+npm install -g pnpm @deepseek-ai/dsh@0.2.1-rc.2
+```
+
+#### Bước 2: Clone repo workspace và chạy restore script PowerShell
+```powershell
+# Clone repo về máy (ví dụ thư mục Documents\deepseek-harness\default-workspace)
+cd $env:USERPROFILE\Documents
+git clone https://github.com/dzerok2020/deepseek-harness-workspace.git
+cd deepseek-harness-workspace
+
+# Chạy script khôi phục tự động cho Windows Native:
+powershell -ExecutionPolicy Bypass -File tools\restore-dsh.ps1
+```
+
+Script `tools\restore-dsh.ps1` sẽ tự động:
+1. Tạo thư mục `$env:USERPROFILE\.dsh` (tương đương `C:\Users\<Tên_Bạn>\.dsh`).
+2. Khôi phục luật toàn cục `AGENTS.md` (Karpathy, Tiếng Việt thô, Cinematic Spatial UI).
+3. Khôi phục toàn bộ **91 skills** vào `$env:USERPROFILE\.dsh\skills\`.
+4. Điều chỉnh `package.json` và `cordis.patch.yml` sang đường dẫn Windows.
+5. Chạy `pnpm install` và tạo **NTFS Junctions** kết nối các plugin cục bộ (`dsh-decide`, `dsh-vibe-guard`, `dsh-loop-guard`...) mà không cần quyền Admin hay Developer Mode.
+
+#### Bước 3: Cấu hình API Key và khởi động DSH
+```powershell
+# Đặt API Key trong phiên PowerShell (hoặc nhập vào Web GUI Settings -> Providers):
+$env:DEEPSEEK_API_KEY = "sk-..."
+$env:OR_API_KEY = "sk-..."
+
+# Khởi động DeepSeek Harness Web GUI:
+dsh web
+```
+Mở trình duyệt: `http://127.0.0.1:3080` là bạn đã có 100% môi trường làm việc native trên Windows 11!
+
+---
+
+### Cách 2: Chạy trên Linux (Ubuntu/Debian/Arch/Omarchy) hoặc qua WSL2
 
 #### Bước 1: Cài Node.js, pnpm và dsh
-- **Trên Linux (Ubuntu/Debian)**:
-  ```bash
-  sudo apt update && sudo apt install -y git curl build-essential
-  curl https://mise.run | sh
-  ~/.local/bin/mise use --global node@26.8.2
-  npm install -g pnpm @deepseek-ai/dsh@0.2.1-rc.2
-  ```
-- **Trên Windows 10/11**:
-  - Mở PowerShell (Admin), gõ `wsl --install` rồi khởi động lại máy.
-  - Mở terminal Ubuntu trong WSL2 và chạy các lệnh Linux như trên.
+```bash
+sudo apt update && sudo apt install -y git curl build-essential
+curl https://mise.run | sh
+~/.local/bin/mise use --global node@26.8.2
+npm install -g pnpm @deepseek-ai/dsh@0.2.1-rc.2
+```
 
 #### Bước 2: Clone repo workspace và chạy restore script
 ```bash
-# Clone repo về máy (thay dzerok2020 bằng username của bạn nếu cần)
 git clone https://github.com/dzerok2020/deepseek-harness-workspace.git ~/Documents/deepseek-harness/default-workspace
 cd ~/Documents/deepseek-harness/default-workspace
 
@@ -60,24 +105,14 @@ cd ~/Documents/deepseek-harness/default-workspace
 bash tools/restore-dsh.sh
 ```
 
-Script này tự động:
-1. Tạo thư mục `~/.dsh` và chép luật `AGENTS.md` (Karpathy, Tiếng Việt thô, Cinematic Spatial UI).
-2. Khôi phục toàn bộ **91 skills** vào `~/.dsh/skills/`.
-3. Khôi phục profile `web` với đầy đủ cấu hình `cordis.patch.yml`, `pnpm-workspace.yaml`.
-4. Tự động thích ứng các đường dẫn theo máy mới (`$HOME` và thư mục workspace).
-5. Chạy `pnpm install` và liên kết tất cả 12 plugin cục bộ (`dsh-decide`, `dsh-vibe-guard`, `dsh-loop-guard`...).
-6. Chạy bộ kiểm tra sức khỏe `bash tools/dsh-health.sh` để nghiệm thu.
-
 #### Bước 3: Cấu hình API Key và khởi động DSH
 ```bash
-# Đặt API key của bạn vào ~/.bashrc (hoặc cấu hình trong Web GUI Settings -> Providers):
 export DEEPSEEK_API_KEY="sk-..."
 export OR_API_KEY="sk-..."
 
-# Khởi động DeepSeek Harness Web GUI:
 dsh web
 ```
-Truy cập trình duyệt: `http://127.0.0.1:3080` là bạn đã có lại 100% môi trường làm việc như hiện tại!
+Truy cập trình duyệt: `http://127.0.0.1:3080`.
 
 ---
 
