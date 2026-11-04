@@ -15,13 +15,13 @@ EXPECTED = {
     'cx/gpt-6-sol': (128000, 16384),
     'cx/gpt-6-luna': (128000, 16384),
     'cx/gpt-6.1-sol': (1000000, 128000),
-    'cx/gpt-5.6-terra': (1000000, 16384),
+    'cx/gpt-5.6-terra': (872000, 128000),
     'cx/gpt-6.1-sol-fast': (400000, 16384),
     'nr-ai/deepseek-v4-flash': (1000000, 384000),
     'nr-ai/deepseek-v4.1-flash': (1048576, 384000),
     'nr-ai/deepseek-v4-flash-0731': (1000000, 384000),
     'nr-ai/deepseek-v4-pro-0813': (1000000, 384000),
-    'nr-ai/glm-5.1': (200000, 128000),
+    'nr-ai/glm-5.1': (200000, 65000),
     'nr-ai/glm-5.3-flash': (1000000, 131072),
     'nr-ai/qwen3.8-flash': (128000, 16384),
     'nr-ai/grok-4.7': (128000, 16384),
@@ -39,6 +39,9 @@ EXPECTED = {
     'antigravity/claude-opus-5-5-medium': (1048576, 128000),
     'cx/gpt-5.6-sol': (872000, 128000),
     'gh/gpt-4.1': (1047576, 32768),
+    # Routes added in Settings and synced on 2026-11-04.
+    'gpt-5.6-terra': (872000, 128000),
+    'antigravity/gemini-3.8-flash-high': (1048576, 65536),
 }
 
 
